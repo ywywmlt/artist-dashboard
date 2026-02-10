@@ -32,3 +32,15 @@ TOURING_LOOKBACK_YEARS = 2      # how far back to check
 # Scraping
 KWORB_URL = "https://kworb.net/spotify/listeners.html"
 USER_AGENT = "ArtistDashboard/0.1 (github.com/artist-dashboard)"
+
+# News RSS feeds
+NEWS_RSS_FEEDS = {
+    "Billboard": "https://www.billboard.com/music/feed/",
+    "Pitchfork": "https://pitchfork.com/feed/feed-news/rss",
+    "NME": "https://www.nme.com/news/music/feed",
+    "Rolling Stone": "https://www.rollingstone.com/music/music-news/feed/",
+    "Consequence": "https://consequence.net/feed/",
+    "Stereogum": "https://www.stereogum.com/feed/",
+}
+NEWS_GOOGLE_TOP_N = 20        # fetch Google News RSS for top N artists
+NEWS_RATE_LIMIT = 0.5         # seconds between requests (2 req/sec)

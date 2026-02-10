@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -76,6 +76,21 @@ class ArtistEnriched:
     next_event_date: Optional[str] = None
     touring_source: Optional[str] = None
     scraped_at: str = ""
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class NewsAlert:
+    """A news article matched to one or more tracked artists."""
+    title: str
+    url: str
+    source: str
+    published: str  # ISO 8601
+    matched_artists: list[str] = field(default_factory=list)
+    matched_spotify_ids: list[str] = field(default_factory=list)
+    fetched_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def to_dict(self) -> dict:
         return asdict(self)

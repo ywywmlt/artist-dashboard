@@ -15,6 +15,7 @@ STEPS = {
     2: ("Touring filter", "pipeline.step3_touring_filter"),
     3: ("MusicBrainz enrich", "pipeline.step4_social_handles"),
     4: ("Export CSV/JSON", "pipeline.step5_export"),
+    5: ("News mentions", "pipeline.step6_news"),
 }
 
 
@@ -22,7 +23,7 @@ def run_step(step_num: int) -> None:
     """Run a single pipeline step by number."""
     name, module_path = STEPS[step_num]
     logger.info(f"\n{'='*60}")
-    logger.info(f"STEP {step_num}/4: {name}")
+    logger.info(f"STEP {step_num}/{len(STEPS)}: {name}")
     logger.info(f"{'='*60}")
 
     import importlib
@@ -37,15 +38,15 @@ def main():
     parser = argparse.ArgumentParser(description="Artist Dashboard Scraping Pipeline")
     parser.add_argument(
         "--from", dest="from_step", type=int, default=1,
-        help="Start from this step number (1-4). Default: 1",
+        help="Start from this step number (1-5). Default: 1",
     )
     parser.add_argument(
-        "--to", dest="to_step", type=int, default=4,
-        help="Stop after this step number (1-4). Default: 4",
+        "--to", dest="to_step", type=int, default=5,
+        help="Stop after this step number (1-5). Default: 5",
     )
     parser.add_argument(
         "--step", type=int, default=None,
-        help="Run only this specific step (1-4)",
+        help="Run only this specific step (1-5)",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true",
@@ -56,7 +57,7 @@ def main():
 
     if args.step:
         if args.step not in STEPS:
-            logger.error(f"Invalid step: {args.step}. Must be 1-4.")
+            logger.error(f"Invalid step: {args.step}. Must be 1-{len(STEPS)}.")
             sys.exit(1)
         run_step(args.step)
         return
@@ -64,7 +65,7 @@ def main():
     start_step = args.from_step
     end_step = args.to_step
 
-    if start_step < 1 or end_step > 4 or start_step > end_step:
+    if start_step < 1 or end_step > len(STEPS) or start_step > end_step:
         logger.error(f"Invalid range: --from {start_step} --to {end_step}")
         sys.exit(1)
 

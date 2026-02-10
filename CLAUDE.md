@@ -5,7 +5,7 @@ Scraping pipeline to build a master list of top 1000+ recording artists ranked b
 
 ## Stack
 - Python 3.9+
-- Dependencies: `requests`, `beautifulsoup4`, `musicbrainzngs`, `pandas`, `python-dotenv`, `tenacity`, `flask`, `gunicorn`
+- Dependencies: `requests`, `beautifulsoup4`, `musicbrainzngs`, `pandas`, `python-dotenv`, `tenacity`, `flask`, `gunicorn`, `feedparser`
 
 ## Project Structure
 ```
@@ -19,7 +19,8 @@ Scraping pipeline to build a master list of top 1000+ recording artists ranked b
 │   ├── step1_seed_kworb.py      # Scrape kworb.net top artists
 │   ├── step3_touring_filter.py  # Bandsintown/setlist.fm touring status
 │   ├── step4_social_handles.py  # MusicBrainz: genres, socials, country, image
-│   └── step5_export.py          # Merge + export CSV/JSON
+│   ├── step5_export.py          # Merge + export CSV/JSON
+│   └── step6_news.py            # RSS news feed scraper + artist matching
 ├── data/
 │   ├── raw/                     # Intermediate JSON per step
 │   ├── output/                  # Final artists_master.csv + .json
@@ -55,7 +56,7 @@ Railway auto-deploys via GitHub push.
 
 ## Running Pipeline
 ```bash
-# Full pipeline (all 4 steps)
+# Full pipeline (all 5 steps)
 python run_pipeline.py
 
 # Resume from step 2
@@ -73,6 +74,7 @@ python run_pipeline.py -v
 2. **Touring Filter** — Bandsintown + setlist.fm fallback (~9min)
 3. **MusicBrainz Enrich** — Genres, socials, country, images (~17min)
 4. **Export** — Merge + CSV/JSON to `data/output/` (~instant)
+5. **News** — RSS feeds (Billboard, Pitchfork, NME, etc.) + Google News top 20 (~25s)
 
 Each step saves to `data/raw/` so the pipeline can resume from any point.
 Checkpointing within steps means partial progress is not lost.

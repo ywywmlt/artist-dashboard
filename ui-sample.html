@@ -145,7 +145,7 @@
         <div class="glass rounded-xl p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold text-white text-sm">Recent Alerts</h3>
-            <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
+            <span id="alerts-badge" class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
           </div>
           <div id="dashboard-alerts"></div>
         </div>
@@ -344,15 +344,21 @@ function showPage(page) {
 
 // ─── Data Loading ───
 async function loadData() {
-  const [seedRes, touringRes, venueRes] = await Promise.all([
+  const [seedRes, touringRes, venueRes, newsRes] = await Promise.all([
     fetch('data/raw/kworb_seed.json'),
     fetch('data/raw/touring_data.json'),
-    fetch('data/touring-cities-venues.json')
+    fetch('data/touring-cities-venues.json'),
+    fetch('data/raw/news_alerts.json').catch(() => null)
   ]);
   artists = await seedRes.json();
   const touringArr = await touringRes.json();
   touringArr.forEach(t => { touringMap[t.spotify_id] = t; });
   venueData = await venueRes.json();
+  if (newsRes && newsRes.ok) {
+    window.newsAlerts = await newsRes.json();
+  } else {
+    window.newsAlerts = null;
+  }
 
   document.getElementById('page-subtitle').innerHTML =
     `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${new Date(artists[0].scraped_at).toLocaleDateString()} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
@@ -492,23 +498,57 @@ function renderDashboard() {
       </div>`;
   }).join('');
 
-  // Dashboard Alerts (FPO)
-  const fpoAlerts = [
-    { icon: '📈', msg: `${artists[0]?.name || 'Drake'} monthly listeners up 12% in 48 hours`, time: '2 hours ago' },
-    { icon: '🎤', msg: `${artists[5]?.name || 'Bad Bunny'} announced 15 new tour dates`, time: '5 hours ago' },
-    { icon: '🏆', msg: `${artists[1]?.name || 'The Weeknd'}'s peak listeners record broken`, time: '1 day ago' },
-    { icon: '⚠️', msg: '3 artists dropped below 50% of peak listeners', time: '1 day ago' },
-    { icon: '🔥', msg: `${artists[3]?.name || 'Ariana Grande'} trending #1 on TikTok — expect listener spike`, time: '3 days ago' }
-  ];
-  document.getElementById('dashboard-alerts').innerHTML = fpoAlerts.map(a => `
-    <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors">
-      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-sm flex-shrink-0">${a.icon}</div>
-      <div class="flex-1 min-w-0">
-        <div class="text-sm text-white truncate">${a.msg}</div>
-        <div class="text-[10px] text-slate-500 mt-0.5">${a.time}</div>
+  // Dashboard Alerts — real news or FPO fallback
+  const sourceColors = {
+    'Billboard': 'bg-red-500/20 text-red-400',
+    'Pitchfork': 'bg-orange-500/20 text-orange-400',
+    'NME': 'bg-yellow-500/20 text-yellow-400',
+    'Rolling Stone': 'bg-rose-500/20 text-rose-400',
+    'Consequence': 'bg-teal-500/20 text-teal-400',
+    'Stereogum': 'bg-cyan-500/20 text-cyan-400',
+    'Google News': 'bg-blue-500/20 text-blue-400',
+  };
+  function relTime(iso) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  }
+  if (window.newsAlerts && window.newsAlerts.length > 0) {
+    const badge = document.getElementById('alerts-badge');
+    if (badge) { badge.textContent = 'LIVE'; badge.classList.remove('text-amber-400','bg-amber-500/10'); badge.classList.add('text-green-400','bg-green-500/10'); }
+    document.getElementById('dashboard-alerts').innerHTML = window.newsAlerts.slice(0, 8).map(a => `
+      <a href="${a.url}" target="_blank" rel="noopener" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors">
+        <div class="flex-shrink-0">
+          <span class="text-[9px] font-medium px-1.5 py-0.5 rounded ${sourceColors[a.source] || 'bg-slate-500/20 text-slate-400'}">${a.source}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm text-white truncate">${a.title}</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">${a.matched_artists.slice(0,2).join(', ')} &middot; ${relTime(a.published)}</div>
+        </div>
+      </a>
+    `).join('');
+  } else {
+    const fpoAlerts = [
+      { icon: '\u{1F4C8}', msg: `${artists[0]?.name || 'Drake'} monthly listeners up 12% in 48 hours`, time: '2 hours ago' },
+      { icon: '\u{1F3A4}', msg: `${artists[5]?.name || 'Bad Bunny'} announced 15 new tour dates`, time: '5 hours ago' },
+      { icon: '\u{1F3C6}', msg: `${artists[1]?.name || 'The Weeknd'}'s peak listeners record broken`, time: '1 day ago' },
+      { icon: '\u26A0\uFE0F', msg: '3 artists dropped below 50% of peak listeners', time: '1 day ago' },
+      { icon: '\u{1F525}', msg: `${artists[3]?.name || 'Ariana Grande'} trending #1 on TikTok`, time: '3 days ago' }
+    ];
+    document.getElementById('dashboard-alerts').innerHTML = fpoAlerts.map(a => `
+      <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors">
+        <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-sm flex-shrink-0">${a.icon}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm text-white truncate">${a.msg}</div>
+          <div class="text-[10px] text-slate-500 mt-0.5">${a.time}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  }
 
   // Dashboard Upcoming Shows (FPO)
   const fpoVenues = ['Madison Square Garden, New York','The O2 Arena, London','Tokyo Dome, Tokyo','Accor Arena, Paris','Scotiabank Arena, Toronto'];

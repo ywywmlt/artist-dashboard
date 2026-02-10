@@ -6,3 +6,4 @@ python-dotenv>=1.0.0
 tenacity>=8.2.0
 flask>=3.0.0
 gunicorn>=21.2.0
+feedparser>=6.0.0
