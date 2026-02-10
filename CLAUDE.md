@@ -5,10 +5,12 @@ Scraping pipeline to build a master list of top 1000+ recording artists ranked b
 
 ## Stack
 - Python 3.9+
-- Dependencies: `requests`, `beautifulsoup4`, `musicbrainzngs`, `pandas`, `python-dotenv`, `tenacity`
+- Dependencies: `requests`, `beautifulsoup4`, `musicbrainzngs`, `pandas`, `python-dotenv`, `tenacity`, `flask`, `gunicorn`
 
 ## Project Structure
 ```
+├── app.py                       # Flask web server (serves dashboard + data)
+├── Procfile                     # Railway/Heroku process definition
 ├── config.py                    # API keys, rate limits, thresholds
 ├── models.py                    # Dataclass definitions
 ├── utils.py                     # Rate limiting, retries, logging, file I/O
@@ -40,7 +42,18 @@ cp .env.example .env
 
 Note: Spotify API removed — genres/images come from MusicBrainz, Spotify URLs constructed from ID.
 
-## Running
+## Web Server (Dashboard)
+```bash
+# Local dev
+python app.py  # http://localhost:5001
+
+# Production (Railway uses Procfile)
+gunicorn app:app --bind 0.0.0.0:$PORT
+```
+Flask serves `ui-sample.html` at `/` and the `data/` directory as static files.
+Railway auto-deploys via GitHub push.
+
+## Running Pipeline
 ```bash
 # Full pipeline (all 4 steps)
 python run_pipeline.py
