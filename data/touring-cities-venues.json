@@ -1,0 +1,6915 @@
+{
+  "metadata": {
+    "version": "1.0",
+    "last_updated": "2026-02-10",
+    "sources": [
+      "Pollstar",
+      "Billboard Boxscore",
+      "industry research"
+    ],
+    "total_cities": 100,
+    "total_venues": 1000
+  },
+  "cities": [
+    {
+      "rank": 1,
+      "city": "New York City",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "MetLife Stadium",
+          "venue_tier": "A",
+          "capacity": 82500,
+          "type": "stadium"
+        },
+        {
+          "name": "Madison Square Garden",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Barclays Center",
+          "venue_tier": "A",
+          "capacity": 19000,
+          "type": "arena"
+        },
+        {
+          "name": "Radio City Music Hall",
+          "venue_tier": "B",
+          "capacity": 6015,
+          "type": "theater"
+        },
+        {
+          "name": "Terminal 5",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Brooklyn Steel",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "club"
+        },
+        {
+          "name": "Beacon Theatre",
+          "venue_tier": "B",
+          "capacity": 2894,
+          "type": "theater"
+        },
+        {
+          "name": "Irving Plaza",
+          "venue_tier": "C",
+          "capacity": 1025,
+          "type": "club"
+        },
+        {
+          "name": "Bowery Ballroom",
+          "venue_tier": "C",
+          "capacity": 575,
+          "type": "club"
+        },
+        {
+          "name": "Mercury Lounge",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "city": "Los Angeles",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "SoFi Stadium",
+          "venue_tier": "A",
+          "capacity": 70240,
+          "type": "stadium"
+        },
+        {
+          "name": "Crypto.com Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Kia Forum",
+          "venue_tier": "A",
+          "capacity": 17505,
+          "type": "arena"
+        },
+        {
+          "name": "Hollywood Bowl",
+          "venue_tier": "A",
+          "capacity": 17500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Greek Theatre",
+          "venue_tier": "B",
+          "capacity": 5870,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Wiltern",
+          "venue_tier": "B",
+          "capacity": 1850,
+          "type": "theater"
+        },
+        {
+          "name": "The Fonda Theatre",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "theater"
+        },
+        {
+          "name": "El Rey Theatre",
+          "venue_tier": "C",
+          "capacity": 771,
+          "type": "theater"
+        },
+        {
+          "name": "The Troubadour",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Roxy Theatre",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "city": "Chicago",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Soldier Field",
+          "venue_tier": "A",
+          "capacity": 61500,
+          "type": "stadium"
+        },
+        {
+          "name": "United Center",
+          "venue_tier": "A",
+          "capacity": 23500,
+          "type": "arena"
+        },
+        {
+          "name": "Wrigley Field",
+          "venue_tier": "A",
+          "capacity": 41649,
+          "type": "stadium"
+        },
+        {
+          "name": "Huntington Bank Pavilion",
+          "venue_tier": "B",
+          "capacity": 8000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Aragon Ballroom",
+          "venue_tier": "B",
+          "capacity": 4500,
+          "type": "theater"
+        },
+        {
+          "name": "The Riviera Theatre",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "Thalia Hall",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "theater"
+        },
+        {
+          "name": "Metro Chicago",
+          "venue_tier": "C",
+          "capacity": 1100,
+          "type": "club"
+        },
+        {
+          "name": "Lincoln Hall",
+          "venue_tier": "C",
+          "capacity": 507,
+          "type": "club"
+        },
+        {
+          "name": "Schubas Tavern",
+          "venue_tier": "C",
+          "capacity": 165,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "city": "Toronto",
+      "country": "Canada",
+      "region": "North America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Rogers Centre",
+          "venue_tier": "A",
+          "capacity": 49286,
+          "type": "stadium"
+        },
+        {
+          "name": "Scotiabank Arena",
+          "venue_tier": "A",
+          "capacity": 19800,
+          "type": "arena"
+        },
+        {
+          "name": "Budweiser Stage",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Coca-Cola Coliseum",
+          "venue_tier": "B",
+          "capacity": 8100,
+          "type": "arena"
+        },
+        {
+          "name": "History",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "Massey Hall",
+          "venue_tier": "B",
+          "capacity": 2765,
+          "type": "theater"
+        },
+        {
+          "name": "Danforth Music Hall",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "The Opera House",
+          "venue_tier": "C",
+          "capacity": 950,
+          "type": "theater"
+        },
+        {
+          "name": "Lee's Palace",
+          "venue_tier": "C",
+          "capacity": 550,
+          "type": "club"
+        },
+        {
+          "name": "Horseshoe Tavern",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "city": "Las Vegas",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Allegiant Stadium",
+          "venue_tier": "A",
+          "capacity": 65000,
+          "type": "stadium"
+        },
+        {
+          "name": "T-Mobile Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "MGM Grand Garden Arena",
+          "venue_tier": "A",
+          "capacity": 17157,
+          "type": "arena"
+        },
+        {
+          "name": "The Colosseum at Caesars Palace",
+          "venue_tier": "B",
+          "capacity": 4298,
+          "type": "theater"
+        },
+        {
+          "name": "Dolby Live",
+          "venue_tier": "B",
+          "capacity": 5200,
+          "type": "theater"
+        },
+        {
+          "name": "The Pearl Concert Theater",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "Brooklyn Bowl Las Vegas",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "House of Blues Las Vegas",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "club"
+        },
+        {
+          "name": "The Joint",
+          "venue_tier": "B",
+          "capacity": 4000,
+          "type": "theater"
+        },
+        {
+          "name": "Vinyl Las Vegas",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "city": "Dallas",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "AT&T Stadium",
+          "venue_tier": "A",
+          "capacity": 80000,
+          "type": "stadium"
+        },
+        {
+          "name": "American Airlines Center",
+          "venue_tier": "A",
+          "capacity": 21000,
+          "type": "arena"
+        },
+        {
+          "name": "Dos Equis Pavilion",
+          "venue_tier": "B",
+          "capacity": 20000,
+          "type": "outdoor"
+        },
+        {
+          "name": "South Side Ballroom",
+          "venue_tier": "B",
+          "capacity": 4100,
+          "type": "club"
+        },
+        {
+          "name": "House of Blues Dallas",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "club"
+        },
+        {
+          "name": "The Bomb Factory",
+          "venue_tier": "B",
+          "capacity": 4300,
+          "type": "club"
+        },
+        {
+          "name": "Granada Theater",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "theater"
+        },
+        {
+          "name": "Trees",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Club Dada",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Three Links",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "city": "Houston",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "NRG Stadium",
+          "venue_tier": "A",
+          "capacity": 72220,
+          "type": "stadium"
+        },
+        {
+          "name": "Toyota Center",
+          "venue_tier": "A",
+          "capacity": 18300,
+          "type": "arena"
+        },
+        {
+          "name": "713 Music Hall",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "club"
+        },
+        {
+          "name": "White Oak Music Hall",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "House of Blues Houston",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "club"
+        },
+        {
+          "name": "Warehouse Live",
+          "venue_tier": "B",
+          "capacity": 1400,
+          "type": "club"
+        },
+        {
+          "name": "Revention Music Center",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "The Heights Theater",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "theater"
+        },
+        {
+          "name": "Satellite Bar",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Continental Club",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "city": "Miami",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Hard Rock Stadium",
+          "venue_tier": "A",
+          "capacity": 65326,
+          "type": "stadium"
+        },
+        {
+          "name": "Kaseya Center",
+          "venue_tier": "A",
+          "capacity": 19600,
+          "type": "arena"
+        },
+        {
+          "name": "FPL Solar Amphitheater",
+          "venue_tier": "A",
+          "capacity": 19520,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Fillmore Miami Beach",
+          "venue_tier": "B",
+          "capacity": 2800,
+          "type": "theater"
+        },
+        {
+          "name": "James L. Knight Center",
+          "venue_tier": "B",
+          "capacity": 4700,
+          "type": "theater"
+        },
+        {
+          "name": "The Ground Miami",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Revolution Live",
+          "venue_tier": "B",
+          "capacity": 1350,
+          "type": "club"
+        },
+        {
+          "name": "The Oasis Wynwood",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Churchill's Pub",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Gramps",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "city": "San Francisco",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Oracle Park",
+          "venue_tier": "A",
+          "capacity": 41265,
+          "type": "stadium"
+        },
+        {
+          "name": "Chase Center",
+          "venue_tier": "A",
+          "capacity": 18064,
+          "type": "arena"
+        },
+        {
+          "name": "Bill Graham Civic Auditorium",
+          "venue_tier": "B",
+          "capacity": 7000,
+          "type": "arena"
+        },
+        {
+          "name": "The Masonic",
+          "venue_tier": "B",
+          "capacity": 3300,
+          "type": "theater"
+        },
+        {
+          "name": "The Warfield",
+          "venue_tier": "B",
+          "capacity": 2300,
+          "type": "theater"
+        },
+        {
+          "name": "The Fillmore",
+          "venue_tier": "B",
+          "capacity": 1150,
+          "type": "club"
+        },
+        {
+          "name": "Great American Music Hall",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "The Independent",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Bottom of the Hill",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Cafe Du Nord",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "city": "Atlanta",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Mercedes-Benz Stadium",
+          "venue_tier": "A",
+          "capacity": 71000,
+          "type": "stadium"
+        },
+        {
+          "name": "State Farm Arena",
+          "venue_tier": "A",
+          "capacity": 21000,
+          "type": "arena"
+        },
+        {
+          "name": "Lakewood Amphitheatre",
+          "venue_tier": "A",
+          "capacity": 19000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Coca-Cola Roxy",
+          "venue_tier": "B",
+          "capacity": 3400,
+          "type": "theater"
+        },
+        {
+          "name": "Tabernacle",
+          "venue_tier": "B",
+          "capacity": 2600,
+          "type": "club"
+        },
+        {
+          "name": "Buckhead Theatre",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "theater"
+        },
+        {
+          "name": "Center Stage",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "theater"
+        },
+        {
+          "name": "Terminal West",
+          "venue_tier": "C",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Variety Playhouse",
+          "venue_tier": "C",
+          "capacity": 1050,
+          "type": "theater"
+        },
+        {
+          "name": "The Earl",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "city": "Nashville",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Nissan Stadium",
+          "venue_tier": "A",
+          "capacity": 69143,
+          "type": "stadium"
+        },
+        {
+          "name": "Bridgestone Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Ascend Amphitheater",
+          "venue_tier": "B",
+          "capacity": 6800,
+          "type": "outdoor"
+        },
+        {
+          "name": "Ryman Auditorium",
+          "venue_tier": "B",
+          "capacity": 2362,
+          "type": "theater"
+        },
+        {
+          "name": "Marathon Music Works",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Brooklyn Bowl Nashville",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Cannery Ballroom",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "club"
+        },
+        {
+          "name": "Exit/In",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "The Basement East",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "3rd & Lindsley",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "city": "Denver",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Empower Field at Mile High",
+          "venue_tier": "A",
+          "capacity": 76125,
+          "type": "stadium"
+        },
+        {
+          "name": "Ball Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Red Rocks Amphitheatre",
+          "venue_tier": "A",
+          "capacity": 9525,
+          "type": "outdoor"
+        },
+        {
+          "name": "Fiddler's Green Amphitheatre",
+          "venue_tier": "B",
+          "capacity": 7500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Mission Ballroom",
+          "venue_tier": "B",
+          "capacity": 3950,
+          "type": "club"
+        },
+        {
+          "name": "The Ogden Theatre",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "theater"
+        },
+        {
+          "name": "Gothic Theatre",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "theater"
+        },
+        {
+          "name": "Bluebird Theater",
+          "venue_tier": "C",
+          "capacity": 550,
+          "type": "theater"
+        },
+        {
+          "name": "Cervantes' Masterpiece Ballroom",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "Globe Hall",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "city": "Philadelphia",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Lincoln Financial Field",
+          "venue_tier": "A",
+          "capacity": 69796,
+          "type": "stadium"
+        },
+        {
+          "name": "Wells Fargo Center",
+          "venue_tier": "A",
+          "capacity": 21000,
+          "type": "arena"
+        },
+        {
+          "name": "The Met Philadelphia",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "theater"
+        },
+        {
+          "name": "The Fillmore Philadelphia",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "Tower Theatre",
+          "venue_tier": "B",
+          "capacity": 3054,
+          "type": "theater"
+        },
+        {
+          "name": "Union Transfer",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Theatre of Living Arts",
+          "venue_tier": "C",
+          "capacity": 1000,
+          "type": "theater"
+        },
+        {
+          "name": "World Cafe Live",
+          "venue_tier": "C",
+          "capacity": 650,
+          "type": "club"
+        },
+        {
+          "name": "Johnny Brenda's",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Boot & Saddle",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "city": "Washington DC",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "FedExField",
+          "venue_tier": "A",
+          "capacity": 82000,
+          "type": "stadium"
+        },
+        {
+          "name": "Capital One Arena",
+          "venue_tier": "A",
+          "capacity": 20356,
+          "type": "arena"
+        },
+        {
+          "name": "The Anthem",
+          "venue_tier": "B",
+          "capacity": 6000,
+          "type": "theater"
+        },
+        {
+          "name": "Merriweather Post Pavilion",
+          "venue_tier": "B",
+          "capacity": 19319,
+          "type": "outdoor"
+        },
+        {
+          "name": "DAR Constitution Hall",
+          "venue_tier": "B",
+          "capacity": 3702,
+          "type": "theater"
+        },
+        {
+          "name": "9:30 Club",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Lincoln Theatre",
+          "venue_tier": "B",
+          "capacity": 1227,
+          "type": "theater"
+        },
+        {
+          "name": "Howard Theatre",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "theater"
+        },
+        {
+          "name": "Songbyrd Music House",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "DC9",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "city": "Boston",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Gillette Stadium",
+          "venue_tier": "A",
+          "capacity": 65878,
+          "type": "stadium"
+        },
+        {
+          "name": "TD Garden",
+          "venue_tier": "A",
+          "capacity": 19580,
+          "type": "arena"
+        },
+        {
+          "name": "MGM Music Hall at Fenway",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "Roadrunner",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "club"
+        },
+        {
+          "name": "House of Blues Boston",
+          "venue_tier": "B",
+          "capacity": 2425,
+          "type": "club"
+        },
+        {
+          "name": "Orpheum Theatre",
+          "venue_tier": "B",
+          "capacity": 2700,
+          "type": "theater"
+        },
+        {
+          "name": "Royale",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Paradise Rock Club",
+          "venue_tier": "C",
+          "capacity": 933,
+          "type": "club"
+        },
+        {
+          "name": "Brighton Music Hall",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Sinclair",
+          "venue_tier": "C",
+          "capacity": 525,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "city": "Seattle",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Lumen Field",
+          "venue_tier": "A",
+          "capacity": 68740,
+          "type": "stadium"
+        },
+        {
+          "name": "Climate Pledge Arena",
+          "venue_tier": "A",
+          "capacity": 17400,
+          "type": "arena"
+        },
+        {
+          "name": "WaMu Theater",
+          "venue_tier": "B",
+          "capacity": 7000,
+          "type": "theater"
+        },
+        {
+          "name": "Paramount Theatre",
+          "venue_tier": "B",
+          "capacity": 2807,
+          "type": "theater"
+        },
+        {
+          "name": "The Showbox",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "club"
+        },
+        {
+          "name": "Moore Theatre",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "theater"
+        },
+        {
+          "name": "Neptune Theatre",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "theater"
+        },
+        {
+          "name": "Neumos",
+          "venue_tier": "C",
+          "capacity": 650,
+          "type": "club"
+        },
+        {
+          "name": "The Crocodile",
+          "venue_tier": "C",
+          "capacity": 550,
+          "type": "club"
+        },
+        {
+          "name": "Tractor Tavern",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "city": "Montreal",
+      "country": "Canada",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Olympic Stadium",
+          "venue_tier": "A",
+          "capacity": 56040,
+          "type": "stadium"
+        },
+        {
+          "name": "Bell Centre",
+          "venue_tier": "A",
+          "capacity": 21302,
+          "type": "arena"
+        },
+        {
+          "name": "Osheaga Festival Grounds",
+          "venue_tier": "A",
+          "capacity": 45000,
+          "type": "outdoor"
+        },
+        {
+          "name": "MTELUS",
+          "venue_tier": "B",
+          "capacity": 2300,
+          "type": "theater"
+        },
+        {
+          "name": "Place Bell",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Corona Theatre",
+          "venue_tier": "B",
+          "capacity": 1700,
+          "type": "theater"
+        },
+        {
+          "name": "Club Soda",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "Théâtre Fairmount",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "theater"
+        },
+        {
+          "name": "La Tulipe",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "theater"
+        },
+        {
+          "name": "Bar Le Ritz PDB",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "city": "Vancouver",
+      "country": "Canada",
+      "region": "North America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "BC Place",
+          "venue_tier": "A",
+          "capacity": 54500,
+          "type": "stadium"
+        },
+        {
+          "name": "Rogers Arena",
+          "venue_tier": "A",
+          "capacity": 18910,
+          "type": "arena"
+        },
+        {
+          "name": "PNE Amphitheatre",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Queen Elizabeth Theatre",
+          "venue_tier": "B",
+          "capacity": 2929,
+          "type": "theater"
+        },
+        {
+          "name": "Orpheum Theatre",
+          "venue_tier": "B",
+          "capacity": 2672,
+          "type": "theater"
+        },
+        {
+          "name": "Commodore Ballroom",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Vogue Theatre",
+          "venue_tier": "C",
+          "capacity": 1150,
+          "type": "theater"
+        },
+        {
+          "name": "Rickshaw Theatre",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "theater"
+        },
+        {
+          "name": "The Biltmore Cabaret",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Fortune Sound Club",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "city": "Phoenix",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "State Farm Stadium",
+          "venue_tier": "A",
+          "capacity": 63400,
+          "type": "stadium"
+        },
+        {
+          "name": "Footprint Center",
+          "venue_tier": "A",
+          "capacity": 18422,
+          "type": "arena"
+        },
+        {
+          "name": "Ak-Chin Pavilion",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Arizona Financial Theatre",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "The Van Buren",
+          "venue_tier": "B",
+          "capacity": 1900,
+          "type": "club"
+        },
+        {
+          "name": "Marquee Theatre",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "theater"
+        },
+        {
+          "name": "Crescent Ballroom",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "The Rebel Lounge",
+          "venue_tier": "C",
+          "capacity": 280,
+          "type": "club"
+        },
+        {
+          "name": "Valley Bar",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Nile Theater",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "theater"
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "city": "Minneapolis",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "U.S. Bank Stadium",
+          "venue_tier": "A",
+          "capacity": 66655,
+          "type": "stadium"
+        },
+        {
+          "name": "Target Center",
+          "venue_tier": "A",
+          "capacity": 19356,
+          "type": "arena"
+        },
+        {
+          "name": "The Armory",
+          "venue_tier": "B",
+          "capacity": 8400,
+          "type": "arena"
+        },
+        {
+          "name": "Myth Live",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "club"
+        },
+        {
+          "name": "Palace Theatre",
+          "venue_tier": "B",
+          "capacity": 2600,
+          "type": "theater"
+        },
+        {
+          "name": "First Avenue",
+          "venue_tier": "B",
+          "capacity": 1550,
+          "type": "club"
+        },
+        {
+          "name": "Fine Line",
+          "venue_tier": "C",
+          "capacity": 650,
+          "type": "club"
+        },
+        {
+          "name": "Turf Club",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "7th St Entry",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "The Cedar Cultural Center",
+          "venue_tier": "C",
+          "capacity": 475,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 21,
+      "city": "Detroit",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Ford Field",
+          "venue_tier": "A",
+          "capacity": 65000,
+          "type": "stadium"
+        },
+        {
+          "name": "Little Caesars Arena",
+          "venue_tier": "A",
+          "capacity": 20332,
+          "type": "arena"
+        },
+        {
+          "name": "Meadow Brook Amphitheatre",
+          "venue_tier": "B",
+          "capacity": 7500,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Fillmore Detroit",
+          "venue_tier": "B",
+          "capacity": 2888,
+          "type": "theater"
+        },
+        {
+          "name": "Royal Oak Music Theatre",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "theater"
+        },
+        {
+          "name": "Saint Andrew's Hall",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Majestic Theatre",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "theater"
+        },
+        {
+          "name": "El Club",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "The Magic Bag",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "PJ's Lager House",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 22,
+      "city": "Tampa",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Raymond James Stadium",
+          "venue_tier": "A",
+          "capacity": 65890,
+          "type": "stadium"
+        },
+        {
+          "name": "Amalie Arena",
+          "venue_tier": "A",
+          "capacity": 20500,
+          "type": "arena"
+        },
+        {
+          "name": "MIDFLORIDA Credit Union Amphitheatre",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Yuengling Center",
+          "venue_tier": "B",
+          "capacity": 10411,
+          "type": "arena"
+        },
+        {
+          "name": "Jannus Live",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Ritz Ybor",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Orpheum Tampa",
+          "venue_tier": "C",
+          "capacity": 750,
+          "type": "theater"
+        },
+        {
+          "name": "Crowbar",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Attic",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "New World Brewery",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 23,
+      "city": "Portland",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Providence Park",
+          "venue_tier": "A",
+          "capacity": 25218,
+          "type": "stadium"
+        },
+        {
+          "name": "Moda Center",
+          "venue_tier": "A",
+          "capacity": 19393,
+          "type": "arena"
+        },
+        {
+          "name": "Edgefield Amphitheatre",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Roseland Theater",
+          "venue_tier": "B",
+          "capacity": 1400,
+          "type": "theater"
+        },
+        {
+          "name": "Crystal Ballroom",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Revolution Hall",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "theater"
+        },
+        {
+          "name": "Wonder Ballroom",
+          "venue_tier": "C",
+          "capacity": 850,
+          "type": "club"
+        },
+        {
+          "name": "Aladdin Theater",
+          "venue_tier": "C",
+          "capacity": 620,
+          "type": "theater"
+        },
+        {
+          "name": "Doug Fir Lounge",
+          "venue_tier": "C",
+          "capacity": 340,
+          "type": "club"
+        },
+        {
+          "name": "Mississippi Studios",
+          "venue_tier": "C",
+          "capacity": 240,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 24,
+      "city": "Charlotte",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Bank of America Stadium",
+          "venue_tier": "A",
+          "capacity": 74867,
+          "type": "stadium"
+        },
+        {
+          "name": "Spectrum Center",
+          "venue_tier": "A",
+          "capacity": 20200,
+          "type": "arena"
+        },
+        {
+          "name": "PNC Music Pavilion",
+          "venue_tier": "A",
+          "capacity": 19500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Ovens Auditorium",
+          "venue_tier": "B",
+          "capacity": 2478,
+          "type": "theater"
+        },
+        {
+          "name": "The Fillmore Charlotte",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Neighborhood Theatre",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "theater"
+        },
+        {
+          "name": "Amos' Southend",
+          "venue_tier": "C",
+          "capacity": 750,
+          "type": "club"
+        },
+        {
+          "name": "The Milestone Club",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Visulite Theatre",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "theater"
+        },
+        {
+          "name": "Snug Harbor",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 25,
+      "city": "Indianapolis",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Lucas Oil Stadium",
+          "venue_tier": "A",
+          "capacity": 67000,
+          "type": "stadium"
+        },
+        {
+          "name": "Gainbridge Fieldhouse",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "TCU Amphitheater at White River",
+          "venue_tier": "B",
+          "capacity": 6500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Egyptian Room at Old National Centre",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "The Vogue",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "club"
+        },
+        {
+          "name": "HI-FI",
+          "venue_tier": "C",
+          "capacity": 880,
+          "type": "club"
+        },
+        {
+          "name": "The Citadel Music Hall",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "HI-FI Annex",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Black Circle Brewing",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "The Mousetrap",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 26,
+      "city": "Salt Lake City",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Rice-Eccles Stadium",
+          "venue_tier": "A",
+          "capacity": 51444,
+          "type": "stadium"
+        },
+        {
+          "name": "Delta Center",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "The Usana Amphitheatre",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Union Event Center",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "The Depot",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "The Complex",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Metro Music Hall",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Urban Lounge",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Kilby Court",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "The State Room",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 27,
+      "city": "Austin",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Darrell K Royal Stadium",
+          "venue_tier": "A",
+          "capacity": 100119,
+          "type": "stadium"
+        },
+        {
+          "name": "Moody Center",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Austin360 Amphitheater",
+          "venue_tier": "A",
+          "capacity": 14000,
+          "type": "outdoor"
+        },
+        {
+          "name": "ACL Live at The Moody Theater",
+          "venue_tier": "B",
+          "capacity": 2750,
+          "type": "theater"
+        },
+        {
+          "name": "Stubb's BBQ",
+          "venue_tier": "B",
+          "capacity": 2100,
+          "type": "outdoor"
+        },
+        {
+          "name": "Emo's Austin",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "club"
+        },
+        {
+          "name": "Scoot Inn",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "outdoor"
+        },
+        {
+          "name": "Mohawk",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Parish",
+          "venue_tier": "C",
+          "capacity": 475,
+          "type": "club"
+        },
+        {
+          "name": "Antone's Nightclub",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 28,
+      "city": "San Diego",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Snapdragon Stadium",
+          "venue_tier": "A",
+          "capacity": 35000,
+          "type": "stadium"
+        },
+        {
+          "name": "Pechanga Arena",
+          "venue_tier": "A",
+          "capacity": 14800,
+          "type": "arena"
+        },
+        {
+          "name": "North Island Credit Union Amphitheatre",
+          "venue_tier": "A",
+          "capacity": 20500,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Rady Shell at Jacobs Park",
+          "venue_tier": "B",
+          "capacity": 10000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Observatory North Park",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "theater"
+        },
+        {
+          "name": "House of Blues San Diego",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "club"
+        },
+        {
+          "name": "The Casbah",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Belly Up Tavern",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Soda Bar",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Music Box",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 29,
+      "city": "New Orleans",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Caesars Superdome",
+          "venue_tier": "A",
+          "capacity": 73208,
+          "type": "stadium"
+        },
+        {
+          "name": "Smoothie King Center",
+          "venue_tier": "A",
+          "capacity": 16867,
+          "type": "arena"
+        },
+        {
+          "name": "Champions Square",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Saenger Theatre",
+          "venue_tier": "B",
+          "capacity": 2600,
+          "type": "theater"
+        },
+        {
+          "name": "Orpheum Theater",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "The Joy Theater",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "theater"
+        },
+        {
+          "name": "Tipitina's",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Republic NOLA",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "club"
+        },
+        {
+          "name": "The Howlin' Wolf",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "d.b.a.",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 30,
+      "city": "Pittsburgh",
+      "country": "USA",
+      "region": "North America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Acrisure Stadium",
+          "venue_tier": "A",
+          "capacity": 68400,
+          "type": "stadium"
+        },
+        {
+          "name": "PPG Paints Arena",
+          "venue_tier": "A",
+          "capacity": 19100,
+          "type": "arena"
+        },
+        {
+          "name": "Stage AE",
+          "venue_tier": "B",
+          "capacity": 5500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Benedum Center",
+          "venue_tier": "B",
+          "capacity": 2800,
+          "type": "theater"
+        },
+        {
+          "name": "Byham Theater",
+          "venue_tier": "B",
+          "capacity": 1300,
+          "type": "theater"
+        },
+        {
+          "name": "Mr. Smalls Theatre",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "theater"
+        },
+        {
+          "name": "Roxian Theatre",
+          "venue_tier": "B",
+          "capacity": 1650,
+          "type": "theater"
+        },
+        {
+          "name": "Spirit Hall",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Thunderbird Cafe",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Club Cafe",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 31,
+      "city": "London",
+      "country": "UK",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Wembley Stadium",
+          "venue_tier": "A",
+          "capacity": 90000,
+          "type": "stadium"
+        },
+        {
+          "name": "Tottenham Hotspur Stadium",
+          "venue_tier": "A",
+          "capacity": 62850,
+          "type": "stadium"
+        },
+        {
+          "name": "The O2 Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "OVO Arena Wembley",
+          "venue_tier": "A",
+          "capacity": 12500,
+          "type": "arena"
+        },
+        {
+          "name": "Alexandra Palace",
+          "venue_tier": "A",
+          "capacity": 10400,
+          "type": "arena"
+        },
+        {
+          "name": "Eventim Apollo",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "theater"
+        },
+        {
+          "name": "Roundhouse",
+          "venue_tier": "B",
+          "capacity": 3300,
+          "type": "theater"
+        },
+        {
+          "name": "Electric Brixton",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "KOKO",
+          "venue_tier": "B",
+          "capacity": 1400,
+          "type": "club"
+        },
+        {
+          "name": "Village Underground",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 32,
+      "city": "Paris",
+      "country": "France",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Stade de France",
+          "venue_tier": "A",
+          "capacity": 80698,
+          "type": "stadium"
+        },
+        {
+          "name": "Accor Arena",
+          "venue_tier": "A",
+          "capacity": 20300,
+          "type": "arena"
+        },
+        {
+          "name": "La Défense Arena",
+          "venue_tier": "A",
+          "capacity": 40000,
+          "type": "arena"
+        },
+        {
+          "name": "Zénith Paris",
+          "venue_tier": "A",
+          "capacity": 6293,
+          "type": "arena"
+        },
+        {
+          "name": "L'Olympia",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Le Bataclan",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "La Cigale",
+          "venue_tier": "B",
+          "capacity": 1400,
+          "type": "theater"
+        },
+        {
+          "name": "Le Trabendo",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "La Maroquinerie",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Le Petit Bain",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 33,
+      "city": "Berlin",
+      "country": "Germany",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Olympiastadion Berlin",
+          "venue_tier": "A",
+          "capacity": 74475,
+          "type": "stadium"
+        },
+        {
+          "name": "Mercedes-Benz Arena",
+          "venue_tier": "A",
+          "capacity": 17000,
+          "type": "arena"
+        },
+        {
+          "name": "Velodrom",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "arena"
+        },
+        {
+          "name": "Tempodrom",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "theater"
+        },
+        {
+          "name": "Columbiahalle",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "club"
+        },
+        {
+          "name": "Astra Kulturhaus",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Festsaal Kreuzberg",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "SO36",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Lido Berlin",
+          "venue_tier": "C",
+          "capacity": 650,
+          "type": "club"
+        },
+        {
+          "name": "Badehaus",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 34,
+      "city": "Amsterdam",
+      "country": "Netherlands",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Johan Cruyff Arena",
+          "venue_tier": "A",
+          "capacity": 55500,
+          "type": "stadium"
+        },
+        {
+          "name": "Ziggo Dome",
+          "venue_tier": "A",
+          "capacity": 17000,
+          "type": "arena"
+        },
+        {
+          "name": "AFAS Live",
+          "venue_tier": "B",
+          "capacity": 6000,
+          "type": "arena"
+        },
+        {
+          "name": "Paradiso",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Melkweg",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "TivoliVredenburg",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Concertgebouw",
+          "venue_tier": "B",
+          "capacity": 2037,
+          "type": "theater"
+        },
+        {
+          "name": "Tolhuistuin",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "outdoor"
+        },
+        {
+          "name": "Bitterzoet",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Sugar Factory",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 35,
+      "city": "Barcelona",
+      "country": "Spain",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Spotify Camp Nou",
+          "venue_tier": "A",
+          "capacity": 99354,
+          "type": "stadium"
+        },
+        {
+          "name": "Palau Sant Jordi",
+          "venue_tier": "A",
+          "capacity": 18000,
+          "type": "arena"
+        },
+        {
+          "name": "Sant Jordi Club",
+          "venue_tier": "B",
+          "capacity": 4600,
+          "type": "club"
+        },
+        {
+          "name": "Razzmatazz",
+          "venue_tier": "B",
+          "capacity": 4000,
+          "type": "club"
+        },
+        {
+          "name": "Sala Apolo",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "club"
+        },
+        {
+          "name": "BARTS",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "theater"
+        },
+        {
+          "name": "Sala Bikini",
+          "venue_tier": "C",
+          "capacity": 850,
+          "type": "club"
+        },
+        {
+          "name": "La Nau",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Sidecar Factory Club",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Heliogàbal",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 36,
+      "city": "Stockholm",
+      "country": "Sweden",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Friends Arena",
+          "venue_tier": "A",
+          "capacity": 50000,
+          "type": "stadium"
+        },
+        {
+          "name": "Avicii Arena",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Hovet",
+          "venue_tier": "B",
+          "capacity": 8094,
+          "type": "arena"
+        },
+        {
+          "name": "Cirkus",
+          "venue_tier": "B",
+          "capacity": 1650,
+          "type": "theater"
+        },
+        {
+          "name": "Berns",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "Annexet",
+          "venue_tier": "B",
+          "capacity": 3200,
+          "type": "arena"
+        },
+        {
+          "name": "Münchenbryggeriet",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "club"
+        },
+        {
+          "name": "Debaser Strand",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Nalen",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "Fasching",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 37,
+      "city": "Dublin",
+      "country": "Ireland",
+      "region": "Europe",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Croke Park",
+          "venue_tier": "A",
+          "capacity": 82300,
+          "type": "stadium"
+        },
+        {
+          "name": "3Arena",
+          "venue_tier": "A",
+          "capacity": 14000,
+          "type": "arena"
+        },
+        {
+          "name": "Marlay Park",
+          "venue_tier": "A",
+          "capacity": 30000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Royal Hospital Kilmainham",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Vicar Street",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "theater"
+        },
+        {
+          "name": "Olympia Theatre",
+          "venue_tier": "B",
+          "capacity": 1300,
+          "type": "theater"
+        },
+        {
+          "name": "The Academy",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "club"
+        },
+        {
+          "name": "Whelan's",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Workman's Club",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "The Button Factory",
+          "venue_tier": "C",
+          "capacity": 750,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 38,
+      "city": "Manchester",
+      "country": "UK",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Old Trafford",
+          "venue_tier": "A",
+          "capacity": 74310,
+          "type": "stadium"
+        },
+        {
+          "name": "AO Arena",
+          "venue_tier": "A",
+          "capacity": 21000,
+          "type": "arena"
+        },
+        {
+          "name": "Emirates Old Trafford",
+          "venue_tier": "A",
+          "capacity": 26000,
+          "type": "stadium"
+        },
+        {
+          "name": "O2 Victoria Warehouse",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Albert Hall Manchester",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "O2 Ritz Manchester",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Gorilla",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Band on the Wall",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Night & Day Cafe",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        },
+        {
+          "name": "YES Manchester",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 39,
+      "city": "Madrid",
+      "country": "Spain",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Santiago Bernabéu",
+          "venue_tier": "A",
+          "capacity": 81044,
+          "type": "stadium"
+        },
+        {
+          "name": "WiZink Center",
+          "venue_tier": "A",
+          "capacity": 17453,
+          "type": "arena"
+        },
+        {
+          "name": "Cívitas Metropolitano",
+          "venue_tier": "A",
+          "capacity": 68456,
+          "type": "stadium"
+        },
+        {
+          "name": "La Riviera",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "Sala But",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Teatro Kapital",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Moby Dick Club",
+          "venue_tier": "C",
+          "capacity": 550,
+          "type": "club"
+        },
+        {
+          "name": "Sala El Sol",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Café Berlin",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Joy Eslava",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 40,
+      "city": "Hamburg",
+      "country": "Germany",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Volksparkstadion",
+          "venue_tier": "A",
+          "capacity": 57000,
+          "type": "stadium"
+        },
+        {
+          "name": "Barclays Arena",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Elbphilharmonie",
+          "venue_tier": "B",
+          "capacity": 2100,
+          "type": "theater"
+        },
+        {
+          "name": "Große Freiheit 36",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "club"
+        },
+        {
+          "name": "Docks",
+          "venue_tier": "B",
+          "capacity": 1300,
+          "type": "club"
+        },
+        {
+          "name": "Mojo Club",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Gruenspan",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Knust",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Molotow",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Nochtspeicher",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 41,
+      "city": "Munich",
+      "country": "Germany",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Allianz Arena",
+          "venue_tier": "A",
+          "capacity": 75000,
+          "type": "stadium"
+        },
+        {
+          "name": "Olympiahalle",
+          "venue_tier": "A",
+          "capacity": 15500,
+          "type": "arena"
+        },
+        {
+          "name": "Olympiastadion Munich",
+          "venue_tier": "A",
+          "capacity": 69250,
+          "type": "stadium"
+        },
+        {
+          "name": "Zenith München",
+          "venue_tier": "B",
+          "capacity": 5800,
+          "type": "club"
+        },
+        {
+          "name": "Tonhalle München",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "theater"
+        },
+        {
+          "name": "Backstage",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Muffathalle",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Strom",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Feierwerk",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Ampere",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 42,
+      "city": "Milan",
+      "country": "Italy",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "San Siro Stadium",
+          "venue_tier": "A",
+          "capacity": 80018,
+          "type": "stadium"
+        },
+        {
+          "name": "Mediolanum Forum",
+          "venue_tier": "A",
+          "capacity": 12700,
+          "type": "arena"
+        },
+        {
+          "name": "Ippodromo SNAI San Siro",
+          "venue_tier": "A",
+          "capacity": 30000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Alcatraz",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Fabrique",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "club"
+        },
+        {
+          "name": "Magazzini Generali",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "club"
+        },
+        {
+          "name": "Santeria Toscana 31",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "club"
+        },
+        {
+          "name": "Legend Club",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Circolo Magnolia",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "outdoor"
+        },
+        {
+          "name": "Biko",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 43,
+      "city": "Copenhagen",
+      "country": "Denmark",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Parken Stadium",
+          "venue_tier": "A",
+          "capacity": 38065,
+          "type": "stadium"
+        },
+        {
+          "name": "Royal Arena",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Forum Copenhagen",
+          "venue_tier": "B",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Vega",
+          "venue_tier": "B",
+          "capacity": 1550,
+          "type": "club"
+        },
+        {
+          "name": "Amager Bio",
+          "venue_tier": "B",
+          "capacity": 1400,
+          "type": "theater"
+        },
+        {
+          "name": "Den Grå Hal",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "club"
+        },
+        {
+          "name": "Lille Vega",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Pumpehuset",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Loppen",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Rust",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 44,
+      "city": "Oslo",
+      "country": "Norway",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Ullevaal Stadion",
+          "venue_tier": "A",
+          "capacity": 28000,
+          "type": "stadium"
+        },
+        {
+          "name": "Oslo Spektrum",
+          "venue_tier": "A",
+          "capacity": 10500,
+          "type": "arena"
+        },
+        {
+          "name": "Telenor Arena",
+          "venue_tier": "A",
+          "capacity": 23000,
+          "type": "arena"
+        },
+        {
+          "name": "Sentrum Scene",
+          "venue_tier": "B",
+          "capacity": 1750,
+          "type": "theater"
+        },
+        {
+          "name": "Rockefeller Music Hall",
+          "venue_tier": "B",
+          "capacity": 1350,
+          "type": "club"
+        },
+        {
+          "name": "Vulkan Arena",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "arena"
+        },
+        {
+          "name": "John Dee",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Parkteatret",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Blå",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Revolver",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 45,
+      "city": "Brussels",
+      "country": "Belgium",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "King Baudouin Stadium",
+          "venue_tier": "A",
+          "capacity": 50093,
+          "type": "stadium"
+        },
+        {
+          "name": "Palais 12",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Forest National",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Ancienne Belgique (AB)",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Cirque Royal",
+          "venue_tier": "B",
+          "capacity": 1950,
+          "type": "theater"
+        },
+        {
+          "name": "Orangerie du Botanique",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Le Botanique Rotonde",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Magasin 4",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Beursschouwburg",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "theater"
+        },
+        {
+          "name": "Le Petit Bain",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 46,
+      "city": "Zurich",
+      "country": "Switzerland",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Letzigrund Stadium",
+          "venue_tier": "A",
+          "capacity": 48000,
+          "type": "stadium"
+        },
+        {
+          "name": "Hallenstadion",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Samsung Hall",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "Volkshaus Zürich",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "Kaufleuten",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "club"
+        },
+        {
+          "name": "Plaza Zürich",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Mascotte",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Bogen F",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Rote Fabrik",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Exil",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 47,
+      "city": "Vienna",
+      "country": "Austria",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Ernst Happel Stadion",
+          "venue_tier": "A",
+          "capacity": 50865,
+          "type": "stadium"
+        },
+        {
+          "name": "Wiener Stadthalle",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Gasometer",
+          "venue_tier": "B",
+          "capacity": 4200,
+          "type": "arena"
+        },
+        {
+          "name": "Arena Wien",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "WUK",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Flex",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Szene Wien",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Chelsea",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "B72",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        },
+        {
+          "name": "Porgy & Bess",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 48,
+      "city": "Lisbon",
+      "country": "Portugal",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Estádio da Luz",
+          "venue_tier": "A",
+          "capacity": 64642,
+          "type": "stadium"
+        },
+        {
+          "name": "Altice Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Campo Pequeno",
+          "venue_tier": "B",
+          "capacity": 8500,
+          "type": "arena"
+        },
+        {
+          "name": "Coliseu dos Recreios",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "theater"
+        },
+        {
+          "name": "Capitólio",
+          "venue_tier": "B",
+          "capacity": 1142,
+          "type": "theater"
+        },
+        {
+          "name": "LAV - Lisboa ao Vivo",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Musicbox Lisboa",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "ZDB",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Lux Frágil",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Sabotage Club",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 49,
+      "city": "Glasgow",
+      "country": "UK",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Hampden Park",
+          "venue_tier": "A",
+          "capacity": 52063,
+          "type": "stadium"
+        },
+        {
+          "name": "OVO Hydro",
+          "venue_tier": "A",
+          "capacity": 14300,
+          "type": "arena"
+        },
+        {
+          "name": "SEC Armadillo",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "theater"
+        },
+        {
+          "name": "Barrowland Ballroom",
+          "venue_tier": "B",
+          "capacity": 1900,
+          "type": "club"
+        },
+        {
+          "name": "SWG3",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "O2 Academy Glasgow",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "King Tut's Wah Wah Hut",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Stereo",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "The Garage",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "Nice N Sleazy",
+          "venue_tier": "C",
+          "capacity": 130,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 50,
+      "city": "Birmingham",
+      "country": "UK",
+      "region": "Europe",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Villa Park",
+          "venue_tier": "A",
+          "capacity": 42682,
+          "type": "stadium"
+        },
+        {
+          "name": "Utilita Arena Birmingham",
+          "venue_tier": "A",
+          "capacity": 15800,
+          "type": "arena"
+        },
+        {
+          "name": "Resorts World Arena",
+          "venue_tier": "A",
+          "capacity": 15685,
+          "type": "arena"
+        },
+        {
+          "name": "O2 Academy Birmingham",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "O2 Institute Birmingham",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Symphony Hall",
+          "venue_tier": "B",
+          "capacity": 2262,
+          "type": "theater"
+        },
+        {
+          "name": "The Mill",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Mama Roux's",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Hare & Hounds",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "The Sunflower Lounge",
+          "venue_tier": "C",
+          "capacity": 120,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 51,
+      "city": "Prague",
+      "country": "Czech Republic",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Eden Arena",
+          "venue_tier": "A",
+          "capacity": 21000,
+          "type": "stadium"
+        },
+        {
+          "name": "O2 Arena Prague",
+          "venue_tier": "A",
+          "capacity": 18000,
+          "type": "arena"
+        },
+        {
+          "name": "Forum Karlín",
+          "venue_tier": "B",
+          "capacity": 3200,
+          "type": "theater"
+        },
+        {
+          "name": "Lucerna Music Bar",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Roxy Prague",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Palác Akropolis",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "MeetFactory",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Futurum Music Bar",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Rock Café",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Jazz Dock",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 52,
+      "city": "Warsaw",
+      "country": "Poland",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "PGE Narodowy",
+          "venue_tier": "A",
+          "capacity": 58580,
+          "type": "stadium"
+        },
+        {
+          "name": "COS Torwar",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Atlas Arena",
+          "venue_tier": "A",
+          "capacity": 13500,
+          "type": "arena"
+        },
+        {
+          "name": "Progresja",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "club"
+        },
+        {
+          "name": "Stodoła",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "club"
+        },
+        {
+          "name": "Palladium",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "Proxima",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Hybrydy",
+          "venue_tier": "C",
+          "capacity": 550,
+          "type": "club"
+        },
+        {
+          "name": "Hydrozagadka",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Pardon To Tu",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 53,
+      "city": "Budapest",
+      "country": "Hungary",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Puskás Aréna",
+          "venue_tier": "A",
+          "capacity": 67215,
+          "type": "stadium"
+        },
+        {
+          "name": "Budapest Arena",
+          "venue_tier": "A",
+          "capacity": 12500,
+          "type": "arena"
+        },
+        {
+          "name": "Akvarium Klub",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "club"
+        },
+        {
+          "name": "Barba Negra Track",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "outdoor"
+        },
+        {
+          "name": "A38 Ship",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Dürer Kert",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "outdoor"
+        },
+        {
+          "name": "Instant-Fogas",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Turbina",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Pontoon",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Opus Jazz Club",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 54,
+      "city": "Bucharest",
+      "country": "Romania",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Arena Națională",
+          "venue_tier": "A",
+          "capacity": 55634,
+          "type": "stadium"
+        },
+        {
+          "name": "BT Arena",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Arenele Romane",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Berăria H",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Quantic Club",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Fratelli Studios",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Control Club",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Expirat",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Fabrica",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Green Hours Jazz Cafe",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 55,
+      "city": "Helsinki",
+      "country": "Finland",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Helsinki Olympic Stadium",
+          "venue_tier": "A",
+          "capacity": 36200,
+          "type": "stadium"
+        },
+        {
+          "name": "Helsinki Ice Hall",
+          "venue_tier": "A",
+          "capacity": 13000,
+          "type": "arena"
+        },
+        {
+          "name": "Black Box",
+          "venue_tier": "B",
+          "capacity": 4000,
+          "type": "club"
+        },
+        {
+          "name": "Tavastia Club",
+          "venue_tier": "B",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Circus Helsinki",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "club"
+        },
+        {
+          "name": "Nosturi",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "On The Rocks",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Semifinal",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Kuudes Linja",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Bar Loose",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 56,
+      "city": "Gothenburg",
+      "country": "Sweden",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Ullevi",
+          "venue_tier": "A",
+          "capacity": 43200,
+          "type": "stadium"
+        },
+        {
+          "name": "Scandinavium",
+          "venue_tier": "A",
+          "capacity": 14000,
+          "type": "arena"
+        },
+        {
+          "name": "Partille Arena",
+          "venue_tier": "B",
+          "capacity": 6000,
+          "type": "arena"
+        },
+        {
+          "name": "Trädgårn",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Pustervik",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Sticky Fingers",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Brewhouse Göteborg",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Oceanen",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Nefertiti Jazz Club",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Musikens Hus",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "theater"
+        }
+      ]
+    },
+    {
+      "rank": 57,
+      "city": "Antwerp",
+      "country": "Belgium",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Sportpaleis",
+          "venue_tier": "A",
+          "capacity": 23359,
+          "type": "arena"
+        },
+        {
+          "name": "Lotto Arena",
+          "venue_tier": "A",
+          "capacity": 8000,
+          "type": "arena"
+        },
+        {
+          "name": "Stadsschouwburg",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Trix",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "De Roma",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Het Bos",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Kavka",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Zappa",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Café d'Anvers",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Arenberg",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "theater"
+        }
+      ]
+    },
+    {
+      "rank": 58,
+      "city": "Rotterdam",
+      "country": "Netherlands",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "De Kuip",
+          "venue_tier": "A",
+          "capacity": 51117,
+          "type": "stadium"
+        },
+        {
+          "name": "Rotterdam Ahoy",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Maassilo",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Doelen",
+          "venue_tier": "B",
+          "capacity": 2242,
+          "type": "theater"
+        },
+        {
+          "name": "Rotown",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "BIRD",
+          "venue_tier": "C",
+          "capacity": 550,
+          "type": "club"
+        },
+        {
+          "name": "Worm",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Annabel",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "V11",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Baroeg",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 59,
+      "city": "Bologna",
+      "country": "Italy",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Stadio Renato Dall'Ara",
+          "venue_tier": "A",
+          "capacity": 38279,
+          "type": "stadium"
+        },
+        {
+          "name": "Unipol Arena",
+          "venue_tier": "A",
+          "capacity": 11000,
+          "type": "arena"
+        },
+        {
+          "name": "Estragon Club",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Locomotiv Club",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "Teatro Celebrazioni",
+          "venue_tier": "B",
+          "capacity": 1436,
+          "type": "theater"
+        },
+        {
+          "name": "Covo Club",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Bravo Caffè",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        },
+        {
+          "name": "Freakout Club",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Palazzo dello Sport",
+          "venue_tier": "B",
+          "capacity": 5600,
+          "type": "arena"
+        },
+        {
+          "name": "DumBO Space",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 60,
+      "city": "Lyon",
+      "country": "France",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Groupama Stadium",
+          "venue_tier": "A",
+          "capacity": 59186,
+          "type": "stadium"
+        },
+        {
+          "name": "LDLC Arena",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Halle Tony Garnier",
+          "venue_tier": "B",
+          "capacity": 5496,
+          "type": "arena"
+        },
+        {
+          "name": "Transbordeur",
+          "venue_tier": "B",
+          "capacity": 1700,
+          "type": "club"
+        },
+        {
+          "name": "Le Sucre",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Ninkasi Kao",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Épicerie Moderne",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Sonic Lyon",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Marché Gare",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Le Périscope",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 61,
+      "city": "Leeds",
+      "country": "UK",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Elland Road",
+          "venue_tier": "A",
+          "capacity": 37890,
+          "type": "stadium"
+        },
+        {
+          "name": "First Direct Arena",
+          "venue_tier": "A",
+          "capacity": 13500,
+          "type": "arena"
+        },
+        {
+          "name": "O2 Academy Leeds",
+          "venue_tier": "B",
+          "capacity": 2300,
+          "type": "club"
+        },
+        {
+          "name": "Brudenell Social Club",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Leeds Beckett Students' Union",
+          "venue_tier": "B",
+          "capacity": 1050,
+          "type": "club"
+        },
+        {
+          "name": "The Wardrobe",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Belgrave Music Hall",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Headrow House",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "The Key Club",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Oporto",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 62,
+      "city": "Cologne",
+      "country": "Germany",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "RheinEnergieStadion",
+          "venue_tier": "A",
+          "capacity": 50000,
+          "type": "stadium"
+        },
+        {
+          "name": "Lanxess Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Palladium Köln",
+          "venue_tier": "B",
+          "capacity": 4000,
+          "type": "club"
+        },
+        {
+          "name": "E-Werk",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "club"
+        },
+        {
+          "name": "Live Music Hall",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Luxor",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "MTC",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Gebäude 9",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Sonic Ballroom",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "King Georg",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 63,
+      "city": "Edinburgh",
+      "country": "UK",
+      "region": "Europe",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Murrayfield Stadium",
+          "venue_tier": "A",
+          "capacity": 67144,
+          "type": "stadium"
+        },
+        {
+          "name": "O2 Academy Edinburgh",
+          "venue_tier": "B",
+          "capacity": 2100,
+          "type": "club"
+        },
+        {
+          "name": "Usher Hall",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "theater"
+        },
+        {
+          "name": "Queen's Hall",
+          "venue_tier": "B",
+          "capacity": 900,
+          "type": "theater"
+        },
+        {
+          "name": "The Liquid Room",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Summerhall",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Cabaret Voltaire",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Sneaky Pete's",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        },
+        {
+          "name": "Voodoo Rooms",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Corn Exchange Edinburgh",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "arena"
+        }
+      ]
+    },
+    {
+      "rank": 64,
+      "city": "Tokyo",
+      "country": "Japan",
+      "region": "Asia-Pacific",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Tokyo Dome",
+          "venue_tier": "A",
+          "capacity": 55000,
+          "type": "stadium"
+        },
+        {
+          "name": "National Stadium",
+          "venue_tier": "A",
+          "capacity": 68000,
+          "type": "stadium"
+        },
+        {
+          "name": "Saitama Super Arena",
+          "venue_tier": "A",
+          "capacity": 37000,
+          "type": "arena"
+        },
+        {
+          "name": "Nippon Budokan",
+          "venue_tier": "A",
+          "capacity": 14471,
+          "type": "arena"
+        },
+        {
+          "name": "Tokyo Garden Theater",
+          "venue_tier": "B",
+          "capacity": 8000,
+          "type": "theater"
+        },
+        {
+          "name": "Zepp Shinjuku",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "LINE CUBE SHIBUYA",
+          "venue_tier": "B",
+          "capacity": 2084,
+          "type": "theater"
+        },
+        {
+          "name": "Liquidroom",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "WWW Shibuya",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Shimokitazawa Shelter",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 65,
+      "city": "Sydney",
+      "country": "Australia",
+      "region": "Asia-Pacific",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Accor Stadium",
+          "venue_tier": "A",
+          "capacity": 83500,
+          "type": "stadium"
+        },
+        {
+          "name": "Qudos Bank Arena",
+          "venue_tier": "A",
+          "capacity": 21032,
+          "type": "arena"
+        },
+        {
+          "name": "Sydney Opera House",
+          "venue_tier": "B",
+          "capacity": 5738,
+          "type": "theater"
+        },
+        {
+          "name": "Hordern Pavilion",
+          "venue_tier": "B",
+          "capacity": 5500,
+          "type": "arena"
+        },
+        {
+          "name": "Enmore Theatre",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "Metro Theatre",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "theater"
+        },
+        {
+          "name": "Manning Bar",
+          "venue_tier": "C",
+          "capacity": 900,
+          "type": "club"
+        },
+        {
+          "name": "Oxford Art Factory",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "The Lansdowne",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Mary's Underground",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 66,
+      "city": "Melbourne",
+      "country": "Australia",
+      "region": "Asia-Pacific",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Melbourne Cricket Ground",
+          "venue_tier": "A",
+          "capacity": 100024,
+          "type": "stadium"
+        },
+        {
+          "name": "Rod Laver Arena",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Marvel Stadium",
+          "venue_tier": "A",
+          "capacity": 53359,
+          "type": "stadium"
+        },
+        {
+          "name": "John Cain Arena",
+          "venue_tier": "B",
+          "capacity": 10500,
+          "type": "arena"
+        },
+        {
+          "name": "Margaret Court Arena",
+          "venue_tier": "B",
+          "capacity": 7500,
+          "type": "arena"
+        },
+        {
+          "name": "The Forum",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "170 Russell",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Corner Hotel",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "The Tote",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Cherry Bar",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 67,
+      "city": "Seoul",
+      "country": "South Korea",
+      "region": "Asia-Pacific",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Seoul Olympic Stadium",
+          "venue_tier": "A",
+          "capacity": 69950,
+          "type": "stadium"
+        },
+        {
+          "name": "Gocheok Sky Dome",
+          "venue_tier": "A",
+          "capacity": 25000,
+          "type": "stadium"
+        },
+        {
+          "name": "KSPO Dome",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Jamsil Indoor Stadium",
+          "venue_tier": "A",
+          "capacity": 11000,
+          "type": "arena"
+        },
+        {
+          "name": "YES24 Live Hall",
+          "venue_tier": "B",
+          "capacity": 2200,
+          "type": "club"
+        },
+        {
+          "name": "Blue Square",
+          "venue_tier": "B",
+          "capacity": 1766,
+          "type": "theater"
+        },
+        {
+          "name": "Rolling Hall",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "MUV Hall",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Club Octagon",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Hongdae FF",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 68,
+      "city": "Singapore",
+      "country": "Singapore",
+      "region": "Asia-Pacific",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "National Stadium Singapore",
+          "venue_tier": "A",
+          "capacity": 55000,
+          "type": "stadium"
+        },
+        {
+          "name": "Singapore Indoor Stadium",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "arena"
+        },
+        {
+          "name": "The Star Theatre",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "Capitol Theatre",
+          "venue_tier": "B",
+          "capacity": 995,
+          "type": "theater"
+        },
+        {
+          "name": "Esplanade Concert Hall",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "theater"
+        },
+        {
+          "name": "The Coliseum",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Zepp@BigBox",
+          "venue_tier": "B",
+          "capacity": 2400,
+          "type": "club"
+        },
+        {
+          "name": "Hard Rock Cafe",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Timbre Music",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "The Projector",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "theater"
+        }
+      ]
+    },
+    {
+      "rank": 69,
+      "city": "Bangkok",
+      "country": "Thailand",
+      "region": "Asia-Pacific",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Rajamangala National Stadium",
+          "venue_tier": "A",
+          "capacity": 49722,
+          "type": "stadium"
+        },
+        {
+          "name": "Impact Arena",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "arena"
+        },
+        {
+          "name": "Thunder Dome",
+          "venue_tier": "B",
+          "capacity": 6000,
+          "type": "arena"
+        },
+        {
+          "name": "GMM Live House",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Moonstar Studio",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Lido Connect",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "theater"
+        },
+        {
+          "name": "Saxophone Pub",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Live RCA",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Parking Toys",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Studio Lam",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 70,
+      "city": "Hong Kong",
+      "country": "China",
+      "region": "Asia-Pacific",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Hong Kong Stadium",
+          "venue_tier": "A",
+          "capacity": 40000,
+          "type": "stadium"
+        },
+        {
+          "name": "AsiaWorld-Arena",
+          "venue_tier": "A",
+          "capacity": 14000,
+          "type": "arena"
+        },
+        {
+          "name": "Hong Kong Coliseum",
+          "venue_tier": "A",
+          "capacity": 12500,
+          "type": "arena"
+        },
+        {
+          "name": "Star Hall",
+          "venue_tier": "B",
+          "capacity": 3600,
+          "type": "arena"
+        },
+        {
+          "name": "MacPherson Stadium",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "arena"
+        },
+        {
+          "name": "Music Zone @ KITEC",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Backstage Live",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "This Town Needs",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Hidden Agenda",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Wanch",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 71,
+      "city": "Manila",
+      "country": "Philippines",
+      "region": "Asia-Pacific",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Philippine Arena",
+          "venue_tier": "A",
+          "capacity": 55000,
+          "type": "arena"
+        },
+        {
+          "name": "Mall of Asia Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Araneta Coliseum",
+          "venue_tier": "A",
+          "capacity": 16500,
+          "type": "arena"
+        },
+        {
+          "name": "Philippine International Convention Center",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "New Frontier Theater",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "Samsung Hall",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "theater"
+        },
+        {
+          "name": "Metrotent Convention Center",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "arena"
+        },
+        {
+          "name": "19 East",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "SaGuijo Cafe",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        },
+        {
+          "name": "Route 196",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 72,
+      "city": "Osaka",
+      "country": "Japan",
+      "region": "Asia-Pacific",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Kyocera Dome Osaka",
+          "venue_tier": "A",
+          "capacity": 36477,
+          "type": "stadium"
+        },
+        {
+          "name": "Osaka-Jo Hall",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Intex Osaka",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Zepp Osaka Bayside",
+          "venue_tier": "B",
+          "capacity": 2801,
+          "type": "club"
+        },
+        {
+          "name": "Festival Hall",
+          "venue_tier": "B",
+          "capacity": 2700,
+          "type": "theater"
+        },
+        {
+          "name": "Namba Hatch",
+          "venue_tier": "B",
+          "capacity": 1540,
+          "type": "club"
+        },
+        {
+          "name": "Gorilla Hall",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Umeda Club Quattro",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Shinsaibashi JANUS",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Pangea",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 73,
+      "city": "Auckland",
+      "country": "New Zealand",
+      "region": "Asia-Pacific",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Eden Park",
+          "venue_tier": "A",
+          "capacity": 50000,
+          "type": "stadium"
+        },
+        {
+          "name": "Spark Arena",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "arena"
+        },
+        {
+          "name": "Town Hall",
+          "venue_tier": "B",
+          "capacity": 1529,
+          "type": "theater"
+        },
+        {
+          "name": "Logan Campbell Centre",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "arena"
+        },
+        {
+          "name": "Powerstation",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Auckland Showgrounds",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Galatos",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Tuning Fork",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Whammy Bar",
+          "venue_tier": "C",
+          "capacity": 180,
+          "type": "club"
+        },
+        {
+          "name": "The Wine Cellar",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 74,
+      "city": "Taipei",
+      "country": "Taiwan",
+      "region": "Asia-Pacific",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Taipei Dome",
+          "venue_tier": "A",
+          "capacity": 40000,
+          "type": "stadium"
+        },
+        {
+          "name": "Taipei Arena",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Zepp New Taipei",
+          "venue_tier": "B",
+          "capacity": 2600,
+          "type": "club"
+        },
+        {
+          "name": "Legacy Taipei",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Taipei International Convention Center",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "theater"
+        },
+        {
+          "name": "The Wall",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Riverside Live House",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Revolver",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Pipe Live Music",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Witch House",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 75,
+      "city": "Jakarta",
+      "country": "Indonesia",
+      "region": "Asia-Pacific",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Gelora Bung Karno Stadium",
+          "venue_tier": "A",
+          "capacity": 77193,
+          "type": "stadium"
+        },
+        {
+          "name": "Indonesia Arena",
+          "venue_tier": "A",
+          "capacity": 16523,
+          "type": "arena"
+        },
+        {
+          "name": "Jakarta International Expo",
+          "venue_tier": "B",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Tennis Indoor Senayan",
+          "venue_tier": "B",
+          "capacity": 7120,
+          "type": "arena"
+        },
+        {
+          "name": "Istora Senayan",
+          "venue_tier": "B",
+          "capacity": 7000,
+          "type": "arena"
+        },
+        {
+          "name": "The Kasablanka Hall",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "Rossi Musik",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Gudang Sarinah",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Blowfish Jakarta",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Berdua Studio",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 76,
+      "city": "Kuala Lumpur",
+      "country": "Malaysia",
+      "region": "Asia-Pacific",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Bukit Jalil National Stadium",
+          "venue_tier": "A",
+          "capacity": 87411,
+          "type": "stadium"
+        },
+        {
+          "name": "Axiata Arena",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Mega Star Arena",
+          "venue_tier": "B",
+          "capacity": 6000,
+          "type": "arena"
+        },
+        {
+          "name": "KL Live",
+          "venue_tier": "B",
+          "capacity": 2300,
+          "type": "club"
+        },
+        {
+          "name": "Zepp Kuala Lumpur",
+          "venue_tier": "B",
+          "capacity": 2800,
+          "type": "club"
+        },
+        {
+          "name": "Dewan Filharmonik Petronas",
+          "venue_tier": "B",
+          "capacity": 920,
+          "type": "theater"
+        },
+        {
+          "name": "The Bee Publika",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "REXKL",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Merdekarya",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Gaslight Cafe",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 77,
+      "city": "Mumbai",
+      "country": "India",
+      "region": "Asia-Pacific",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "DY Patil Stadium",
+          "venue_tier": "A",
+          "capacity": 55000,
+          "type": "stadium"
+        },
+        {
+          "name": "Mahalaxmi Race Course",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Jio World Convention Centre",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "MMRDA Grounds BKC",
+          "venue_tier": "A",
+          "capacity": 30000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Shanmukhananda Hall",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "theater"
+        },
+        {
+          "name": "Phoenix Marketcity",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "outdoor"
+        },
+        {
+          "name": "antiSOCIAL",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Hard Rock Cafe Mumbai",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Quarter",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Blue Frog",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 78,
+      "city": "New Delhi",
+      "country": "India",
+      "region": "Asia-Pacific",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Jawaharlal Nehru Stadium",
+          "venue_tier": "A",
+          "capacity": 60254,
+          "type": "stadium"
+        },
+        {
+          "name": "Indira Gandhi Arena",
+          "venue_tier": "A",
+          "capacity": 14000,
+          "type": "arena"
+        },
+        {
+          "name": "Thyagaraj Sports Complex",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Leisure Valley Park",
+          "venue_tier": "B",
+          "capacity": 10000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Siri Fort Auditorium",
+          "venue_tier": "B",
+          "capacity": 2400,
+          "type": "theater"
+        },
+        {
+          "name": "Talkatora Indoor Stadium",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "arena"
+        },
+        {
+          "name": "The Piano Man Jazz Club",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Auro Kitchen & Bar",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Summer House Cafe",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "The Humming Tree",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 79,
+      "city": "Brisbane",
+      "country": "Australia",
+      "region": "Asia-Pacific",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "The Gabba",
+          "venue_tier": "A",
+          "capacity": 42000,
+          "type": "stadium"
+        },
+        {
+          "name": "Brisbane Entertainment Centre",
+          "venue_tier": "A",
+          "capacity": 13500,
+          "type": "arena"
+        },
+        {
+          "name": "Riverstage",
+          "venue_tier": "B",
+          "capacity": 10000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Fortitude Music Hall",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "The Tivoli",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "The Triffid",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Woolly Mammoth",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "The Zoo",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Black Bear Lodge",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "The Brightside",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 80,
+      "city": "São Paulo",
+      "country": "Brazil",
+      "region": "Latin America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Morumbi Stadium",
+          "venue_tier": "A",
+          "capacity": 66795,
+          "type": "stadium"
+        },
+        {
+          "name": "Allianz Parque",
+          "venue_tier": "A",
+          "capacity": 43713,
+          "type": "stadium"
+        },
+        {
+          "name": "Espaço das Américas",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "arena"
+        },
+        {
+          "name": "Credicard Hall",
+          "venue_tier": "B",
+          "capacity": 7200,
+          "type": "theater"
+        },
+        {
+          "name": "Audio",
+          "venue_tier": "B",
+          "capacity": 3200,
+          "type": "club"
+        },
+        {
+          "name": "Tokio Marine Hall",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "Cine Joia",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "club"
+        },
+        {
+          "name": "Casa de Francisca",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Sesc Pompeia",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "theater"
+        },
+        {
+          "name": "Beco 203",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 81,
+      "city": "Mexico City",
+      "country": "Mexico",
+      "region": "Latin America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Estadio Azteca",
+          "venue_tier": "A",
+          "capacity": 87523,
+          "type": "stadium"
+        },
+        {
+          "name": "Foro Sol",
+          "venue_tier": "A",
+          "capacity": 65000,
+          "type": "stadium"
+        },
+        {
+          "name": "Palacio de los Deportes",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Auditorio Nacional",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "theater"
+        },
+        {
+          "name": "Pepsi Center WTC",
+          "venue_tier": "B",
+          "capacity": 3500,
+          "type": "theater"
+        },
+        {
+          "name": "El Plaza Condesa",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "Lunario",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "theater"
+        },
+        {
+          "name": "Foro Indie Rocks",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Multiforo Alicia",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Foro Hilvana",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 82,
+      "city": "Buenos Aires",
+      "country": "Argentina",
+      "region": "Latin America",
+      "city_tier": 1,
+      "venues": [
+        {
+          "name": "Estadio Monumental",
+          "venue_tier": "A",
+          "capacity": 72054,
+          "type": "stadium"
+        },
+        {
+          "name": "Estadio Único de La Plata",
+          "venue_tier": "A",
+          "capacity": 53000,
+          "type": "stadium"
+        },
+        {
+          "name": "Movistar Arena",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "arena"
+        },
+        {
+          "name": "Luna Park",
+          "venue_tier": "B",
+          "capacity": 8000,
+          "type": "arena"
+        },
+        {
+          "name": "Teatro Gran Rex",
+          "venue_tier": "B",
+          "capacity": 3262,
+          "type": "theater"
+        },
+        {
+          "name": "Niceto Club",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Teatro Vorterix",
+          "venue_tier": "B",
+          "capacity": 2700,
+          "type": "theater"
+        },
+        {
+          "name": "La Trastienda Club",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Groove",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Bebop Club",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 83,
+      "city": "Santiago",
+      "country": "Chile",
+      "region": "Latin America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Estadio Nacional",
+          "venue_tier": "A",
+          "capacity": 48665,
+          "type": "stadium"
+        },
+        {
+          "name": "Movistar Arena Santiago",
+          "venue_tier": "A",
+          "capacity": 16000,
+          "type": "arena"
+        },
+        {
+          "name": "Teatro Caupolicán",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "theater"
+        },
+        {
+          "name": "Teatro Coliseo",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Blondie",
+          "venue_tier": "B",
+          "capacity": 1300,
+          "type": "club"
+        },
+        {
+          "name": "Club Chocolate",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Matucana 100",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "theater"
+        },
+        {
+          "name": "Club Amanda",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Bar El Clan",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Sala Master",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 84,
+      "city": "Bogotá",
+      "country": "Colombia",
+      "region": "Latin America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Estadio El Campín",
+          "venue_tier": "A",
+          "capacity": 36343,
+          "type": "stadium"
+        },
+        {
+          "name": "Movistar Arena Bogotá",
+          "venue_tier": "A",
+          "capacity": 14000,
+          "type": "arena"
+        },
+        {
+          "name": "Chamorro City Hall",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "arena"
+        },
+        {
+          "name": "Teatro Mayor",
+          "venue_tier": "B",
+          "capacity": 1800,
+          "type": "theater"
+        },
+        {
+          "name": "Royal Center",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "theater"
+        },
+        {
+          "name": "Armando Music Hall",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Ace of Spades Bogotá",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Matik-Matik",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Latino Power",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Theatron",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 85,
+      "city": "Lima",
+      "country": "Peru",
+      "region": "Latin America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Estadio Nacional de Lima",
+          "venue_tier": "A",
+          "capacity": 50000,
+          "type": "stadium"
+        },
+        {
+          "name": "Arena 1",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Jockey Club del Perú",
+          "venue_tier": "B",
+          "capacity": 8000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Parque de la Exposición",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "C.C. Barranco",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "La Noche de Barranco",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Sargento Pimienta",
+          "venue_tier": "C",
+          "capacity": 450,
+          "type": "club"
+        },
+        {
+          "name": "Jazz Zone",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Cocodrilo Verde",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Hensley Bar",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 86,
+      "city": "Rio de Janeiro",
+      "country": "Brazil",
+      "region": "Latin America",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Maracanã",
+          "venue_tier": "A",
+          "capacity": 78838,
+          "type": "stadium"
+        },
+        {
+          "name": "Jeunesse Arena",
+          "venue_tier": "A",
+          "capacity": 18000,
+          "type": "arena"
+        },
+        {
+          "name": "Parque Olímpico",
+          "venue_tier": "A",
+          "capacity": 15000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Vivo Rio",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Circo Voador",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "club"
+        },
+        {
+          "name": "Fundição Progresso",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "club"
+        },
+        {
+          "name": "Blue Note Rio",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Beco das Garrafas",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "club"
+        },
+        {
+          "name": "Sacadura 154",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Audio Rebel",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 87,
+      "city": "Guadalajara",
+      "country": "Mexico",
+      "region": "Latin America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Estadio Akron",
+          "venue_tier": "A",
+          "capacity": 49850,
+          "type": "stadium"
+        },
+        {
+          "name": "Arena VFG",
+          "venue_tier": "A",
+          "capacity": 11000,
+          "type": "arena"
+        },
+        {
+          "name": "Auditorio Telmex",
+          "venue_tier": "B",
+          "capacity": 9806,
+          "type": "arena"
+        },
+        {
+          "name": "Teatro Diana",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "theater"
+        },
+        {
+          "name": "C3 Stage",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "club"
+        },
+        {
+          "name": "Foro Independencia",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "La Mutualista",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "House of Blues GDL",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "Café Bar Revolución",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Larva Libre",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 88,
+      "city": "Monterrey",
+      "country": "Mexico",
+      "region": "Latin America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Estadio BBVA",
+          "venue_tier": "A",
+          "capacity": 51348,
+          "type": "stadium"
+        },
+        {
+          "name": "Arena Monterrey",
+          "venue_tier": "A",
+          "capacity": 17500,
+          "type": "arena"
+        },
+        {
+          "name": "Auditorio Citibanamex",
+          "venue_tier": "B",
+          "capacity": 9800,
+          "type": "arena"
+        },
+        {
+          "name": "Café Iguana",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "club"
+        },
+        {
+          "name": "Escena MTY",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "Foro Alive",
+          "venue_tier": "C",
+          "capacity": 700,
+          "type": "club"
+        },
+        {
+          "name": "M Bol Arena",
+          "venue_tier": "B",
+          "capacity": 4000,
+          "type": "arena"
+        },
+        {
+          "name": "Café Victoria",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Garage Rock",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Bar Américas",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 89,
+      "city": "Medellín",
+      "country": "Colombia",
+      "region": "Latin America",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Estadio Atanasio Girardot",
+          "venue_tier": "A",
+          "capacity": 40943,
+          "type": "stadium"
+        },
+        {
+          "name": "Coliseo Live",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Plaza Mayor",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "arena"
+        },
+        {
+          "name": "Teatro Metropolitano",
+          "venue_tier": "B",
+          "capacity": 1600,
+          "type": "theater"
+        },
+        {
+          "name": "Salón Amador",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Calle 9+1",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Teatro Pablo Tobón Uribe",
+          "venue_tier": "B",
+          "capacity": 1230,
+          "type": "theater"
+        },
+        {
+          "name": "Wundebar",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "El Deck",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "outdoor"
+        },
+        {
+          "name": "Tango Discos",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 90,
+      "city": "Dubai",
+      "country": "UAE",
+      "region": "Middle East & Africa",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Coca-Cola Arena",
+          "venue_tier": "A",
+          "capacity": 17000,
+          "type": "arena"
+        },
+        {
+          "name": "Dubai Duty Free Tennis Stadium",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Autism Rocks Arena",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Dubai Media City Amphitheatre",
+          "venue_tier": "B",
+          "capacity": 15000,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Irish Village",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Dubai Opera",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "theater"
+        },
+        {
+          "name": "Hard Rock Cafe Dubai",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Blue Marlin Ibiza UAE",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Fridge Concert Arena",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Jazz@PizzaExpress",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 91,
+      "city": "Tel Aviv",
+      "country": "Israel",
+      "region": "Middle East & Africa",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "Bloomfield Stadium",
+          "venue_tier": "A",
+          "capacity": 29400,
+          "type": "stadium"
+        },
+        {
+          "name": "Menora Mivtachim Arena",
+          "venue_tier": "A",
+          "capacity": 11700,
+          "type": "arena"
+        },
+        {
+          "name": "Expo Tel Aviv",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Barby Club",
+          "venue_tier": "B",
+          "capacity": 750,
+          "type": "club"
+        },
+        {
+          "name": "Zappa Club",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "The Zone",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Hangar 11",
+          "venue_tier": "B",
+          "capacity": 2600,
+          "type": "club"
+        },
+        {
+          "name": "Gagarin",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Ozen Bar",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Levontin 7",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 92,
+      "city": "Johannesburg",
+      "country": "South Africa",
+      "region": "Middle East & Africa",
+      "city_tier": 2,
+      "venues": [
+        {
+          "name": "FNB Stadium",
+          "venue_tier": "A",
+          "capacity": 94736,
+          "type": "stadium"
+        },
+        {
+          "name": "Ticketpro Dome",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "SunBet Arena",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Joburg Theatre",
+          "venue_tier": "B",
+          "capacity": 1068,
+          "type": "theater"
+        },
+        {
+          "name": "The Orbit Jazz Club",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Bassline Live",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Constitution Hill",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Carfax",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Great Dane",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "Untitled Basement",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 93,
+      "city": "Cape Town",
+      "country": "South Africa",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Cape Town Stadium",
+          "venue_tier": "A",
+          "capacity": 55000,
+          "type": "stadium"
+        },
+        {
+          "name": "Grand Arena GrandWest",
+          "venue_tier": "A",
+          "capacity": 8500,
+          "type": "arena"
+        },
+        {
+          "name": "Kirstenbosch Botanical Gardens",
+          "venue_tier": "B",
+          "capacity": 7000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Artscape Theatre Centre",
+          "venue_tier": "B",
+          "capacity": 1487,
+          "type": "theater"
+        },
+        {
+          "name": "The Assembly",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Fiction Bar",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Mercury Live Lounge",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Armchair Theatre",
+          "venue_tier": "C",
+          "capacity": 100,
+          "type": "theater"
+        },
+        {
+          "name": "Zula Sound Bar",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Zer021 Social Club",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 94,
+      "city": "Abu Dhabi",
+      "country": "UAE",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Zayed Sports City Stadium",
+          "venue_tier": "A",
+          "capacity": 43000,
+          "type": "stadium"
+        },
+        {
+          "name": "Etihad Arena",
+          "venue_tier": "A",
+          "capacity": 18000,
+          "type": "arena"
+        },
+        {
+          "name": "du Arena",
+          "venue_tier": "A",
+          "capacity": 25000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Emirates Palace Auditorium",
+          "venue_tier": "B",
+          "capacity": 1100,
+          "type": "theater"
+        },
+        {
+          "name": "Yas Marina Circuit",
+          "venue_tier": "B",
+          "capacity": 50000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Al Raha Beach Theatre",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "MAD on Yas Island",
+          "venue_tier": "B",
+          "capacity": 2500,
+          "type": "club"
+        },
+        {
+          "name": "Jazz Bar & Dining",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        },
+        {
+          "name": "BOA Lounge",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Stars N Bars",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 95,
+      "city": "Riyadh",
+      "country": "Saudi Arabia",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "King Fahd International Stadium",
+          "venue_tier": "A",
+          "capacity": 68752,
+          "type": "stadium"
+        },
+        {
+          "name": "Kingdom Arena",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "arena"
+        },
+        {
+          "name": "Boulevard Riyadh City",
+          "venue_tier": "A",
+          "capacity": 30000,
+          "type": "outdoor"
+        },
+        {
+          "name": "The Venue Riyadh",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "arena"
+        },
+        {
+          "name": "Mohammed Abdo Arena",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "arena"
+        },
+        {
+          "name": "Maraya Concert Hall",
+          "venue_tier": "B",
+          "capacity": 500,
+          "type": "theater"
+        },
+        {
+          "name": "Via Riyadh",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "outdoor"
+        },
+        {
+          "name": "JAX District",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "outdoor"
+        },
+        {
+          "name": "Banqueting Hall",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "theater"
+        },
+        {
+          "name": "Warehouse 32",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 96,
+      "city": "Doha",
+      "country": "Qatar",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Lusail Stadium",
+          "venue_tier": "A",
+          "capacity": 80000,
+          "type": "stadium"
+        },
+        {
+          "name": "Al Janoub Stadium",
+          "venue_tier": "A",
+          "capacity": 40000,
+          "type": "stadium"
+        },
+        {
+          "name": "Lusail Multipurpose Hall",
+          "venue_tier": "A",
+          "capacity": 15300,
+          "type": "arena"
+        },
+        {
+          "name": "Katara Amphitheatre",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Qatar National Convention Centre",
+          "venue_tier": "B",
+          "capacity": 4000,
+          "type": "theater"
+        },
+        {
+          "name": "The Pearl-Qatar Stage",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "outdoor"
+        },
+        {
+          "name": "St. Regis Hotel Ballroom",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "theater"
+        },
+        {
+          "name": "Jazz at Lincoln Center Doha",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "club"
+        },
+        {
+          "name": "Blue Cigar Lounge",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        },
+        {
+          "name": "La Cigale Musheireb",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 97,
+      "city": "Lagos",
+      "country": "Nigeria",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Teslim Balogun Stadium",
+          "venue_tier": "A",
+          "capacity": 24325,
+          "type": "stadium"
+        },
+        {
+          "name": "Eko Convention Centre",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "Landmark Event Centre",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "arena"
+        },
+        {
+          "name": "The Landmark Beach",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Muri Okunola Park",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Terra Kulture",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "theater"
+        },
+        {
+          "name": "The Shrine",
+          "venue_tier": "C",
+          "capacity": 800,
+          "type": "club"
+        },
+        {
+          "name": "Hard Rock Cafe Lagos",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Freedom Park",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "outdoor"
+        },
+        {
+          "name": "Bogobiri House",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 98,
+      "city": "Nairobi",
+      "country": "Kenya",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Kasarani International Stadium",
+          "venue_tier": "A",
+          "capacity": 60000,
+          "type": "stadium"
+        },
+        {
+          "name": "Kenyatta International Convention Centre",
+          "venue_tier": "B",
+          "capacity": 4500,
+          "type": "theater"
+        },
+        {
+          "name": "Carnivore Grounds",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Uhuru Gardens",
+          "venue_tier": "A",
+          "capacity": 20000,
+          "type": "outdoor"
+        },
+        {
+          "name": "KICC Tsavo Ballroom",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "Ngong Racecourse",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "J's Fresh Bar",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "club"
+        },
+        {
+          "name": "Alchemist Bar",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "K1 Klubhouse",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "club"
+        },
+        {
+          "name": "The Elephant Nairobi",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 99,
+      "city": "Casablanca",
+      "country": "Morocco",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Stade Mohammed V",
+          "venue_tier": "A",
+          "capacity": 45891,
+          "type": "stadium"
+        },
+        {
+          "name": "Complexe OLM Souissi",
+          "venue_tier": "A",
+          "capacity": 12000,
+          "type": "arena"
+        },
+        {
+          "name": "Megarama Casablanca",
+          "venue_tier": "B",
+          "capacity": 3000,
+          "type": "theater"
+        },
+        {
+          "name": "Studio des Arts Vivants",
+          "venue_tier": "B",
+          "capacity": 1500,
+          "type": "theater"
+        },
+        {
+          "name": "Le Carré",
+          "venue_tier": "B",
+          "capacity": 1000,
+          "type": "club"
+        },
+        {
+          "name": "L'Uzine",
+          "venue_tier": "C",
+          "capacity": 600,
+          "type": "club"
+        },
+        {
+          "name": "Boultek",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Nikki Beach Casablanca",
+          "venue_tier": "C",
+          "capacity": 350,
+          "type": "outdoor"
+        },
+        {
+          "name": "Le Méchoui du Prince",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        },
+        {
+          "name": "Dar Tazi",
+          "venue_tier": "C",
+          "capacity": 150,
+          "type": "club"
+        }
+      ]
+    },
+    {
+      "rank": 100,
+      "city": "Cairo",
+      "country": "Egypt",
+      "region": "Middle East & Africa",
+      "city_tier": 3,
+      "venues": [
+        {
+          "name": "Cairo International Stadium",
+          "venue_tier": "A",
+          "capacity": 75549,
+          "type": "stadium"
+        },
+        {
+          "name": "Al-Manara Conference Center",
+          "venue_tier": "A",
+          "capacity": 10000,
+          "type": "arena"
+        },
+        {
+          "name": "The Marquee",
+          "venue_tier": "B",
+          "capacity": 5000,
+          "type": "outdoor"
+        },
+        {
+          "name": "AUC New Cairo",
+          "venue_tier": "B",
+          "capacity": 2000,
+          "type": "outdoor"
+        },
+        {
+          "name": "Cairo Opera House",
+          "venue_tier": "B",
+          "capacity": 1200,
+          "type": "theater"
+        },
+        {
+          "name": "Cairo Jazz Club",
+          "venue_tier": "C",
+          "capacity": 400,
+          "type": "club"
+        },
+        {
+          "name": "Room Art Space",
+          "venue_tier": "C",
+          "capacity": 250,
+          "type": "club"
+        },
+        {
+          "name": "Darb 1718",
+          "venue_tier": "C",
+          "capacity": 500,
+          "type": "outdoor"
+        },
+        {
+          "name": "El Sawy Culturewheel",
+          "venue_tier": "C",
+          "capacity": 300,
+          "type": "theater"
+        },
+        {
+          "name": "VENT",
+          "venue_tier": "C",
+          "capacity": 200,
+          "type": "club"
+        }
+      ]
+    }
+  ]
+}

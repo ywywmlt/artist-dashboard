@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artist Intelligence Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { font-family: 'Inter', sans-serif; }
+  body { background: #0a0a0f; color: #e2e8f0; }
+  .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(20px); }
+  .kpi-card { background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border: 1px solid rgba(255,255,255,0.08); }
+  .kpi-card:hover { border-color: rgba(139,92,246,0.4); transform: translateY(-2px); }
+  .accent-glow { box-shadow: 0 0 30px rgba(139,92,246,0.15); }
+  .sidebar-link.active { background: rgba(139,92,246,0.15); border-left: 3px solid #a78bfa; }
+  .sidebar-link:hover { background: rgba(255,255,255,0.05); }
+  .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .badge-yellow { background: rgba(234,179,8,0.15); color: #facc15; }
+  .chart-container { position: relative; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  .tab-btn.active { color: #a78bfa; border-color: #a78bfa; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .artist-row:hover { background: rgba(139,92,246,0.08); }
+  .pulse-dot { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  .trend-up { color: #4ade80; }
+  .trend-down { color: #f87171; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<div class="flex h-screen overflow-hidden">
+
+  <!-- Sidebar -->
+  <aside class="w-64 flex-shrink-0 border-r border-white/5 flex flex-col" style="background: rgba(255,255,255,0.02);">
+    <div class="p-5 border-b border-white/5">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+        </div>
+        <div>
+          <div class="font-bold text-sm text-white">Artist Intel</div>
+          <div class="text-[10px] text-slate-500 tracking-wider uppercase">Dashboard</div>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 p-3 space-y-1">
+      <a href="#" onclick="showPage('dashboard')" class="sidebar-link active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-dashboard">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+        Dashboard
+      </a>
+      <a href="#" onclick="showPage('artist')" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-artist">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+        Artist Profiles
+      </a>
+      <a href="#" onclick="showPage('venues')" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-venues">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Cities & Venues
+      </a>
+      <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Tour Calendar
+      </a>
+      <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Financials
+      </a>
+      <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Reports
+      </a>
+      <div class="pt-4 mt-4 border-t border-white/5">
+        <div class="px-3 mb-2 text-[10px] text-slate-500 tracking-wider uppercase">System</div>
+        <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          Alerts
+          <span class="ml-auto bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded-full" id="alert-count">0</span>
+        </a>
+        <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+      </div>
+    </nav>
+    <div class="p-4 border-t border-white/5">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white">A</div>
+        <div>
+          <div class="text-sm font-medium text-white">Allen</div>
+          <div class="text-[10px] text-slate-500">Admin</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 overflow-y-auto">
+    <header class="sticky top-0 z-10 border-b border-white/5 px-6 py-3 flex items-center justify-between" style="background: rgba(10,10,15,0.85); backdrop-filter: blur(20px);">
+      <div>
+        <h1 class="text-lg font-semibold text-white" id="page-title">Dashboard</h1>
+        <p class="text-xs text-slate-500" id="page-subtitle">Loading data...</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <input type="text" placeholder="Search artists..." id="global-search" class="bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-64" oninput="handleSearch(this.value)">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- DASHBOARD PAGE -->
+    <div id="page-dashboard" class="page active p-6 space-y-6">
+      <div class="grid grid-cols-4 gap-4" id="dashboard-kpis"></div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 glass rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-white text-sm">Top 10 Artists — Monthly Listeners</h3>
+          </div>
+          <div class="chart-container" style="height:280px"><canvas id="topArtistsChart"></canvas></div>
+        </div>
+        <div class="glass rounded-xl p-5">
+          <h3 class="font-semibold text-white text-sm mb-4">Biggest Daily Movers</h3>
+          <div id="daily-movers"></div>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass rounded-xl p-5">
+          <h3 class="font-semibold text-white text-sm mb-4">Touring Status Breakdown</h3>
+          <div class="chart-container" style="height:220px"><canvas id="touringStatusChart"></canvas></div>
+        </div>
+        <div class="glass rounded-xl p-5">
+          <h3 class="font-semibold text-white text-sm mb-4">Recently Active (Last Event)</h3>
+          <div id="recent-touring"></div>
+        </div>
+      </div>
+      <!-- Alerts + Upcoming Shows -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-white text-sm">Recent Alerts</h3>
+            <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
+          </div>
+          <div id="dashboard-alerts"></div>
+        </div>
+        <div class="glass rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-white text-sm">Upcoming Shows</h3>
+            <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
+          </div>
+          <div id="dashboard-upcoming"></div>
+        </div>
+      </div>
+
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">Artist Portfolio</h3>
+          <div class="flex gap-2">
+            <select id="filter-touring" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderArtistTable()">
+              <option value="all">All Artists</option>
+              <option value="touring">Touring</option>
+              <option value="not-touring">Not Touring</option>
+              <option value="no-data">No Touring Data</option>
+            </select>
+            <select id="filter-sort" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderArtistTable()">
+              <option value="rank">Sort: Rank</option>
+              <option value="listeners">Sort: Listeners</option>
+              <option value="change">Sort: Daily Change</option>
+              <option value="events">Sort: Recent Events</option>
+            </select>
+          </div>
+        </div>
+        <table class="w-full">
+          <thead>
+            <tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+              <th class="text-left pb-3 pl-3">#</th>
+              <th class="text-left pb-3">Artist</th>
+              <th class="text-right pb-3">Monthly Listeners</th>
+              <th class="text-right pb-3">Daily Change</th>
+              <th class="text-right pb-3">Peak</th>
+              <th class="text-center pb-3">Touring</th>
+              <th class="text-right pb-3">Recent Events</th>
+              <th class="text-right pb-3">Last Show</th>
+              <th class="text-right pb-3 pr-3"></th>
+            </tr>
+          </thead>
+          <tbody id="artist-table-body"></tbody>
+        </table>
+        <div class="mt-3 flex items-center justify-between">
+          <span class="text-[11px] text-slate-500" id="table-count"></span>
+          <div class="flex gap-1" id="table-pagination"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ARTIST PROFILE PAGE -->
+    <div id="page-artist" class="page p-6 space-y-6">
+      <div id="artist-profile-content">
+        <div class="text-center py-20 text-slate-500">Select an artist from the Dashboard to view their profile.</div>
+      </div>
+    </div>
+
+    <!-- CITIES & VENUES PAGE -->
+    <div id="page-venues" class="page p-6 space-y-6">
+      <div class="grid grid-cols-5 gap-4" id="venue-kpis"></div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 glass rounded-xl p-5">
+          <h3 class="font-semibold text-white text-sm mb-4">Cities by Region & Tier</h3>
+          <div class="chart-container" style="height:250px"><canvas id="regionChart"></canvas></div>
+        </div>
+        <div class="glass rounded-xl p-5">
+          <h3 class="font-semibold text-white text-sm mb-4">Venue Types</h3>
+          <div class="chart-container" style="height:200px"><canvas id="venueTypeChart"></canvas></div>
+          <div id="venue-type-legend" class="mt-4 space-y-2"></div>
+        </div>
+      </div>
+      <!-- Capacity Ladder -->
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-white text-sm">Venue Capacity Ladder</h3>
+              <p class="text-[11px] text-slate-500">Match an artist's sellthrough to the right venue size in each city</p>
+            </div>
+          </div>
+          <select class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" id="ladder-city-select" onchange="renderCapacityLadder()">
+            <option value="">Select a city...</option>
+          </select>
+        </div>
+        <div id="capacity-ladder-content" class="text-center py-8 text-slate-500 text-sm">Select a city to view its venue ladder</div>
+      </div>
+
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">City Directory</h3>
+          <div class="flex gap-2">
+            <select id="filter-region" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderCityTable()">
+              <option value="all">All Regions</option>
+            </select>
+            <select id="filter-tier" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderCityTable()">
+              <option value="all">All Tiers</option>
+              <option value="1">Tier 1 (Major)</option>
+              <option value="2">Tier 2 (Secondary)</option>
+              <option value="3">Tier 3 (Emerging)</option>
+            </select>
+            <div class="relative">
+              <input type="text" placeholder="Search cities..." id="city-search" class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-48" oninput="renderCityTable()">
+              <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
+          </div>
+        </div>
+        <table class="w-full">
+          <thead>
+            <tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+              <th class="text-left pb-3 pl-3">Rank</th>
+              <th class="text-left pb-3">City</th>
+              <th class="text-left pb-3">Country</th>
+              <th class="text-left pb-3">Region</th>
+              <th class="text-center pb-3">Tier</th>
+              <th class="text-right pb-3">Venues</th>
+              <th class="text-right pb-3">Largest Venue</th>
+              <th class="text-right pb-3">Max Capacity</th>
+              <th class="text-right pb-3 pr-3"></th>
+            </tr>
+          </thead>
+          <tbody id="city-table-body"></tbody>
+        </table>
+        <div class="mt-3 flex items-center justify-between">
+          <span class="text-[11px] text-slate-500" id="city-table-count"></span>
+          <div class="flex gap-1" id="city-pagination"></div>
+        </div>
+      </div>
+      <!-- Expanded city detail -->
+      <div id="city-detail" class="hidden"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── Global State ───
+let artists = [], touringMap = {}, venueData = { cities: [] };
+let currentPage = 1, artistsPerPage = 25;
+let cityPage = 1, citiesPerPage = 20;
+let selectedArtist = null;
+let chartInstances = {};
+
+// ─── Helpers ───
+function fmt(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return n.toLocaleString();
+}
+function fmtFull(n) { return n.toLocaleString(); }
+function initials(name) { return name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase(); }
+function hashColor(str) {
+  const colors = [
+    'from-sky-400 to-blue-600','from-pink-400 to-rose-600','from-red-400 to-orange-500',
+    'from-purple-400 to-indigo-600','from-teal-400 to-emerald-600','from-amber-400 to-orange-600',
+    'from-cyan-400 to-blue-500','from-fuchsia-400 to-purple-600','from-lime-400 to-green-600',
+    'from-violet-400 to-indigo-500'
+  ];
+  let h = 0; for (let c of str) h = ((h << 5) - h) + c.charCodeAt(0);
+  return colors[Math.abs(h) % colors.length];
+}
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return Math.floor((Date.now() - d) / 86400000);
+}
+function relDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = daysSince(dateStr);
+  if (d === 0) return 'Today';
+  if (d === 1) return 'Yesterday';
+  if (d < 30) return d + 'd ago';
+  if (d < 365) return Math.floor(d/30) + 'mo ago';
+  return dateStr;
+}
+function tierBadge(tier) {
+  const cls = tier === 1 ? 'bg-violet-500/15 text-violet-300' : tier === 2 ? 'bg-cyan-500/15 text-cyan-300' : 'bg-slate-500/15 text-slate-400';
+  return `<span class="${cls} text-[10px] px-2 py-0.5 rounded-full font-medium">Tier ${tier}</span>`;
+}
+
+// ─── Navigation ───
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.getElementById('nav-' + page)?.classList.add('active');
+  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues' };
+  document.getElementById('page-title').textContent = titles[page] || page;
+}
+
+// ─── Data Loading ───
+async function loadData() {
+  const [seedRes, touringRes, venueRes] = await Promise.all([
+    fetch('data/raw/kworb_seed.json'),
+    fetch('data/raw/touring_data.json'),
+    fetch('data/touring-cities-venues.json')
+  ]);
+  artists = await seedRes.json();
+  const touringArr = await touringRes.json();
+  touringArr.forEach(t => { touringMap[t.spotify_id] = t; });
+  venueData = await venueRes.json();
+
+  document.getElementById('page-subtitle').innerHTML =
+    `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${new Date(artists[0].scraped_at).toLocaleDateString()} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
+
+  // Count alerts: artists losing > 200K listeners/day
+  const alertCount = artists.filter(a => a.daily_change < -200000).length;
+  document.getElementById('alert-count').textContent = alertCount;
+
+  renderDashboard();
+  renderVenuesPage();
+}
+
+// ─── DASHBOARD ───
+function renderDashboard() {
+  const totalListeners = artists.reduce((s,a) => s + a.monthly_listeners, 0);
+  const touringCount = Object.values(touringMap).filter(t => t.is_touring).length;
+  const gainers = artists.filter(a => a.daily_change > 0).length;
+
+  document.getElementById('dashboard-kpis').innerHTML = `
+    <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-slate-500 uppercase tracking-wider">Tracked Artists</span>
+        <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        </div>
+      </div>
+      <div class="text-3xl font-bold text-white">${fmtFull(artists.length)}</div>
+      <div class="text-xs text-slate-400 mt-1">${Object.keys(touringMap).length} with touring data</div>
+    </div>
+    <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-slate-500 uppercase tracking-wider">Total Reach</span>
+        <div class="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+      </div>
+      <div class="text-3xl font-bold text-white">${fmt(totalListeners)}</div>
+      <div class="text-xs text-slate-400 mt-1">Combined monthly listeners</div>
+    </div>
+    <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-slate-500 uppercase tracking-wider">Currently Touring</span>
+        <div class="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+      </div>
+      <div class="text-3xl font-bold text-white">${touringCount}</div>
+      <div class="text-xs text-slate-400 mt-1">of ${Object.keys(touringMap).length} tracked</div>
+    </div>
+    <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-xs text-slate-500 uppercase tracking-wider">Gaining Today</span>
+        <div class="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </div>
+      </div>
+      <div class="text-3xl font-bold text-white">${fmtFull(gainers)}</div>
+      <div class="text-xs text-slate-400 mt-1">${fmtFull(artists.length - gainers)} losing listeners</div>
+    </div>
+  `;
+
+  // Top 10 bar chart
+  const top10 = artists.slice(0, 10);
+  if (chartInstances.topArtists) chartInstances.topArtists.destroy();
+  chartInstances.topArtists = new Chart(document.getElementById('topArtistsChart'), {
+    type: 'bar',
+    data: {
+      labels: top10.map(a => a.name),
+      datasets: [{
+        data: top10.map(a => a.monthly_listeners),
+        backgroundColor: top10.map(a => a.daily_change >= 0 ? 'rgba(167,139,250,0.5)' : 'rgba(248,113,113,0.4)'),
+        borderColor: top10.map(a => a.daily_change >= 0 ? '#a78bfa' : '#f87171'),
+        borderWidth: 1, borderRadius: 4, barPercentage: 0.65
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmtFull(ctx.raw) + ' listeners' } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { callback: v => fmt(v) } },
+        y: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Daily movers
+  const sorted = [...artists].sort((a,b) => Math.abs(b.daily_change) - Math.abs(a.daily_change)).slice(0,8);
+  document.getElementById('daily-movers').innerHTML = sorted.map((a,i) => {
+    const up = a.daily_change >= 0;
+    const pct = ((a.daily_change / a.monthly_listeners) * 100).toFixed(2);
+    return `
+      <div class="flex items-center gap-3 ${i > 0 ? 'mt-2' : ''} cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-colors" onclick="selectArtist('${a.spotify_id}')">
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[9px] font-bold text-white">${i+1}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-white truncate">${a.name}</div>
+          <div class="text-[10px] text-slate-500">${up ? '+' : ''}${fmt(a.daily_change)} today</div>
+        </div>
+        <span class="${up ? 'trend-up' : 'trend-down'} text-sm font-semibold">${up ? '+' : ''}${pct}%</span>
+      </div>`;
+  }).join('');
+
+  // Touring donut
+  const touringTrue = Object.values(touringMap).filter(t => t.is_touring).length;
+  const touringFalse = Object.values(touringMap).filter(t => !t.is_touring).length;
+  const noData = artists.length - Object.keys(touringMap).length;
+  if (chartInstances.touringStatus) chartInstances.touringStatus.destroy();
+  chartInstances.touringStatus = new Chart(document.getElementById('touringStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Touring (' + touringTrue + ')', 'Not Touring (' + touringFalse + ')', 'No Data (' + noData + ')'],
+      datasets: [{ data: [touringTrue, touringFalse, noData], backgroundColor: ['#4ade80','#f87171','#334155'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 11 } } } }
+    }
+  });
+
+  // Recently active
+  const recentlyActive = Object.entries(touringMap)
+    .filter(([,t]) => t.last_event_date)
+    .sort((a,b) => new Date(b[1].last_event_date) - new Date(a[1].last_event_date))
+    .slice(0, 6);
+  document.getElementById('recent-touring').innerHTML = recentlyActive.map(([sid, t]) => {
+    const a = artists.find(x => x.spotify_id === sid);
+    if (!a) return '';
+    return `
+      <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="selectArtist('${sid}')">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[9px] font-bold text-white">${initials(a.name)}</div>
+        <div class="flex-1">
+          <div class="text-sm font-medium text-white">${a.name}</div>
+          <div class="text-[10px] text-slate-500">${t.recent_event_count} recent shows &middot; ${t.touring_source}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-slate-300">${t.last_event_date}</div>
+          <div class="text-[10px] text-slate-500">${relDate(t.last_event_date)}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  renderArtistTable();
+}
+
+// ─── ARTIST TABLE ───
+function renderArtistTable() {
+  const filter = document.getElementById('filter-touring').value;
+  const sort = document.getElementById('filter-sort').value;
+  const search = document.getElementById('global-search').value.toLowerCase();
+
+  let data = artists.map(a => ({ ...a, touring: touringMap[a.spotify_id] || null }));
+
+  if (search) data = data.filter(a => a.name.toLowerCase().includes(search));
+  if (filter === 'touring') data = data.filter(a => a.touring?.is_touring);
+  else if (filter === 'not-touring') data = data.filter(a => a.touring && !a.touring.is_touring);
+  else if (filter === 'no-data') data = data.filter(a => !a.touring);
+
+  if (sort === 'listeners') data.sort((a,b) => b.monthly_listeners - a.monthly_listeners);
+  else if (sort === 'change') data.sort((a,b) => b.daily_change - a.daily_change);
+  else if (sort === 'events') data.sort((a,b) => (b.touring?.recent_event_count||0) - (a.touring?.recent_event_count||0));
+  else data.sort((a,b) => a.rank - b.rank);
+
+  const total = data.length;
+  const pages = Math.ceil(total / artistsPerPage);
+  if (currentPage > pages) currentPage = 1;
+  const slice = data.slice((currentPage-1)*artistsPerPage, currentPage*artistsPerPage);
+
+  document.getElementById('artist-table-body').innerHTML = slice.map(a => {
+    const up = a.daily_change >= 0;
+    const t = a.touring;
+    const pctOfPeak = a.peak_listeners ? Math.round((a.monthly_listeners / a.peak_listeners) * 100) : null;
+    return `
+      <tr class="artist-row border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${a.spotify_id}')">
+        <td class="py-3 pl-3 text-sm text-slate-500">${a.rank}</td>
+        <td class="py-3">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[9px] font-bold text-white">${initials(a.name)}</div>
+            <div class="text-sm font-medium text-white">${a.name}</div>
+          </div>
+        </td>
+        <td class="py-3 text-right text-sm text-white">${fmt(a.monthly_listeners)}</td>
+        <td class="py-3 text-right text-sm ${up ? 'trend-up' : 'trend-down'} font-medium">${up?'+':''}${fmt(a.daily_change)}</td>
+        <td class="py-3 text-right text-sm text-slate-400">${fmt(a.peak_listeners)}${pctOfPeak !== null ? ` <span class="text-[10px] text-slate-500">(${pctOfPeak}%)</span>` : ''}</td>
+        <td class="py-3 text-center">${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}</td>
+        <td class="py-3 text-right text-sm text-slate-300">${t ? t.recent_event_count : '—'}</td>
+        <td class="py-3 text-right text-sm text-slate-400">${t ? relDate(t.last_event_date) : '—'}</td>
+        <td class="py-3 text-right pr-3"><button class="text-violet-400 hover:text-violet-300 text-xs">View</button></td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('table-count').textContent = `Showing ${slice.length} of ${total} artists`;
+  const pagBtns = [];
+  for (let i = 1; i <= Math.min(pages, 5); i++) {
+    pagBtns.push(`<button onclick="currentPage=${i};renderArtistTable()" class="${i===currentPage ? 'bg-violet-600/20 border-violet-500/30 text-violet-300' : 'bg-white/5 border-white/10 text-slate-400'} border text-xs px-3 py-1 rounded-md">${i}</button>`);
+  }
+  if (pages > 5) pagBtns.push(`<span class="text-xs text-slate-500 px-1">...${pages}</span>`);
+  document.getElementById('table-pagination').innerHTML = pagBtns.join('');
+}
+
+function handleSearch(val) { currentPage = 1; renderArtistTable(); }
+
+// ─── ARTIST PROFILE ───
+function selectArtist(spotifyId) {
+  selectedArtist = artists.find(a => a.spotify_id === spotifyId);
+  if (!selectedArtist) return;
+  const t = touringMap[spotifyId] || null;
+  showPage('artist');
+
+  const pctOfPeak = selectedArtist.peak_listeners ? Math.round((selectedArtist.monthly_listeners / selectedArtist.peak_listeners) * 100) : null;
+  const up = selectedArtist.daily_change >= 0;
+
+  document.getElementById('artist-profile-content').innerHTML = `
+    <!-- Header -->
+    <div class="glass rounded-xl p-6 accent-glow mb-6">
+      <div class="flex items-start gap-6">
+        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(selectedArtist.name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">${initials(selectedArtist.name)}</div>
+        <div class="flex-1">
+          <div class="flex items-center gap-3 mb-1">
+            <h2 class="text-2xl font-bold text-white">${selectedArtist.name}</h2>
+            ${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full font-medium">Touring</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full font-medium">Not Touring</span>') : ''}
+            <span class="text-sm text-slate-500">Rank #${selectedArtist.rank}</span>
+          </div>
+          <div class="flex items-center gap-4 text-sm text-slate-400 mb-4">
+            <span>Spotify ID: <code class="text-xs text-slate-500">${selectedArtist.spotify_id}</code></span>
+          </div>
+          <div class="grid grid-cols-4 gap-4">
+            <div class="bg-white/5 rounded-lg p-3">
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Monthly Listeners</div>
+              <div class="text-xl font-bold text-white">${fmt(selectedArtist.monthly_listeners)}</div>
+              <div class="text-[11px] ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(selectedArtist.daily_change)} today</div>
+            </div>
+            <div class="bg-white/5 rounded-lg p-3">
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Peak Listeners</div>
+              <div class="text-xl font-bold text-white">${fmt(selectedArtist.peak_listeners)}</div>
+              <div class="text-[11px] text-slate-400">${pctOfPeak !== null ? pctOfPeak + '% of peak' : '—'}</div>
+            </div>
+            <div class="bg-white/5 rounded-lg p-3">
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Recent Events</div>
+              <div class="text-xl font-bold text-white">${t ? t.recent_event_count : '—'}</div>
+              <div class="text-[11px] text-slate-400">${t ? 'via ' + t.touring_source : 'No data'}</div>
+            </div>
+            <div class="bg-white/5 rounded-lg p-3">
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Last Show</div>
+              <div class="text-xl font-bold text-white">${t?.last_event_date || '—'}</div>
+              <div class="text-[11px] text-slate-400">${t ? relDate(t.last_event_date) : '—'}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Listener vs Peak gauge -->
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div class="glass rounded-xl p-5">
+        <h3 class="font-semibold text-white text-sm mb-4">Listener Position vs Peak</h3>
+        <div class="relative pt-2">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] text-slate-500">Current: ${fmt(selectedArtist.monthly_listeners)}</span>
+            <span class="text-[11px] text-slate-500">Peak: ${fmt(selectedArtist.peak_listeners)}</span>
+          </div>
+          <div class="w-full h-4 rounded-full bg-white/5 overflow-hidden">
+            <div class="h-full rounded-full ${pctOfPeak >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : pctOfPeak >= 70 ? 'bg-gradient-to-r from-cyan-500 to-blue-400' : pctOfPeak >= 50 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-orange-400'}" style="width:${pctOfPeak || 0}%"></div>
+          </div>
+          <div class="text-center mt-2">
+            <span class="text-2xl font-bold text-white">${pctOfPeak || 0}%</span>
+            <span class="text-sm text-slate-500 ml-2">of all-time peak</span>
+          </div>
+        </div>
+        <div class="mt-4 p-3 rounded-lg ${pctOfPeak >= 95 ? 'bg-green-500/5 border border-green-500/10' : pctOfPeak >= 80 ? 'bg-cyan-500/5 border border-cyan-500/10' : 'bg-amber-500/5 border border-amber-500/10'}">
+          <div class="text-[11px] ${pctOfPeak >= 95 ? 'text-green-400' : pctOfPeak >= 80 ? 'text-cyan-400' : 'text-amber-400'} font-medium">
+            ${pctOfPeak >= 95 ? 'At or near all-time peak — maximum demand window' : pctOfPeak >= 80 ? 'Strong position — good time for venue upgrades' : pctOfPeak >= 50 ? 'Below peak — consider right-sizing venues' : 'Well below peak — smaller venues recommended'}
+          </div>
+        </div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <h3 class="font-semibold text-white text-sm mb-4">Daily Momentum</h3>
+        <div class="flex items-center justify-center py-6">
+          <div class="text-center">
+            <div class="text-5xl font-bold ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(selectedArtist.daily_change)}</div>
+            <div class="text-sm text-slate-400 mt-2">listeners today</div>
+            <div class="text-lg font-semibold ${up ? 'text-green-400' : 'text-red-400'} mt-1">${up?'+':''}${((selectedArtist.daily_change / selectedArtist.monthly_listeners) * 100).toFixed(3)}%</div>
+          </div>
+        </div>
+        <div class="mt-2 p-3 rounded-lg bg-white/5">
+          <div class="text-[11px] text-slate-400">
+            At this rate: ${up ? '+' : ''}${fmt(selectedArtist.daily_change * 30)} projected over 30 days
+            (${fmt(selectedArtist.monthly_listeners + selectedArtist.daily_change * 30)} total)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${t ? `
+    <!-- Touring Detail -->
+    <div class="glass rounded-xl p-5 mb-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        </div>
+        <h3 class="font-semibold text-white text-sm">Touring Activity</h3>
+      </div>
+      <div class="grid grid-cols-4 gap-4">
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-white">${t.is_touring ? 'Yes' : 'No'}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Currently Touring</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-white">${t.recent_event_count}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Recent Events</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-white">${t.upcoming_event_count}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Upcoming Events</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-white">${t.last_event_date ? relDate(t.last_event_date) : '—'}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Last Event: ${t.last_event_date || '—'}</div>
+        </div>
+      </div>
+    </div>` : ''}
+
+    <!-- Peer Comparison: surrounding artists -->
+    <div class="glass rounded-xl p-5">
+      <h3 class="font-semibold text-white text-sm mb-4">Peer Comparison (by rank)</h3>
+      <table class="w-full">
+        <thead>
+          <tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+            <th class="text-left pb-3 pl-3">#</th>
+            <th class="text-left pb-3">Artist</th>
+            <th class="text-right pb-3">Monthly Listeners</th>
+            <th class="text-right pb-3">Daily Change</th>
+            <th class="text-right pb-3">Peak</th>
+            <th class="text-center pb-3">Touring</th>
+            <th class="text-right pb-3 pr-3">% of Peak</th>
+          </tr>
+        </thead>
+        <tbody id="peer-table"></tbody>
+      </table>
+    </div>
+  `;
+
+  // Peer table: 5 above + selected + 5 below
+  const idx = artists.findIndex(a => a.spotify_id === spotifyId);
+  const start = Math.max(0, idx - 5);
+  const end = Math.min(artists.length, idx + 6);
+  const peers = artists.slice(start, end);
+  document.getElementById('peer-table').innerHTML = peers.map(a => {
+    const isSelf = a.spotify_id === spotifyId;
+    const pt = touringMap[a.spotify_id];
+    const pct = a.peak_listeners ? Math.round((a.monthly_listeners / a.peak_listeners) * 100) : null;
+    const aUp = a.daily_change >= 0;
+    return `
+      <tr class="${isSelf ? 'bg-violet-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${a.spotify_id}')">
+        <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-violet-300 font-bold' : 'text-slate-500'}">${a.rank}</td>
+        <td class="py-2.5">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(a.name)}</div>
+            <span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${a.name}</span>
+            ${isSelf ? '<span class="bg-violet-500/20 text-violet-300 text-[9px] px-1.5 py-0.5 rounded font-medium">Current</span>' : ''}
+          </div>
+        </td>
+        <td class="py-2.5 text-right text-sm text-white">${fmt(a.monthly_listeners)}</td>
+        <td class="py-2.5 text-right text-sm ${aUp ? 'trend-up' : 'trend-down'} font-medium">${aUp?'+':''}${fmt(a.daily_change)}</td>
+        <td class="py-2.5 text-right text-sm text-slate-400">${fmt(a.peak_listeners)}</td>
+        <td class="py-2.5 text-center">${pt ? (pt.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}</td>
+        <td class="py-2.5 text-right pr-3">
+          ${pct !== null ? `<div class="flex items-center justify-end gap-1"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '—'}
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+// ─── VENUES PAGE ───
+function renderVenuesPage() {
+  const cities = venueData.cities;
+  const allVenues = cities.flatMap(c => c.venues);
+  const regions = [...new Set(cities.map(c => c.region))];
+  const typeCounts = {};
+  allVenues.forEach(v => { typeCounts[v.type] = (typeCounts[v.type]||0) + 1; });
+  const tierCounts = { 1: 0, 2: 0, 3: 0 };
+  cities.forEach(c => tierCounts[c.city_tier]++);
+
+  // KPIs
+  document.getElementById('venue-kpis').innerHTML = `
+    <div class="kpi-card rounded-xl p-4 transition-all duration-300">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Cities</div>
+      <div class="text-2xl font-bold text-white">${cities.length}</div>
+      <div class="text-[11px] text-slate-400">${regions.length} regions</div>
+    </div>
+    <div class="kpi-card rounded-xl p-4 transition-all duration-300">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Venues</div>
+      <div class="text-2xl font-bold text-white">${fmtFull(allVenues.length)}</div>
+      <div class="text-[11px] text-slate-400">All tiers</div>
+    </div>
+    <div class="kpi-card rounded-xl p-4 transition-all duration-300">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Tier 1 Cities</div>
+      <div class="text-2xl font-bold text-white">${tierCounts[1]}</div>
+      <div class="text-[11px] text-green-400">Major markets</div>
+    </div>
+    <div class="kpi-card rounded-xl p-4 transition-all duration-300">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Capacity</div>
+      <div class="text-2xl font-bold text-white">${fmt(allVenues.reduce((s,v) => s + v.capacity, 0))}</div>
+      <div class="text-[11px] text-slate-400">All venues combined</div>
+    </div>
+    <div class="kpi-card rounded-xl p-4 transition-all duration-300">
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Avg Venues/City</div>
+      <div class="text-2xl font-bold text-white">${Math.round(allVenues.length / cities.length)}</div>
+      <div class="text-[11px] text-slate-400">Across all tiers</div>
+    </div>
+  `;
+
+  // Region filter dropdown
+  const regionSelect = document.getElementById('filter-region');
+  regionSelect.innerHTML = '<option value="all">All Regions</option>' + regions.map(r => `<option value="${r}">${r}</option>`).join('');
+
+  // Region stacked bar
+  const regionData = {};
+  cities.forEach(c => {
+    if (!regionData[c.region]) regionData[c.region] = { 1: 0, 2: 0, 3: 0 };
+    regionData[c.region][c.city_tier]++;
+  });
+  if (chartInstances.region) chartInstances.region.destroy();
+  chartInstances.region = new Chart(document.getElementById('regionChart'), {
+    type: 'bar',
+    data: {
+      labels: regions,
+      datasets: [
+        { label: 'Tier 1', data: regions.map(r => regionData[r]?.[1]||0), backgroundColor: '#a78bfa', borderRadius: 3, barPercentage: 0.7 },
+        { label: 'Tier 2', data: regions.map(r => regionData[r]?.[2]||0), backgroundColor: '#22d3ee', borderRadius: 3, barPercentage: 0.7 },
+        { label: 'Tier 3', data: regions.map(r => regionData[r]?.[3]||0), backgroundColor: '#475569', borderRadius: 3, barPercentage: 0.7 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 16 } } },
+      scales: { y: { stacked: true, grid: { color: 'rgba(255,255,255,0.03)' } }, x: { stacked: true, grid: { display: false } } }
+    }
+  });
+
+  // Venue type donut
+  const typeLabels = Object.keys(typeCounts);
+  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#a78bfa', outdoor: '#4ade80' };
+  if (chartInstances.venueType) chartInstances.venueType.destroy();
+  chartInstances.venueType = new Chart(document.getElementById('venueTypeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: typeLabels.map(t => t.charAt(0).toUpperCase() + t.slice(1)),
+      datasets: [{ data: typeLabels.map(t => typeCounts[t]), backgroundColor: typeLabels.map(t => typeColors[t] || '#64748b'), borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
+  });
+
+  // Venue type legend with capacity ranges
+  const typeRanges = {};
+  allVenues.forEach(v => {
+    if (!typeRanges[v.type]) typeRanges[v.type] = { min: Infinity, max: 0 };
+    typeRanges[v.type].min = Math.min(typeRanges[v.type].min, v.capacity);
+    typeRanges[v.type].max = Math.max(typeRanges[v.type].max, v.capacity);
+  });
+  document.getElementById('venue-type-legend').innerHTML = typeLabels.map(t => `
+    <div class="flex items-center justify-between">
+      <span class="flex items-center gap-2 text-[11px] text-slate-300">
+        <span class="w-2 h-2 rounded-full" style="background:${typeColors[t]}"></span>
+        ${t.charAt(0).toUpperCase() + t.slice(1)} (${typeCounts[t]})
+      </span>
+      <span class="text-[11px] text-white font-semibold">${fmt(typeRanges[t].min)} - ${fmt(typeRanges[t].max)}</span>
+    </div>
+  `).join('');
+
+  renderCityTable();
+}
+
+// ─── CITY TABLE ───
+function renderCityTable() {
+  const region = document.getElementById('filter-region').value;
+  const tier = document.getElementById('filter-tier').value;
+  const search = document.getElementById('city-search').value.toLowerCase();
+
+  let data = venueData.cities;
+  if (region !== 'all') data = data.filter(c => c.region === region);
+  if (tier !== 'all') data = data.filter(c => c.city_tier === parseInt(tier));
+  if (search) data = data.filter(c => c.city.toLowerCase().includes(search) || c.country.toLowerCase().includes(search));
+
+  const total = data.length;
+  const pages = Math.ceil(total / citiesPerPage);
+  if (cityPage > pages) cityPage = 1;
+  const slice = data.slice((cityPage-1)*citiesPerPage, cityPage*citiesPerPage);
+
+  document.getElementById('city-table-body').innerHTML = slice.map(c => {
+    const largest = c.venues.reduce((a,v) => v.capacity > a.capacity ? v : a, c.venues[0]);
+    const smallest = c.venues.reduce((a,v) => v.capacity < a.capacity ? v : a, c.venues[0]);
+    return `
+      <tr class="artist-row border-b border-white/5 cursor-pointer transition-colors" onclick="showCityDetail(${c.rank})">
+        <td class="py-3 pl-3 text-sm text-slate-500">${c.rank}</td>
+        <td class="py-3"><div class="text-sm font-medium text-white">${c.city}</div></td>
+        <td class="py-3 text-sm text-slate-400">${c.country}</td>
+        <td class="py-3 text-sm text-slate-400">${c.region}</td>
+        <td class="py-3 text-center">${tierBadge(c.city_tier)}</td>
+        <td class="py-3 text-right text-sm text-white">${c.venues.length}</td>
+        <td class="py-3 text-right text-sm text-slate-300">${largest.name}</td>
+        <td class="py-3 text-right text-sm text-white font-medium">${fmtFull(largest.capacity)}</td>
+        <td class="py-3 text-right pr-3 text-[11px] text-slate-400">${fmt(smallest.capacity)} - ${fmt(largest.capacity)}</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('city-table-count').textContent = `Showing ${slice.length} of ${total} cities`;
+  const pagBtns = [];
+  for (let i = 1; i <= Math.min(pages, 5); i++) {
+    pagBtns.push(`<button onclick="cityPage=${i};renderCityTable()" class="${i===cityPage ? 'bg-violet-600/20 border-violet-500/30 text-violet-300' : 'bg-white/5 border-white/10 text-slate-400'} border text-xs px-3 py-1 rounded-md">${i}</button>`);
+  }
+  if (pages > 5) pagBtns.push(`<span class="text-xs text-slate-500 px-1">...${pages}</span>`);
+  document.getElementById('city-pagination').innerHTML = pagBtns.join('');
+}
+
+// ─── CITY DETAIL ───
+function showCityDetail(rank) {
+  const city = venueData.cities.find(c => c.rank === rank);
+  if (!city) return;
+
+  const typeColors = { stadium: 'red', arena: 'amber', theater: 'cyan', club: 'violet', outdoor: 'green' };
+  const sorted = [...city.venues].sort((a,b) => b.capacity - a.capacity);
+
+  const detail = document.getElementById('city-detail');
+  detail.classList.remove('hidden');
+  detail.innerHTML = `
+    <div class="glass rounded-xl p-5 accent-glow">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white">${city.city.slice(0,2).toUpperCase()}</div>
+          <div>
+            <h3 class="font-semibold text-white text-lg">${city.city}, ${city.country}</h3>
+            <div class="flex items-center gap-3 text-[11px] text-slate-400">
+              <span>${city.region}</span><span>&middot;</span>
+              <span class="text-violet-400">Tier ${city.city_tier} Market</span><span>&middot;</span>
+              <span>${city.venues.length} venues tracked</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="document.getElementById('city-detail').classList.add('hidden')" class="text-slate-500 hover:text-white text-sm">Close</button>
+      </div>
+      <div class="grid grid-cols-5 gap-3">
+        ${sorted.map(v => {
+          const tc = typeColors[v.type] || 'slate';
+          return `
+            <div class="bg-white/5 rounded-xl p-3 border border-white/5 hover:border-${tc}-500/20 transition-colors">
+              <div class="flex items-center justify-between mb-2">
+                <span class="bg-${tc}-500/15 text-${tc}-300 text-[9px] px-1.5 py-0.5 rounded font-medium">${v.type.toUpperCase()}</span>
+                <span class="text-[9px] ${v.venue_tier === 'A' ? 'text-amber-400' : v.venue_tier === 'B' ? 'text-cyan-400' : 'text-slate-400'} font-medium">Tier ${v.venue_tier}</span>
+              </div>
+              <div class="text-sm font-medium text-white mb-0.5">${v.name}</div>
+              <div class="text-lg font-bold text-white">${fmtFull(v.capacity)}</div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+  detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── Chart.js defaults ───
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+Chart.defaults.font.family = 'Inter';
+Chart.defaults.font.size = 11;
+
+// ─── Init ───
+loadData();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,81 @@
+"""Dataclass definitions for the artist pipeline."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field, asdict
+from typing import Optional
+from datetime import datetime
+
+
+@dataclass
+class ArtistSeed:
+    """Raw artist data from kworb.net scrape."""
+    rank: int
+    name: str
+    spotify_id: str
+    monthly_listeners: int
+    daily_change: Optional[int] = None
+    peak_listeners: Optional[int] = None
+    peak_listener_date: Optional[str] = None
+    scraped_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class TouringData:
+    """Touring activity data from Bandsintown / setlist.fm."""
+    spotify_id: str
+    is_touring: bool = False
+    recent_event_count: int = 0
+    upcoming_event_count: int = 0
+    last_event_date: Optional[str] = None
+    next_event_date: Optional[str] = None
+    touring_source: Optional[str] = None  # "bandsintown" or "setlistfm"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class MusicBrainzData:
+    """Genres, social handles, and country from MusicBrainz."""
+    spotify_id: str
+    genres: list[str] = field(default_factory=list)
+    country: Optional[str] = None
+    image_url: Optional[str] = None
+    instagram: Optional[str] = None
+    youtube: Optional[str] = None
+    tiktok: Optional[str] = None
+    twitter: Optional[str] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
+class ArtistEnriched:
+    """Final merged artist record for export."""
+    rank: int
+    name: str
+    spotify_id: str
+    spotify_url: Optional[str] = None
+    monthly_listeners: int = 0
+    genres: str = ""  # comma-separated for CSV
+    country: Optional[str] = None
+    image_url: Optional[str] = None
+    instagram: Optional[str] = None
+    youtube: Optional[str] = None
+    tiktok: Optional[str] = None
+    twitter: Optional[str] = None
+    is_touring: bool = False
+    recent_event_count: int = 0
+    upcoming_event_count: int = 0
+    last_event_date: Optional[str] = None
+    next_event_date: Optional[str] = None
+    touring_source: Optional[str] = None
+    scraped_at: str = ""
+
+    def to_dict(self) -> dict:
+        return asdict(self)
