@@ -492,6 +492,42 @@ function renderDashboard() {
       </div>`;
   }).join('');
 
+  // Dashboard Alerts (FPO)
+  const fpoAlerts = [
+    { icon: '📈', msg: `${artists[0]?.name || 'Drake'} monthly listeners up 12% in 48 hours`, time: '2 hours ago' },
+    { icon: '🎤', msg: `${artists[5]?.name || 'Bad Bunny'} announced 15 new tour dates`, time: '5 hours ago' },
+    { icon: '🏆', msg: `${artists[1]?.name || 'The Weeknd'}'s peak listeners record broken`, time: '1 day ago' },
+    { icon: '⚠️', msg: '3 artists dropped below 50% of peak listeners', time: '1 day ago' },
+    { icon: '🔥', msg: `${artists[3]?.name || 'Ariana Grande'} trending #1 on TikTok — expect listener spike`, time: '3 days ago' }
+  ];
+  document.getElementById('dashboard-alerts').innerHTML = fpoAlerts.map(a => `
+    <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors">
+      <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-sm flex-shrink-0">${a.icon}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm text-white truncate">${a.msg}</div>
+        <div class="text-[10px] text-slate-500 mt-0.5">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Dashboard Upcoming Shows (FPO)
+  const fpoVenues = ['Madison Square Garden, New York','The O2 Arena, London','Tokyo Dome, Tokyo','Accor Arena, Paris','Scotiabank Arena, Toronto'];
+  const fpoDates = ['Feb 14, 2026','Feb 18, 2026','Feb 22, 2026','Mar 1, 2026','Mar 5, 2026'];
+  const showArtists = artists.slice(0, 5);
+  document.getElementById('dashboard-upcoming').innerHTML = showArtists.map((a, i) => `
+    <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="selectArtist('${a.spotify_id}')">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">${initials(a.name)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium text-white truncate">${a.name}</div>
+        <div class="text-[10px] text-slate-500">${fpoVenues[i]}</div>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <div class="text-xs text-slate-300">${fpoDates[i]}</div>
+        <div class="text-[10px] text-green-400">On Sale</div>
+      </div>
+    </div>
+  `).join('');
+
   renderArtistTable();
 }
 
@@ -553,6 +589,8 @@ function renderArtistTable() {
 function handleSearch(val) { currentPage = 1; renderArtistTable(); }
 
 // ─── ARTIST PROFILE ───
+function fpoTag() { return '<span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">FPO DATA</span>'; }
+
 function selectArtist(spotifyId) {
   selectedArtist = artists.find(a => a.spotify_id === spotifyId);
   if (!selectedArtist) return;
@@ -561,15 +599,16 @@ function selectArtist(spotifyId) {
 
   const pctOfPeak = selectedArtist.peak_listeners ? Math.round((selectedArtist.monthly_listeners / selectedArtist.peak_listeners) * 100) : null;
   const up = selectedArtist.daily_change >= 0;
+  const name = selectedArtist.name;
 
   document.getElementById('artist-profile-content').innerHTML = `
     <!-- Header -->
     <div class="glass rounded-xl p-6 accent-glow mb-6">
       <div class="flex items-start gap-6">
-        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(selectedArtist.name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">${initials(selectedArtist.name)}</div>
+        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">${initials(name)}</div>
         <div class="flex-1">
           <div class="flex items-center gap-3 mb-1">
-            <h2 class="text-2xl font-bold text-white">${selectedArtist.name}</h2>
+            <h2 class="text-2xl font-bold text-white">${name}</h2>
             ${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full font-medium">Touring</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full font-medium">Not Touring</span>') : ''}
             <span class="text-sm text-slate-500">Rank #${selectedArtist.rank}</span>
           </div>
@@ -602,10 +641,27 @@ function selectArtist(spotifyId) {
       </div>
     </div>
 
-    <!-- Listener vs Peak gauge -->
+    <!-- Social Media + Streaming -->
     <div class="grid grid-cols-2 gap-4 mb-6">
       <div class="glass rounded-xl p-5">
-        <h3 class="font-semibold text-white text-sm mb-4">Listener Position vs Peak</h3>
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">Social Media</h3>${fpoTag()}
+        </div>
+        <div class="space-y-3">
+          ${[{p:'Instagram',icon:'from-purple-500 to-pink-500',val:'4.8M',chg:'+2.3%'},{p:'TikTok',icon:'from-slate-700 to-slate-900',val:'3.2M',chg:'+5.7%'},{p:'YouTube',icon:'from-red-600 to-red-500',val:'5.1M',chg:'+1.8%'},{p:'X (Twitter)',icon:'from-slate-700 to-slate-800',val:'1.1M',chg:'+0.9%'}].map(s => `
+            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${s.icon} flex items-center justify-center text-xs text-white font-bold">${s.p[0]}</div>
+                <div><div class="text-sm font-medium text-white">${s.p}</div><div class="text-[11px] text-slate-500">@${name.toLowerCase().replace(/\\s/g,'')}</div></div>
+              </div>
+              <div class="text-right"><div class="text-sm font-semibold text-white">${s.val}</div><div class="text-[11px] text-green-400">${s.chg}</div></div>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">Monthly Listeners</h3>
+        </div>
         <div class="relative pt-2">
           <div class="flex items-center justify-between mb-2">
             <span class="text-[11px] text-slate-500">Current: ${fmt(selectedArtist.monthly_listeners)}</span>
@@ -624,21 +680,147 @@ function selectArtist(spotifyId) {
             ${pctOfPeak >= 95 ? 'At or near all-time peak — maximum demand window' : pctOfPeak >= 80 ? 'Strong position — good time for venue upgrades' : pctOfPeak >= 50 ? 'Below peak — consider right-sizing venues' : 'Well below peak — smaller venues recommended'}
           </div>
         </div>
-      </div>
-      <div class="glass rounded-xl p-5">
-        <h3 class="font-semibold text-white text-sm mb-4">Daily Momentum</h3>
-        <div class="flex items-center justify-center py-6">
-          <div class="text-center">
-            <div class="text-5xl font-bold ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(selectedArtist.daily_change)}</div>
-            <div class="text-sm text-slate-400 mt-2">listeners today</div>
-            <div class="text-lg font-semibold ${up ? 'text-green-400' : 'text-red-400'} mt-1">${up?'+':''}${((selectedArtist.daily_change / selectedArtist.monthly_listeners) * 100).toFixed(3)}%</div>
+        <div class="mt-4 p-3 rounded-lg bg-white/5">
+          <div class="text-[11px] text-slate-400">
+            Daily: <span class="${up ? 'text-green-400' : 'text-red-400'} font-semibold">${up?'+':''}${fmt(selectedArtist.daily_change)}</span> &middot;
+            30-day projection: <span class="text-white font-semibold">${fmt(selectedArtist.monthly_listeners + selectedArtist.daily_change * 30)}</span>
           </div>
         </div>
-        <div class="mt-2 p-3 rounded-lg bg-white/5">
-          <div class="text-[11px] text-slate-400">
-            At this rate: ${up ? '+' : ''}${fmt(selectedArtist.daily_change * 30)} projected over 30 days
-            (${fmt(selectedArtist.monthly_listeners + selectedArtist.daily_change * 30)} total)
+      </div>
+    </div>
+
+    <!-- Artist Fee -->
+    <div class="glass rounded-xl p-5 accent-glow mb-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
+          <h3 class="font-semibold text-white text-sm">Artist Fee</h3>${fpoTag()}
+        </div>
+      </div>
+      <div class="grid grid-cols-4 gap-4 mb-5">
+        <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/15 rounded-xl p-4">
+          <div class="text-[10px] text-amber-400/70 uppercase tracking-wider mb-1">Current Guarantee</div>
+          <div class="text-2xl font-bold text-white">$350K</div>
+          <div class="text-[11px] text-amber-400 mt-1">+40% vs last year</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Fee Range</div>
+          <div class="text-2xl font-bold text-white">$250-500K</div>
+          <div class="text-[11px] text-slate-400 mt-1">Depends on venue/market</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Door Deal Option</div>
+          <div class="text-2xl font-bold text-white">80/20</div>
+          <div class="text-[11px] text-slate-400 mt-1">Artist / Promoter split</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Cost Per Head</div>
+          <div class="text-2xl font-bold text-white">$23.40</div>
+          <div class="text-[11px] text-slate-400 mt-1">Based on avg 15K attendance</div>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 bg-white/5 rounded-xl p-4">
+          <span class="text-xs text-slate-400 font-medium">Fee History (Guarantee)</span>
+          <div class="chart-container mt-3" style="height:150px"><canvas id="feeHistoryChart"></canvas></div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <span class="text-xs text-slate-400 font-medium">Fee Breakdown</span>
+          <div class="mt-3 space-y-3">
+            ${[['Headliner (Arena)','$400-500K'],['Headliner (Theater)','$250-350K'],['Festival (Main Stage)','$300-450K'],['Festival (Support)','$150-200K'],['Private Event','$500K+']].map(([l,v]) => `
+              <div class="flex items-center justify-between"><span class="text-[11px] text-slate-400">${l}</span><span class="text-sm font-semibold text-white">${v}</span></div>
+              <div class="w-full h-px bg-white/5"></div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 p-3 rounded-lg bg-violet-500/5 border border-violet-500/10">
+        <div class="flex items-start gap-2">
+          <svg class="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div>
+            <div class="text-[11px] text-violet-300 font-medium mb-0.5">Agent Notes</div>
+            <div class="text-[11px] text-slate-400">Fee increased significantly after viral breakout. Agent prefers guarantee over door deal for Asia dates. Minimum 90-day advance booking required.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Venue Sellthrough Capacity -->
+    <div class="glass rounded-xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white text-sm">Venue Sellthrough Capacity</h3>
+            <p class="text-[11px] text-slate-500">Based on 24 shows across 8 markets (last 18 months)</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] text-slate-500 uppercase tracking-wider">Sweet spot:</span>
+          <span class="text-sm font-bold text-cyan-400">10K - 20K</span>
+          ${fpoTag()}
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 space-y-4">
+          ${[['Club','<2,000',100,'bg-gradient-to-r from-emerald-500 to-green-400','Outgrown','badge-green'],['Theater','2K-5K',98,'bg-gradient-to-r from-emerald-500 to-green-400','Outgrown','badge-green'],['Large Venue','5K-10K',96,'bg-gradient-to-r from-green-500 to-emerald-400','Strong','badge-green'],['Arena','10K-20K',91,'bg-gradient-to-r from-cyan-500 to-blue-400','Sweet Spot','badge-blue'],['Stadium','20K-50K',74,'bg-gradient-to-r from-amber-500 to-yellow-400','Scaling','badge-yellow'],['Mega Stadium','50K+',58,'bg-gradient-to-r from-red-500 to-orange-400','Risky','badge-red']].map(([label,range,pct,bg,status,cls]) => `
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-2"><span class="text-sm text-white font-medium">${label}</span><span class="text-[11px] text-slate-500">(${range})</span></div>
+                <div class="flex items-center gap-3"><span class="text-sm font-semibold text-white">${pct}%</span><span class="${cls} text-[10px] px-2 py-0.5 rounded-full font-medium">${status}</span></div>
+              </div>
+              <div class="w-full h-3 rounded-full bg-white/5 overflow-hidden"><div class="h-full rounded-full ${bg}" style="width:${pct}%"></div></div>
+            </div>`).join('')}
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <span class="text-xs text-slate-400 font-medium">Sellthrough by Market</span>
+          <div class="mt-3 space-y-2.5">
+            ${[['Japan',97,'bg-green-400'],['South Korea',92,'bg-green-400'],['SE Asia',88,'bg-green-400'],['US West Coast',82,'bg-cyan-400'],['US East Coast',76,'bg-cyan-400'],['Europe',71,'bg-amber-400'],['Latin America',63,'bg-amber-400'],['Oceania',59,'bg-orange-400']].map(([m,p,c]) => `
+              <div>
+                <div class="flex items-center justify-between mb-1"><span class="text-[11px] text-slate-300">${m}</span><span class="text-[11px] text-white font-semibold">${p}%</span></div>
+                <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden"><div class="h-full rounded-full ${c}" style="width:${p}%"></div></div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+      <!-- Recent shows -->
+      <div class="bg-white/5 rounded-xl p-4 mt-4">
+        <span class="text-xs text-slate-400 font-medium">Recent Shows (Sellthrough Evidence)</span>
+        <table class="w-full mt-3"><thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5"><th class="text-left pb-2">Date</th><th class="text-left pb-2">Venue</th><th class="text-left pb-2">Market</th><th class="text-right pb-2">Capacity</th><th class="text-right pb-2">Sold</th><th class="text-right pb-2">Sellthrough</th></tr></thead>
+        <tbody class="text-[12px]">
+          ${[['Jan 18, 2026','Saitama Super Arena','Japan','37,000','36,260','98%','text-green-400'],['Dec 14, 2025','Budokan','Japan','14,500','14,500','100%','text-green-400'],['Nov 22, 2025','The Forum','Los Angeles','17,500','15,750','90%','text-cyan-400'],['Nov 15, 2025','Barclays Center','New York','19,000','15,960','84%','text-cyan-400'],['Oct 28, 2025','KSPO Dome','Seoul','15,000','14,100','94%','text-green-400']].map(([d,v,m,cap,sold,pct,cls]) => `
+            <tr class="border-b border-white/5"><td class="py-2 text-slate-400">${d}</td><td class="py-2 text-white">${v}</td><td class="py-2 text-slate-400">${m}</td><td class="py-2 text-right text-slate-300">${cap}</td><td class="py-2 text-right text-white">${sold}</td><td class="py-2 text-right"><span class="${cls} font-semibold">${pct}</span></td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- Top Tracks + Financial Summary -->
+    <div class="grid grid-cols-2 gap-4 mb-6">
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">Top Tracks (Spotify)</h3>${fpoTag()}
+        </div>
+        <div class="space-y-2">
+          ${[['Shinunoga E-Wa','HELP EVER HURT NEVER','1.2B'],['Matatabi','LOVE ALL SERVE ALL','487M'],['Damn','HELP EVER HURT NEVER','412M'],['Kirari','HELP EVER HURT NEVER','389M'],['Garden','LOVE ALL SERVE ALL','298M']].map(([track,album,streams],i) => `
+            <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
+              <span class="text-xs text-slate-500 w-5 text-right">${i+1}</span>
+              <div class="flex-1"><div class="text-sm text-white">${track}</div><div class="text-[11px] text-slate-500">${album}</div></div>
+              <span class="text-xs text-slate-400">${streams} streams</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">Tour Financial Summary</h3>${fpoTag()}
+        </div>
+        <div class="chart-container mb-4" style="height:160px"><canvas id="financialChart"></canvas></div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Revenue</div><div class="text-lg font-bold text-white">$4.2M</div></div>
+          <div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Costs</div><div class="text-lg font-bold text-white">$2.8M</div></div>
+          <div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold text-green-400">$1.4M</div></div>
         </div>
       </div>
     </div>
@@ -653,46 +835,51 @@ function selectArtist(spotifyId) {
         <h3 class="font-semibold text-white text-sm">Touring Activity</h3>
       </div>
       <div class="grid grid-cols-4 gap-4">
-        <div class="bg-white/5 rounded-xl p-4 text-center">
-          <div class="text-3xl font-bold text-white">${t.is_touring ? 'Yes' : 'No'}</div>
-          <div class="text-[11px] text-slate-400 mt-1">Currently Touring</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4 text-center">
-          <div class="text-3xl font-bold text-white">${t.recent_event_count}</div>
-          <div class="text-[11px] text-slate-400 mt-1">Recent Events</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4 text-center">
-          <div class="text-3xl font-bold text-white">${t.upcoming_event_count}</div>
-          <div class="text-[11px] text-slate-400 mt-1">Upcoming Events</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4 text-center">
-          <div class="text-3xl font-bold text-white">${t.last_event_date ? relDate(t.last_event_date) : '—'}</div>
-          <div class="text-[11px] text-slate-400 mt-1">Last Event: ${t.last_event_date || '—'}</div>
-        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.is_touring ? 'Yes' : 'No'}</div><div class="text-[11px] text-slate-400 mt-1">Currently Touring</div></div>
+        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.recent_event_count}</div><div class="text-[11px] text-slate-400 mt-1">Recent Events</div></div>
+        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.upcoming_event_count}</div><div class="text-[11px] text-slate-400 mt-1">Upcoming Events</div></div>
+        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.last_event_date ? relDate(t.last_event_date) : '—'}</div><div class="text-[11px] text-slate-400 mt-1">Last Event: ${t.last_event_date || '—'}</div></div>
       </div>
     </div>` : ''}
 
-    <!-- Peer Comparison: surrounding artists -->
+    <!-- News & Sentiment -->
+    <div class="glass rounded-xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-white text-sm">News & Media Mentions</h3>
+        <div class="flex items-center gap-4">
+          ${fpoTag()}
+          <div class="flex items-center gap-2 ml-2">
+            <div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-[11px] text-slate-400">Positive</span>
+            <div class="w-2 h-2 rounded-full bg-slate-400 ml-2"></div><span class="text-[11px] text-slate-400">Neutral</span>
+            <div class="w-2 h-2 rounded-full bg-red-400 ml-2"></div><span class="text-[11px] text-slate-400">Negative</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div class="col-span-2 space-y-2">
+          ${[['${name} announces landmark stadium tour across Asia','Billboard','2 hours ago','bg-green-400'],['"Breakout single" surpasses 1 billion streams on Spotify','NME','1 day ago','bg-green-400'],['${name} featured in Coachella 2026 lineup rumors','Pitchfork','3 days ago','bg-slate-400'],['Industry sources report rising ticket demand','Rolling Stone','5 days ago','bg-green-400']].map(([h,src,time,dot]) => `
+            <div class="flex items-start gap-3 p-3 rounded-lg bg-white/5">
+              <div class="w-2 h-2 rounded-full ${dot} mt-1.5 flex-shrink-0"></div>
+              <div class="flex-1"><div class="text-sm text-white">${h}</div><div class="flex items-center gap-2 mt-1"><span class="text-[11px] text-slate-500">${src}</span><span class="text-[11px] text-slate-600">&middot;</span><span class="text-[11px] text-slate-500">${time}</span></div></div>
+            </div>`).join('')}
+        </div>
+        <div><div class="chart-container" style="height:180px"><canvas id="sentimentChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- Peer Comparison -->
     <div class="glass rounded-xl p-5">
       <h3 class="font-semibold text-white text-sm mb-4">Peer Comparison (by rank)</h3>
       <table class="w-full">
-        <thead>
-          <tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-            <th class="text-left pb-3 pl-3">#</th>
-            <th class="text-left pb-3">Artist</th>
-            <th class="text-right pb-3">Monthly Listeners</th>
-            <th class="text-right pb-3">Daily Change</th>
-            <th class="text-right pb-3">Peak</th>
-            <th class="text-center pb-3">Touring</th>
-            <th class="text-right pb-3 pr-3">% of Peak</th>
-          </tr>
-        </thead>
+        <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+          <th class="text-left pb-3 pl-3">#</th><th class="text-left pb-3">Artist</th><th class="text-right pb-3">Monthly Listeners</th><th class="text-right pb-3">Daily Change</th><th class="text-right pb-3">Peak</th><th class="text-center pb-3">Touring</th><th class="text-right pb-3 pr-3">% of Peak</th>
+        </tr></thead>
         <tbody id="peer-table"></tbody>
       </table>
     </div>
   `;
 
-  // Peer table: 5 above + selected + 5 below
+  // Peer table
   const idx = artists.findIndex(a => a.spotify_id === spotifyId);
   const start = Math.max(0, idx - 5);
   const end = Math.min(artists.length, idx + 6);
@@ -705,22 +892,38 @@ function selectArtist(spotifyId) {
     return `
       <tr class="${isSelf ? 'bg-violet-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${a.spotify_id}')">
         <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-violet-300 font-bold' : 'text-slate-500'}">${a.rank}</td>
-        <td class="py-2.5">
-          <div class="flex items-center gap-2">
-            <div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(a.name)}</div>
-            <span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${a.name}</span>
-            ${isSelf ? '<span class="bg-violet-500/20 text-violet-300 text-[9px] px-1.5 py-0.5 rounded font-medium">Current</span>' : ''}
-          </div>
-        </td>
+        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(a.name)}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${a.name}</span>${isSelf ? '<span class="bg-violet-500/20 text-violet-300 text-[9px] px-1.5 py-0.5 rounded font-medium">Current</span>' : ''}</div></td>
         <td class="py-2.5 text-right text-sm text-white">${fmt(a.monthly_listeners)}</td>
         <td class="py-2.5 text-right text-sm ${aUp ? 'trend-up' : 'trend-down'} font-medium">${aUp?'+':''}${fmt(a.daily_change)}</td>
         <td class="py-2.5 text-right text-sm text-slate-400">${fmt(a.peak_listeners)}</td>
         <td class="py-2.5 text-center">${pt ? (pt.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}</td>
-        <td class="py-2.5 text-right pr-3">
-          ${pct !== null ? `<div class="flex items-center justify-end gap-1"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '—'}
-        </td>
+        <td class="py-2.5 text-right pr-3">${pct !== null ? `<div class="flex items-center justify-end gap-1"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '—'}</td>
       </tr>`;
   }).join('');
+
+  // Render FPO charts
+  renderArtistCharts();
+}
+
+function renderArtistCharts() {
+  // Fee History
+  if (chartInstances.feeHistory) chartInstances.feeHistory.destroy();
+  chartInstances.feeHistory = new Chart(document.getElementById('feeHistoryChart'), {
+    type: 'bar', data: { labels: ['2023','H2 23','2024','H2 24','2025','H2 25','2026'], datasets: [{ label: 'Guarantee ($K)', data: [80,120,150,200,250,300,350], backgroundColor: 'rgba(251,191,36,0.3)', borderColor: '#fbbf24', borderWidth: 1.5, borderRadius: 4, barPercentage: 0.6 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { callback: v => '$'+v+'K' } }, x: { grid: { display: false } } } }
+  });
+  // Financial Doughnut
+  if (chartInstances.financial) chartInstances.financial.destroy();
+  chartInstances.financial = new Chart(document.getElementById('financialChart'), {
+    type: 'doughnut', data: { labels: ['Venue','Production','Artist Fee','Marketing','Staff','Profit'], datasets: [{ data: [800,600,500,400,500,1400], backgroundColor: ['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#818cf8','#4ade80'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 10 } } } } }
+  });
+  // Sentiment Pie
+  if (chartInstances.sentiment) chartInstances.sentiment.destroy();
+  chartInstances.sentiment = new Chart(document.getElementById('sentimentChart'), {
+    type: 'doughnut', data: { labels: ['Positive','Neutral','Negative'], datasets: [{ data: [72,22,6], backgroundColor: ['#4ade80','#94a3b8','#f87171'], borderWidth: 0 }] },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 10 } } } } }
+  });
 }
 
 // ─── VENUES PAGE ───
@@ -820,7 +1023,61 @@ function renderVenuesPage() {
     </div>
   `).join('');
 
+  // Populate Capacity Ladder city dropdown
+  const sortedCities = [...cities].sort((a,b) => a.city.localeCompare(b.city));
+  document.getElementById('ladder-city-select').innerHTML =
+    '<option value="">Select a city...</option>' +
+    sortedCities.map(c => `<option value="${c.city}">${c.city}, ${c.country}</option>`).join('');
+
   renderCityTable();
+}
+
+// ─── CAPACITY LADDER ───
+function renderCapacityLadder() {
+  const cityName = document.getElementById('ladder-city-select').value;
+  const container = document.getElementById('capacity-ladder-content');
+  if (!cityName) {
+    container.innerHTML = '<div class="text-center py-8 text-slate-500 text-sm">Select a city to view its venue ladder</div>';
+    return;
+  }
+  const city = venueData.cities.find(c => c.city === cityName);
+  if (!city || !city.venues.length) {
+    container.innerHTML = '<div class="text-center py-8 text-slate-500 text-sm">No venue data for this city</div>';
+    return;
+  }
+  const sorted = [...city.venues].sort((a,b) => b.capacity - a.capacity);
+  const maxCap = sorted[0].capacity;
+  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#a78bfa', outdoor: '#4ade80' };
+  const typeBg = { stadium: 'bg-red-500/15 text-red-300', arena: 'bg-amber-500/15 text-amber-300', theater: 'bg-cyan-500/15 text-cyan-300', club: 'bg-violet-500/15 text-violet-300', outdoor: 'bg-green-500/15 text-green-300' };
+  const tierCls = { A: 'bg-amber-500/15 text-amber-400', B: 'bg-cyan-500/15 text-cyan-400', C: 'bg-slate-500/15 text-slate-400' };
+
+  container.innerHTML = `
+    <div class="space-y-3">
+      ${sorted.map(v => {
+        const pct = Math.max(8, Math.round((v.capacity / maxCap) * 100));
+        const color = typeColors[v.type] || '#64748b';
+        const tBadge = typeBg[v.type] || 'bg-slate-500/15 text-slate-400';
+        const vTier = tierCls[v.venue_tier] || tierCls.C;
+        return `
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-medium text-white">${v.name}</span>
+                <span class="${tBadge} text-[9px] px-1.5 py-0.5 rounded font-medium">${v.type.toUpperCase()}</span>
+                <span class="${vTier} text-[9px] px-1.5 py-0.5 rounded font-medium">Tier ${v.venue_tier}</span>
+              </div>
+              <span class="text-sm font-semibold text-white">${fmtFull(v.capacity)}</span>
+            </div>
+            <div class="w-full h-5 rounded bg-white/5 overflow-hidden">
+              <div class="h-full rounded" style="width:${pct}%;background:${color};opacity:0.6"></div>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div class="mt-4 flex items-center gap-4 text-[10px] text-slate-500">
+      ${Object.entries(typeColors).map(([t,c]) => `<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full" style="background:${c}"></span>${t.charAt(0).toUpperCase() + t.slice(1)}</span>`).join('')}
+    </div>
+  `;
 }
 
 // ─── CITY TABLE ───
