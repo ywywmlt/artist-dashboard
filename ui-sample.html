@@ -288,7 +288,7 @@
 
 <script>
 // ─── Global State ───
-let artists = [], touringMap = {}, venueData = { cities: [] };
+let artists = [], touringMap = {}, mbMap = {}, venueData = { cities: [] };
 let currentPage = 1, artistsPerPage = 25;
 let cityPage = 1, citiesPerPage = 20;
 let selectedArtist = null;
@@ -344,11 +344,12 @@ function showPage(page) {
 
 // ─── Data Loading ───
 async function loadData() {
-  const [seedRes, touringRes, venueRes, newsRes] = await Promise.all([
+  const [seedRes, touringRes, venueRes, newsRes, mbRes] = await Promise.all([
     fetch('data/raw/kworb_seed.json'),
     fetch('data/raw/touring_data.json'),
     fetch('data/touring-cities-venues.json'),
-    fetch('data/raw/news_alerts.json').catch(() => null)
+    fetch('data/raw/news_alerts.json').catch(() => null),
+    fetch('data/raw/musicbrainz_data.json').catch(() => null)
   ]);
   artists = await seedRes.json();
   const touringArr = await touringRes.json();
@@ -358,6 +359,10 @@ async function loadData() {
     window.newsAlerts = await newsRes.json();
   } else {
     window.newsAlerts = null;
+  }
+  if (mbRes && mbRes.ok) {
+    const mbArr = await mbRes.json();
+    mbArr.forEach(m => { mbMap[m.spotify_id] = m; });
   }
 
   document.getElementById('page-subtitle').innerHTML =
@@ -635,6 +640,7 @@ function selectArtist(spotifyId) {
   selectedArtist = artists.find(a => a.spotify_id === spotifyId);
   if (!selectedArtist) return;
   const t = touringMap[spotifyId] || null;
+  const mb = mbMap[spotifyId] || null;
   showPage('artist');
 
   const pctOfPeak = selectedArtist.peak_listeners ? Math.round((selectedArtist.monthly_listeners / selectedArtist.peak_listeners) * 100) : null;
@@ -645,16 +651,21 @@ function selectArtist(spotifyId) {
     <!-- Header -->
     <div class="glass rounded-xl p-6 accent-glow mb-6">
       <div class="flex items-start gap-6">
-        <div class="w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">${initials(name)}</div>
+        ${mb?.image_url
+          ? `<img src="${mb.image_url}" alt="${name}" class="w-24 h-24 rounded-2xl object-cover flex-shrink-0" onerror="this.outerHTML='<div class=\\'w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0\\'>${initials(name)}</div>'">`
+          : `<div class="w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">${initials(name)}</div>`
+        }
         <div class="flex-1">
           <div class="flex items-center gap-3 mb-1">
             <h2 class="text-2xl font-bold text-white">${name}</h2>
             ${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full font-medium">Touring</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full font-medium">Not Touring</span>') : ''}
             <span class="text-sm text-slate-500">Rank #${selectedArtist.rank}</span>
           </div>
-          <div class="flex items-center gap-4 text-sm text-slate-400 mb-4">
+          <div class="flex items-center gap-4 text-sm text-slate-400 mb-2">
             <span>Spotify ID: <code class="text-xs text-slate-500">${selectedArtist.spotify_id}</code></span>
+            ${mb?.country ? `<span class="text-xs text-slate-400">${mb.country}</span>` : ''}
           </div>
+          ${mb?.genres?.length ? `<div class="flex flex-wrap gap-1.5 mb-3">${mb.genres.map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 font-medium">${g}</span>`).join('')}</div>` : ''}
           <div class="grid grid-cols-4 gap-4">
             <div class="bg-white/5 rounded-lg p-3">
               <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Monthly Listeners</div>
@@ -685,17 +696,28 @@ function selectArtist(spotifyId) {
     <div class="grid grid-cols-2 gap-4 mb-6">
       <div class="glass rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-white text-sm">Social Media</h3>${fpoTag()}
+          <h3 class="font-semibold text-white text-sm">Social Media</h3>${mb ? '<span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded ml-2">LIVE</span>' : fpoTag()}
         </div>
         <div class="space-y-3">
-          ${[{p:'Instagram',icon:'from-purple-500 to-pink-500',val:'4.8M',chg:'+2.3%'},{p:'TikTok',icon:'from-slate-700 to-slate-900',val:'3.2M',chg:'+5.7%'},{p:'YouTube',icon:'from-red-600 to-red-500',val:'5.1M',chg:'+1.8%'},{p:'X (Twitter)',icon:'from-slate-700 to-slate-800',val:'1.1M',chg:'+0.9%'}].map(s => `
-            <div class="flex items-center justify-between p-3 rounded-lg bg-white/5">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${s.icon} flex items-center justify-center text-xs text-white font-bold">${s.p[0]}</div>
-                <div><div class="text-sm font-medium text-white">${s.p}</div><div class="text-[11px] text-slate-500">@${name.toLowerCase().replace(/\\s/g,'')}</div></div>
-              </div>
-              <div class="text-right"><div class="text-sm font-semibold text-white">${s.val}</div><div class="text-[11px] text-green-400">${s.chg}</div></div>
-            </div>`).join('')}
+          ${(() => {
+            const socials = [
+              { key: 'instagram', name: 'Instagram', icon: 'from-purple-500 to-pink-500', letter: 'I', url: h => 'https://instagram.com/' + h },
+              { key: 'youtube', name: 'YouTube', icon: 'from-red-600 to-red-500', letter: 'Y', url: h => 'https://youtube.com/@' + h },
+              { key: 'tiktok', name: 'TikTok', icon: 'from-slate-700 to-slate-900', letter: 'T', url: h => 'https://tiktok.com/@' + h },
+              { key: 'twitter', name: 'X (Twitter)', icon: 'from-slate-700 to-slate-800', letter: 'X', url: h => 'https://x.com/' + h }
+            ];
+            if (!mb) return '<div class="text-sm text-slate-500 text-center py-4">No MusicBrainz data loaded</div>';
+            const found = socials.filter(s => mb[s.key]);
+            if (found.length === 0) return '<div class="text-sm text-slate-500 text-center py-4">No social accounts found</div>';
+            return found.map(s => `
+              <a href="${s.url(mb[s.key])}" target="_blank" rel="noopener" class="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${s.icon} flex items-center justify-center text-xs text-white font-bold">${s.letter}</div>
+                  <div><div class="text-sm font-medium text-white">${s.name}</div><div class="text-[11px] text-slate-500">@${mb[s.key]}</div></div>
+                </div>
+                <svg class="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+              </a>`).join('');
+          })()}
         </div>
       </div>
       <div class="glass rounded-xl p-5">
