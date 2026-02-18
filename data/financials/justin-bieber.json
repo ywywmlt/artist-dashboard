@@ -140,6 +140,16 @@
         }
       },
       {
+        "particulars": "Production",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 1500000.0,
+          "Tokyo (show 3)": 1500000.0
+        }
+      },
+      {
         "particulars": "Advertising & Promotion",
         "notes": "Variable",
         "assumption": "",
@@ -242,15 +252,15 @@
     ],
     "total": {
       "Tokyo": null,
-      "Tokyo (show 2)": 10500000.0,
-      "Tokyo (show 3)": 10500000.0
+      "Tokyo (show 2)": 12000000.0,
+      "Tokyo (show 3)": 12000000.0
     }
   },
   "summary": {
     "broker_fee": 500000.0,
-    "total_cost": 21500000.0,
+    "total_cost": 24500000.0,
     "total_ticket_revenue": 23019175.46,
-    "profit": 1519175.46,
-    "roi": 0.070659
+    "profit": -1480824.54,
+    "roi": -0.060442
   }
 }
