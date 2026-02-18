@@ -9,8 +9,8 @@
         "venue_capacity": 53000,
         "occupancy_rate": 1.0,
         "expected_attendance": 0,
-        "avg_ticket_price": 217.16,
-        "ticket_revenue": 11509587.73
+        "avg_ticket_price": 165.95,
+        "ticket_revenue": 8795350.0
       },
       {
         "city": "Tokyo",
@@ -18,8 +18,8 @@
         "venue_capacity": 53000,
         "occupancy_rate": 1.0,
         "expected_attendance": 0,
-        "avg_ticket_price": 217.16,
-        "ticket_revenue": 11509587.73
+        "avg_ticket_price": 165.95,
+        "ticket_revenue": 8795350.0
       }
     ],
     "markets": [
@@ -46,69 +46,123 @@
           }
         ],
         "total_capacity": 106000,
-        "total_revenue": 23019175.46
+        "total_revenue": 17590700.0
       }
     ],
     "grand_total": {
       "total_capacity": 106000,
-      "avg_ticket_price": 217.16,
-      "total_revenue": 23019175.46
+      "avg_ticket_price": 165.95,
+      "total_revenue": 17590700.0
     }
   },
   "seat_assumptions": {
     "pricing": {
-      "GA Standing (avg cross GA1-GA4)": {
+      "VIP Gold": {
         "Tokyo": {
-          "aggressive": 160.0,
-          "conservative": 160.0
+          "aggressive": 787.63,
+          "conservative": 748.25
         }
       },
-      "Designated Seating - Lower Bowl": {
+      "VIP Silver": {
         "Tokyo": {
-          "aggressive": 250.0,
-          "conservative": 220.0
+          "aggressive": 332.97,
+          "conservative": 316.32
         }
       },
-      "Designated Seating - Mid Bowl": {
+      "VIP Balcony": {
         "Tokyo": {
-          "aggressive": 220.0,
-          "conservative": 220.0
+          "aggressive": 206.3,
+          "conservative": 195.99
         }
       },
-      "VIP Lounge": {
+      "Front Restricted 1F": {
         "Tokyo": {
-          "aggressive": 800.0,
-          "conservative": 500.0
+          "aggressive": 78.67,
+          "conservative": 74.74
         }
       },
-      "VVIP Lounge / Pre-Show Party Package": {
+      "Front Restricted 2F": {
         "Tokyo": {
-          "aggressive": 1500.0,
-          "conservative": 1500.0
+          "aggressive": 65.33,
+          "conservative": 62.06
+        }
+      },
+      "SS Seat": {
+        "Tokyo": {
+          "aggressive": 199.63,
+          "conservative": 189.65
+        }
+      },
+      "S Seat": {
+        "Tokyo": {
+          "aggressive": 126.3,
+          "conservative": 119.98
+        }
+      },
+      "A Seat": {
+        "Tokyo": {
+          "aggressive": 106.3,
+          "conservative": 100.98
+        }
+      },
+      "B Seat": {
+        "Tokyo": {
+          "aggressive": 66.3,
+          "conservative": 62.98
+        }
+      },
+      "Gold Box (group)": {
+        "Tokyo": {
+          "aggressive": 232.97,
+          "conservative": 221.32
+        }
+      },
+      "Silver Box (group)": {
+        "Tokyo": {
+          "aggressive": 172.97,
+          "conservative": 164.32
         }
       }
     },
     "counts": {
-      "GA Standing (avg cross GA1-GA4)": {
-        "Tokyo": 30000
-      },
-      "Designated Seating - Lower Bowl": {
-        "Tokyo": 10000
-      },
-      "Designated Seating - Mid Bowl": {
-        "Tokyo": 10000
-      },
-      "VIP Lounge": {
+      "VIP Gold": {
         "Tokyo": 2000
       },
-      "VVIP Lounge / Pre-Show Party Package": {
-        "Tokyo": 150
+      "VIP Silver": {
+        "Tokyo": 4000
+      },
+      "VIP Balcony": {
+        "Tokyo": 4000
+      },
+      "Front Restricted 1F": {
+        "Tokyo": 1500
+      },
+      "Front Restricted 2F": {
+        "Tokyo": 1500
+      },
+      "SS Seat": {
+        "Tokyo": 8000
+      },
+      "S Seat": {
+        "Tokyo": 10000
+      },
+      "A Seat": {
+        "Tokyo": 11500
+      },
+      "B Seat": {
+        "Tokyo": 10000
+      },
+      "Gold Box (group)": {
+        "Tokyo": 250
+      },
+      "Silver Box (group)": {
+        "Tokyo": 250
       }
     },
     "totals": {
       "Tokyo": {
-        "total_seats": 52150,
-        "total_revenue": 11325000.0
+        "total_seats": 53000,
+        "total_revenue": 8795315.0
       }
     }
   },
@@ -249,8 +303,8 @@
   "summary": {
     "broker_fee": 500000.0,
     "total_cost": 18500000.0,
-    "total_ticket_revenue": 23019175.46,
-    "profit": 4519175.46,
-    "roi": 0.2443
+    "total_ticket_revenue": 17590700.0,
+    "profit": -909300.0,
+    "roi": -0.049151
   }
 }
