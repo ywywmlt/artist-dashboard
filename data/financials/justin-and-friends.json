@@ -142,9 +142,9 @@
         "notes": "as a % of Gross Revenue",
         "assumption": "",
         "values": {
-          "Seoul (show 1)": 3000000.0,
-          "Seoul (show 2)": 3000000.0,
-          "Seoul (show 3)": 3000000.0
+          "Seoul (show 1)": 400000.0,
+          "Seoul (show 2)": 400000.0,
+          "Seoul (show 3)": 400000.0
         }
       },
       {
@@ -272,16 +272,16 @@
       "Tokyo": null,
       "Tokyo (show 2)": 12000000.0,
       "Tokyo (show 3)": 12000000.0,
-      "Seoul (show 1)": 11000000.0,
-      "Seoul (show 2)": 11000000.0,
-      "Seoul (show 3)": 11000000.0
+      "Seoul (show 1)": 8400000.0,
+      "Seoul (show 2)": 8400000.0,
+      "Seoul (show 3)": 8400000.0
     }
   },
   "summary": {
     "broker_fee": 500000.0,
-    "total_cost": 33500000.0,
+    "total_cost": 25700000.0,
     "total_ticket_revenue": 33411150.0,
-    "profit": -88850.0,
-    "roi": -0.002652
+    "profit": 7711150.0,
+    "roi": 0.300045
   }
 }
