@@ -68,7 +68,7 @@
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         Tour Calendar
       </a>
-      <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+      <a href="#" onclick="showPage('financials')" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-financials">
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Financials
       </a>
@@ -344,6 +344,32 @@
 
     </div>
 
+    <!-- FINANCIALS PAGE -->
+    <div id="page-financials" class="page p-6 space-y-6">
+      <!-- Artist Selector -->
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div>
+              <h3 class="font-semibold text-white text-sm">Tour Financial Model</h3>
+              <p class="text-[11px] text-slate-500">Revenue assumptions, seat pricing, cost breakdown &amp; P&amp;L</p>
+            </div>
+          </div>
+          <select id="fin-artist-select" class="bg-white/5 border border-white/10 rounded-lg text-sm text-white px-4 py-2 focus:outline-none focus:border-violet-500/50" onchange="loadFinancialModel(this.value)">
+            <option value="">Select an artist...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Content populated by JS -->
+      <div id="fin-content">
+        <div class="text-center py-20 text-slate-500">Select an artist above to view their financial model.</div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -356,6 +382,9 @@ let selectedArtist = null;
 let chartInstances = {};
 let calendarEvents = [];
 let calendarLoaded = false;
+let financialsLoaded = false;
+let finIndex = [];
+let currentFinData = null;
 
 // ─── Helpers ───
 function fmt(n) {
@@ -401,9 +430,10 @@ function showPage(page) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('nav-' + page)?.classList.add('active');
-  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar' };
+  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials' };
   document.getElementById('page-title').textContent = titles[page] || page;
   if (page === 'calendar' && !calendarLoaded) loadCalendarData();
+  if (page === 'financials' && !financialsLoaded) initFinancials();
 }
 
 // ─── Data Loading ───
@@ -1504,6 +1534,286 @@ function calEventCard(e) {
         </a>
       </div>
     </div>`;
+}
+
+// ─── FINANCIALS PAGE ───
+
+async function initFinancials() {
+  financialsLoaded = true;
+  try {
+    const res = await fetch('data/financials/index.json');
+    if (!res.ok) throw new Error('No index');
+    finIndex = await res.json();
+  } catch(e) {
+    finIndex = [];
+  }
+  const sel = document.getElementById('fin-artist-select');
+  finIndex.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.slug;
+    opt.textContent = a.artist;
+    sel.appendChild(opt);
+  });
+  // Auto-load if only one artist
+  if (finIndex.length === 1) {
+    sel.value = finIndex[0].slug;
+    loadFinancialModel(finIndex[0].slug);
+  }
+}
+
+async function loadFinancialModel(slug) {
+  if (!slug) {
+    document.getElementById('fin-content').innerHTML = '<div class="text-center py-20 text-slate-500">Select an artist above to view their financial model.</div>';
+    return;
+  }
+  document.getElementById('fin-content').innerHTML = '<div class="text-center py-16 text-slate-500">Loading...</div>';
+  try {
+    const res = await fetch(`data/financials/${slug}.json`);
+    if (!res.ok) throw new Error('Not found');
+    currentFinData = await res.json();
+    renderFinancials(currentFinData);
+  } catch(e) {
+    document.getElementById('fin-content').innerHTML = `<div class="text-center py-16 text-red-400">Failed to load model for ${slug}</div>`;
+  }
+}
+
+function fmtDollar(v) {
+  if (v == null) return '—';
+  if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if (Math.abs(v) >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+  return '$' + v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtPct(v) { return v == null ? '—' : (v * 100).toFixed(2) + '%'; }
+function fmtNum(v) { return v == null ? '—' : v.toLocaleString(); }
+
+function renderFinancials(d) {
+  const s = d.summary;
+  const rev = d.revenue;
+  const seats = d.seat_assumptions;
+  const costs = d.costs;
+
+  // ── KPI cards ──
+  const roiColor = s.roi > 0 ? 'text-emerald-400' : 'text-red-400';
+  const profitColor = s.profit > 0 ? 'text-emerald-400' : 'text-red-400';
+
+  const kpis = `
+    <div class="grid grid-cols-5 gap-4">
+      <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Revenue</div>
+        <div class="text-2xl font-bold text-white">${fmtDollar(s.total_ticket_revenue)}</div>
+        <div class="text-[11px] text-slate-400 mt-1">${rev.markets.map(m => m.city).join(', ')}</div>
+      </div>
+      <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Cost</div>
+        <div class="text-2xl font-bold text-white">${fmtDollar(s.total_cost)}</div>
+        <div class="text-[11px] text-slate-400 mt-1">incl. broker fee</div>
+      </div>
+      <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Net Profit</div>
+        <div class="text-2xl font-bold ${profitColor}">${fmtDollar(s.profit)}</div>
+        <div class="text-[11px] text-slate-400 mt-1">${s.profit > 0 ? 'Profitable' : 'Loss'}</div>
+      </div>
+      <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI</div>
+        <div class="text-2xl font-bold ${roiColor}">${fmtPct(s.roi)}</div>
+        <div class="text-[11px] text-slate-400 mt-1">return on cost</div>
+      </div>
+      <div class="kpi-card rounded-xl p-5 transition-all duration-300">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Broker Fee</div>
+        <div class="text-2xl font-bold text-white">${fmtDollar(s.broker_fee)}</div>
+        <div class="text-[11px] text-slate-400 mt-1">${fmtNum(rev.shows.length)} show${rev.shows.length !== 1 ? 's' : ''}</div>
+      </div>
+    </div>`;
+
+  // ── Revenue assumptions table ──
+  const revRows = rev.shows.map((show, i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-2.5 pl-3 text-sm text-slate-300">${show.city}</td>
+      <td class="py-2.5 text-sm text-slate-400">${show.schedule || `Show ${i+1}`}</td>
+      <td class="py-2.5 text-right text-sm text-white">${fmtNum(show.venue_capacity)}</td>
+      <td class="py-2.5 text-right text-sm text-white">${show.occupancy_rate != null ? (show.occupancy_rate * 100).toFixed(0) + '%' : '—'}</td>
+      <td class="py-2.5 text-right text-sm text-white">${fmtNum(show.expected_attendance) !== '0' ? fmtNum(show.expected_attendance) : fmtNum(Math.round((show.venue_capacity || 0) * (show.occupancy_rate || 1)))}</td>
+      <td class="py-2.5 text-right text-sm text-white">${show.avg_ticket_price != null ? '$' + show.avg_ticket_price.toFixed(2) : '—'}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-semibold text-emerald-400">${fmtDollar(show.ticket_revenue)}</td>
+    </tr>`).join('');
+
+  const revTotal = rev.grand_total;
+  const revenueSection = `
+    <div class="glass rounded-xl p-5">
+      <h3 class="font-semibold text-white text-sm mb-4">Revenue Assumptions</h3>
+      <table class="w-full">
+        <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+          <th class="text-left pb-3 pl-3">Market</th>
+          <th class="text-left pb-3">Schedule</th>
+          <th class="text-right pb-3">Venue Capacity</th>
+          <th class="text-right pb-3">Occupancy</th>
+          <th class="text-right pb-3">Expected Attendance</th>
+          <th class="text-right pb-3">Avg Ticket Price</th>
+          <th class="text-right pb-3 pr-3">Ticket Revenue</th>
+        </tr></thead>
+        <tbody>${revRows}</tbody>
+        ${revTotal ? `<tfoot><tr class="border-t border-white/10">
+          <td class="py-3 pl-3 text-sm font-bold text-white">Total</td>
+          <td></td>
+          <td class="py-3 text-right text-sm font-semibold text-white">${fmtNum(revTotal.total_capacity)}</td>
+          <td></td>
+          <td></td>
+          <td class="py-3 text-right text-sm text-white">$${(revTotal.avg_ticket_price||0).toFixed(2)}</td>
+          <td class="py-3 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(revTotal.total_revenue)}</td>
+        </tr></tfoot>` : ''}
+      </table>
+    </div>`;
+
+  // ── Seat assumptions ──
+  const categories = Object.keys(seats.pricing);
+  const markets = [...new Set(categories.flatMap(c => Object.keys(seats.pricing[c])))];
+  const pricingRows = categories.map(cat => {
+    const cells = markets.flatMap(mkt => {
+      const p = seats.pricing[cat]?.[mkt] || {};
+      return [
+        `<td class="py-2.5 text-right text-sm text-white">${p.aggressive != null ? '$' + p.aggressive.toFixed(2) : '—'}</td>`,
+        `<td class="py-2.5 text-right text-sm text-slate-400">${p.conservative != null ? '$' + p.conservative.toFixed(2) : '—'}</td>`
+      ];
+    }).join('');
+    const cnt = seats.counts[cat];
+    const countCells = markets.map(mkt => `<td class="py-2.5 text-right text-sm text-white">${cnt?.[mkt] != null ? fmtNum(cnt[mkt]) : '—'}</td>`).join('');
+    return `<tr class="border-b border-white/5">
+      <td class="py-2.5 pl-3 text-sm text-slate-300">${cat}</td>
+      ${cells}${countCells}
+    </tr>`;
+  }).join('');
+
+  const seatHeaderCols = markets.flatMap(mkt => [
+    `<th class="text-right pb-3">${mkt} (Agg)</th>`,
+    `<th class="text-right pb-3">${mkt} (Con)</th>`
+  ]).join('') + markets.map(mkt => `<th class="text-right pb-3">${mkt} Seats</th>`).join('');
+
+  const totalRow = (() => {
+    if (!Object.keys(seats.totals).length) return '';
+    const cells = markets.flatMap(() => ['<td></td>','<td></td>']).join('');
+    const totCells = markets.map(mkt => {
+      const t = seats.totals[mkt];
+      return `<td class="py-3 text-right text-sm font-bold text-white">${t ? fmtNum(t.total_seats) : '—'}</td>`;
+    }).join('');
+    const revCells = markets.map(mkt => {
+      const t = seats.totals[mkt];
+      return t?.total_revenue != null ? fmtDollar(t.total_revenue) : '';
+    }).filter(Boolean).join(' / ');
+    return `<tfoot><tr class="border-t border-white/10">
+      <td class="py-3 pl-3 text-sm font-bold text-white">Total${revCells ? ' — ' + revCells : ''}</td>
+      ${cells}${totCells}
+    </tr></tfoot>`;
+  })();
+
+  const seatSection = `
+    <div class="glass rounded-xl p-5">
+      <h3 class="font-semibold text-white text-sm mb-4">Seat Assumptions</h3>
+      <table class="w-full">
+        <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+          <th class="text-left pb-3 pl-3">Category</th>
+          ${seatHeaderCols}
+        </tr></thead>
+        <tbody>${pricingRows}</tbody>
+        ${totalRow}
+      </table>
+    </div>`;
+
+  // ── Costs table ──
+  const costCols = costs.columns;
+  const costColHeaders = costCols.map(c => `<th class="text-right pb-3">${c}</th>`).join('');
+  const costRows = costs.line_items.map(item => {
+    const hasValue = Object.values(item.values).some(v => v != null);
+    const valCells = costCols.map(col => {
+      const v = item.values[col];
+      return `<td class="py-2.5 text-right text-sm ${v != null ? 'text-white' : 'text-slate-600'}">${v != null ? fmtDollar(v) : (item.notes === 'Variable' ? '<span class="text-[10px] text-amber-500/70">Variable</span>' : '—')}</td>`;
+    }).join('');
+    return `<tr class="border-b border-white/5 ${!hasValue ? 'opacity-60' : ''}">
+      <td class="py-2.5 pl-3 text-sm text-slate-300">${item.particulars}</td>
+      <td class="py-2.5 text-[11px] text-slate-500">${item.notes}</td>
+      ${valCells}
+    </tr>`;
+  }).join('');
+
+  const costTotalCells = costCols.map(col => {
+    const v = costs.total[col];
+    return `<td class="py-3 text-right text-sm font-bold text-red-400">${v != null ? fmtDollar(v) : '—'}</td>`;
+  }).join('');
+
+  const costSection = `
+    <div class="glass rounded-xl p-5">
+      <h3 class="font-semibold text-white text-sm mb-4">Cost Assumptions</h3>
+      <table class="w-full">
+        <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+          <th class="text-left pb-3 pl-3">Item</th>
+          <th class="text-left pb-3">Notes</th>
+          ${costColHeaders}
+        </tr></thead>
+        <tbody>${costRows}</tbody>
+        <tfoot><tr class="border-t border-white/10">
+          <td class="py-3 pl-3 text-sm font-bold text-white">Total</td>
+          <td></td>
+          ${costTotalCells}
+        </tr></tfoot>
+      </table>
+    </div>`;
+
+  // ── P&L Summary + chart ──
+  const plSection = `
+    <div class="grid grid-cols-3 gap-4">
+      <div class="glass rounded-xl p-5 col-span-2">
+        <h3 class="font-semibold text-white text-sm mb-4">P&amp;L Summary</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between py-2 border-b border-white/5">
+            <span class="text-sm text-slate-400">Total Ticket Revenue</span>
+            <span class="text-sm font-semibold text-emerald-400">${fmtDollar(s.total_ticket_revenue)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-white/5">
+            <span class="text-sm text-slate-400">Total Cost (excl. broker)</span>
+            <span class="text-sm font-semibold text-red-400">(${fmtDollar(s.total_cost - (s.broker_fee || 0))})</span>
+          </div>
+          <div class="flex items-center justify-between py-2 border-b border-white/5">
+            <span class="text-sm text-slate-400">Broker Fee</span>
+            <span class="text-sm font-semibold text-red-400">(${fmtDollar(s.broker_fee)})</span>
+          </div>
+          <div class="flex items-center justify-between py-3">
+            <span class="text-base font-bold text-white">Net Profit</span>
+            <span class="text-base font-bold ${profitColor}">${fmtDollar(s.profit)}</span>
+          </div>
+          <div class="flex items-center justify-between py-2 bg-white/5 rounded-lg px-3">
+            <span class="text-sm text-slate-400">ROI</span>
+            <span class="text-sm font-bold ${roiColor}">${fmtPct(s.roi)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="glass rounded-xl p-5">
+        <h3 class="font-semibold text-white text-sm mb-4">Cost Breakdown</h3>
+        <div class="chart-container" style="height:200px"><canvas id="finBreakdownChart"></canvas></div>
+      </div>
+    </div>`;
+
+  document.getElementById('fin-content').innerHTML = kpis + '<div class="space-y-4">' + revenueSection + seatSection + costSection + plSection + '</div>';
+
+  // Render cost breakdown chart
+  const namedCosts = costs.line_items
+    .filter(item => Object.values(item.values).some(v => v != null))
+    .map(item => {
+      const total = Object.values(item.values).reduce((s, v) => s + (v || 0), 0);
+      return { label: item.particulars.length > 24 ? item.particulars.slice(0, 22) + '…' : item.particulars, value: total };
+    })
+    .filter(x => x.value > 0);
+
+  if (chartInstances.finBreakdown) chartInstances.finBreakdown.destroy();
+  chartInstances.finBreakdown = new Chart(document.getElementById('finBreakdownChart'), {
+    type: 'doughnut',
+    data: {
+      labels: namedCosts.map(x => x.label),
+      datasets: [{ data: namedCosts.map(x => x.value), backgroundColor: ['#6366f1','#8b5cf6','#a78bfa','#4ade80','#f59e0b','#ef4444','#06b6d4','#84cc16'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '60%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 9 } } } }
+    }
+  });
 }
 
 // ─── Chart.js defaults ───
