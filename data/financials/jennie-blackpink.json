@@ -6,20 +6,20 @@
       {
         "city": "Tokyo",
         "schedule": "",
-        "venue_capacity": 53000,
+        "venue_capacity": 40000,
         "occupancy_rate": 1.0,
-        "expected_attendance": 0,
-        "avg_ticket_price": 217.16,
-        "ticket_revenue": 11509587.73
+        "expected_attendance": 40000,
+        "avg_ticket_price": 207.59,
+        "ticket_revenue": 8303600.0
       },
       {
         "city": "Tokyo",
         "schedule": "",
-        "venue_capacity": 53000,
+        "venue_capacity": 40000,
         "occupancy_rate": 1.0,
-        "expected_attendance": 0,
-        "avg_ticket_price": 217.16,
-        "ticket_revenue": 11509587.73
+        "expected_attendance": 40000,
+        "avg_ticket_price": 207.59,
+        "ticket_revenue": 8303600.0
       }
     ],
     "markets": [
@@ -29,77 +29,77 @@
           {
             "city": "Tokyo",
             "schedule": "",
-            "venue_capacity": 53000,
+            "venue_capacity": 40000,
             "occupancy_rate": 1.0,
-            "expected_attendance": 0,
-            "avg_ticket_price": 217.16,
-            "ticket_revenue": 11509587.73
+            "expected_attendance": 40000,
+            "avg_ticket_price": 207.59,
+            "ticket_revenue": 8303600.0
           },
           {
             "city": "Tokyo",
             "schedule": "",
-            "venue_capacity": 53000,
+            "venue_capacity": 40000,
             "occupancy_rate": 1.0,
-            "expected_attendance": 0,
-            "avg_ticket_price": 217.16,
-            "ticket_revenue": 11509587.73
+            "expected_attendance": 40000,
+            "avg_ticket_price": 207.59,
+            "ticket_revenue": 8303600.0
           }
         ],
-        "total_capacity": 106000,
-        "total_revenue": 23019175.46
+        "total_capacity": 80000,
+        "total_revenue": 16607200.0
       }
     ],
     "grand_total": {
-      "total_capacity": 106000,
-      "avg_ticket_price": 217.16,
-      "total_revenue": 23019175.46
+      "total_capacity": 80000,
+      "avg_ticket_price": 207.59,
+      "total_revenue": 16607200.0
     }
   },
   "seat_assumptions": {
     "pricing": {
       "GA Standing (avg cross GA1-GA4)": {
         "Tokyo": {
-          "aggressive": 160.0,
-          "conservative": 160.0
+          "aggressive": 152.0,
+          "conservative": 152.0
         }
       },
       "Designated Seating - Lower Bowl": {
         "Tokyo": {
-          "aggressive": 250.0,
-          "conservative": 220.0
+          "aggressive": 237.5,
+          "conservative": 209.0
         }
       },
       "Designated Seating - Mid Bowl": {
         "Tokyo": {
-          "aggressive": 220.0,
-          "conservative": 220.0
+          "aggressive": 209.0,
+          "conservative": 209.0
         }
       },
       "VIP Lounge": {
         "Tokyo": {
-          "aggressive": 800.0,
-          "conservative": 500.0
+          "aggressive": 760.0,
+          "conservative": 475.0
         }
       },
       "VVIP Lounge / Pre-Show Party Package": {
         "Tokyo": {
-          "aggressive": 1500.0,
-          "conservative": 1500.0
+          "aggressive": 1425.0,
+          "conservative": 1425.0
         }
       }
     },
     "counts": {
       "GA Standing (avg cross GA1-GA4)": {
-        "Tokyo": 30000
+        "Tokyo": 23000
       },
       "Designated Seating - Lower Bowl": {
-        "Tokyo": 10000
+        "Tokyo": 7650
       },
       "Designated Seating - Mid Bowl": {
-        "Tokyo": 10000
+        "Tokyo": 7650
       },
       "VIP Lounge": {
-        "Tokyo": 2000
+        "Tokyo": 1550
       },
       "VVIP Lounge / Pre-Show Party Package": {
         "Tokyo": 150
@@ -107,8 +107,8 @@
     },
     "totals": {
       "Tokyo": {
-        "total_seats": 52150,
-        "total_revenue": 11325000.0
+        "total_seats": 40000,
+        "total_revenue": 8303475.0
       }
     }
   },
@@ -259,8 +259,8 @@
   "summary": {
     "broker_fee": 500000.0,
     "total_cost": 15500000.0,
-    "total_ticket_revenue": 23019175.46,
-    "profit": 7519175.46,
-    "roi": 0.485108
+    "total_ticket_revenue": 16607200.0,
+    "profit": 1107200.0,
+    "roi": 0.071432
   }
 }
