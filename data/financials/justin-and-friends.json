@@ -1,0 +1,287 @@
+{
+  "artist": "Justin & Friends",
+  "slug": "justin-and-friends",
+  "revenue": {
+    "shows": [
+      {
+        "city": "Seoul",
+        "schedule": "",
+        "venue_capacity": 45000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 45000,
+        "avg_ticket_price": 247.49,
+        "ticket_revenue": 11137050.0
+      },
+      {
+        "city": "Seoul",
+        "schedule": "",
+        "venue_capacity": 45000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 45000,
+        "avg_ticket_price": 247.49,
+        "ticket_revenue": 11137050.0
+      },
+      {
+        "city": "Seoul",
+        "schedule": "",
+        "venue_capacity": 45000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 45000,
+        "avg_ticket_price": 247.49,
+        "ticket_revenue": 11137050.0
+      }
+    ],
+    "markets": [
+      {
+        "city": "Seoul",
+        "shows": [
+          {
+            "city": "Seoul",
+            "schedule": "",
+            "venue_capacity": 45000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 45000,
+            "avg_ticket_price": 247.49,
+            "ticket_revenue": 11137050.0
+          },
+          {
+            "city": "Seoul",
+            "schedule": "",
+            "venue_capacity": 45000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 45000,
+            "avg_ticket_price": 247.49,
+            "ticket_revenue": 11137050.0
+          },
+          {
+            "city": "Seoul",
+            "schedule": "",
+            "venue_capacity": 45000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 45000,
+            "avg_ticket_price": 247.49,
+            "ticket_revenue": 11137050.0
+          }
+        ],
+        "total_capacity": 135000,
+        "total_revenue": 33411150.0
+      }
+    ],
+    "grand_total": {
+      "total_capacity": 135000,
+      "avg_ticket_price": 247.49,
+      "total_revenue": 33411150.0
+    }
+  },
+  "seat_assumptions": {
+    "pricing": {
+      "GA Standing (avg cross GA1-GA4)": {
+        "Seoul": {
+          "aggressive": 184.0,
+          "conservative": 184.0
+        }
+      },
+      "Designated Seating - Lower Bowl": {
+        "Seoul": {
+          "aggressive": 287.5,
+          "conservative": 253.0
+        }
+      },
+      "Designated Seating - Mid Bowl": {
+        "Seoul": {
+          "aggressive": 253.0,
+          "conservative": 253.0
+        }
+      },
+      "VIP Lounge": {
+        "Seoul": {
+          "aggressive": 920.0,
+          "conservative": 575.0
+        }
+      },
+      "VVIP Lounge / Pre-Show Party Package": {
+        "Seoul": {
+          "aggressive": 1725.0,
+          "conservative": 1725.0
+        }
+      }
+    },
+    "counts": {
+      "GA Standing (avg cross GA1-GA4)": {
+        "Seoul": 25900
+      },
+      "Designated Seating - Lower Bowl": {
+        "Seoul": 8650
+      },
+      "Designated Seating - Mid Bowl": {
+        "Seoul": 8650
+      },
+      "VIP Lounge": {
+        "Seoul": 1750
+      },
+      "VVIP Lounge / Pre-Show Party Package": {
+        "Seoul": 50
+      }
+    },
+    "totals": {
+      "Seoul": {
+        "total_seats": 45000,
+        "total_revenue": 11137175.0
+      }
+    }
+  },
+  "costs": {
+    "columns": [
+      "Seoul (show 1)",
+      "Seoul (show 2)",
+      "Seoul (show 3)"
+    ],
+    "line_items": [
+      {
+        "particulars": "Venue Fees",
+        "notes": "as a % of Gross Revenue",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": 3000000.0,
+          "Seoul (show 2)": 3000000.0,
+          "Seoul (show 3)": 3000000.0
+        }
+      },
+      {
+        "particulars": "Hospitality",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": 1000000.0,
+          "Seoul (show 2)": 1000000.0,
+          "Seoul (show 3)": 1000000.0
+        }
+      },
+      {
+        "particulars": "Production",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": 500000.0,
+          "Seoul (show 2)": 500000.0,
+          "Seoul (show 3)": 500000.0
+        }
+      },
+      {
+        "particulars": "Advertising & Promotion",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Part Time Staffing",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Licenses & Permits",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Public Liability Insurance",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Cancellation/ Postponement Insurance to cover gross sales profit",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Catering & Backstage Groceries",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Miscellaneous Costs",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Music Copyright Fee - COMPASS",
+        "notes": "as a % of Gross Revenue",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Goods & Service Tax",
+        "notes": "as a % of Gross Revenue",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": null,
+          "Seoul (show 2)": null,
+          "Seoul (show 3)": null
+        }
+      },
+      {
+        "particulars": "Artist Fee",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Seoul (show 1)": 6500000.0,
+          "Seoul (show 2)": 6500000.0,
+          "Seoul (show 3)": 6500000.0
+        }
+      }
+    ],
+    "total": {
+      "Tokyo": null,
+      "Tokyo (show 2)": 12000000.0,
+      "Tokyo (show 3)": 12000000.0,
+      "Seoul (show 1)": 11000000.0,
+      "Seoul (show 2)": 11000000.0,
+      "Seoul (show 3)": 11000000.0
+    }
+  },
+  "summary": {
+    "broker_fee": 500000.0,
+    "total_cost": 33500000.0,
+    "total_ticket_revenue": 33411150.0,
+    "profit": -88850.0,
+    "roi": -0.002652
+  }
+}
