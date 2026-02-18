@@ -1,0 +1,210 @@
+{
+  "artist": "Project Justin — Korea (3 Shows)",
+  "slug": "project-justin-kr-mc",
+  "model_type": "detailed",
+  "concert_start_date": "2026-09-05",
+  "total_shows": 3,
+  "markets": ["Korea"],
+  "shows_per_market": 3,
+
+  "revenue": {
+    "shows": [
+      { "city": "Korea", "show": 1, "schedule": "Sep-26", "venue_capacity": 40001, "occupancy_rate": 1.0, "expected_attendance": 40001, "avg_ticket_price": 235.82, "ticket_revenue": 9433150 },
+      { "city": "Korea", "show": 2, "schedule": "Sep-26", "venue_capacity": 40001, "occupancy_rate": 1.0, "expected_attendance": 40001, "avg_ticket_price": 235.82, "ticket_revenue": 9433150 },
+      { "city": "Korea", "show": 3, "schedule": "Sep-26", "venue_capacity": 40001, "occupancy_rate": 1.0, "expected_attendance": 40001, "avg_ticket_price": 235.82, "ticket_revenue": 9433150 }
+    ],
+    "markets": [
+      {
+        "city": "Korea",
+        "shows": 3,
+        "venue_capacity": 40001,
+        "total_capacity": 120003,
+        "avg_ticket_price": 235.82,
+        "total_revenue": 28299450
+      }
+    ],
+    "grand_total": {
+      "total_capacity": 120003,
+      "avg_ticket_price": 235.82,
+      "total_revenue": 28299450
+    },
+    "additional_revenue": {
+      "merchandise": {
+        "expected_sales_per_show": 800000,
+        "promoter_split_pct": 0.20,
+        "revenue_per_show": 160000,
+        "applicable_shows": 3,
+        "total": 480000,
+        "note": "20% split of $800K expected merch sales per show"
+      },
+      "fb": {
+        "total": 0,
+        "note": "Not yet modelled — F&B spend/buyer data pending"
+      },
+      "sponsorship": {
+        "per_show": 150000,
+        "applicable_shows": 3,
+        "total": 450000,
+        "note": "$150K per show × 3 Korea shows"
+      }
+    },
+    "total_gross_revenue": 29229450
+  },
+
+  "seat_assumptions": {
+    "pricing": {
+      "GA Standing (avg GA1–GA4)":    { "Korea": { "aggressive": 170, "conservative": 170 } },
+      "Seating A — Lower Bowl":        { "Korea": { "aggressive": 250, "conservative": 250 } },
+      "Seating B — Mid Deck":          { "Korea": { "aggressive": 300, "conservative": 300 } },
+      "VIP Lounge":                    { "Korea": { "aggressive": 500, "conservative": 500 } },
+      "VVIP / Pre-Show Party Package": { "Korea": { "aggressive": 1000, "conservative": 1000 } }
+    },
+    "counts": {
+      "GA Standing (avg GA1–GA4)":    { "Korea": 19175 },
+      "Seating A — Lower Bowl":        { "Korea": 9588  },
+      "Seating B — Mid Deck":          { "Korea": 9588  },
+      "VIP Lounge":                    { "Korea": 1500  },
+      "VVIP / Pre-Show Party Package": { "Korea": 150   }
+    },
+    "totals": {
+      "Korea": { "total_seats": 40001, "revenue_per_show": 9433150 }
+    }
+  },
+
+  "artist_fee": {
+    "mg_total": 19500000,
+    "sponsorship_royalty_pct": 0.0,
+    "payment_schedule": [
+      { "payment": "1st Payment", "months_before_concert": 7, "pct": 0.10, "amount": 1950000, "date": "Feb-26" },
+      { "payment": "2nd Payment", "months_before_concert": 6, "pct": 0.40, "amount": 7800000, "date": "Mar-26" },
+      { "payment": "3rd Payment", "months_before_concert": 2, "pct": 0.50, "amount": 9750000, "date": "Jul-26" },
+      { "payment": "4th Payment", "months_before_concert": 0, "pct": 0.00, "amount": 0,       "date": null },
+      { "payment": "5th Payment", "months_before_concert": 0, "pct": 0.00, "amount": 0,       "date": null }
+    ]
+  },
+
+  "costs": {
+    "columns": ["Total (3 Shows — Korea)"],
+    "line_items": [
+      { "particulars": "Artist MG — Justin",               "notes": "Fixed — paid per schedule", "assumption": "Contractual",      "values": { "Total (3 Shows — Korea)": 19500000 } },
+      { "particulars": "Agency Fees",                       "notes": "Upfront (Jul-26)",          "assumption": "See scenarios",    "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "BluFin Fees",                       "notes": "2nd payment Jul-26",        "assumption": "See scenarios",    "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Venue Fees",                        "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Production",                        "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Advertising & Promotion",           "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Part Time Staffing",                "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Licenses & Permits",                "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Public Liability Insurance",        "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Cancellation / Postponement Ins.",  "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Catering & Backstage",              "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Goods & Service Tax",               "notes": "Variable — % of Gross",    "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Music Copyright / COMPASS",         "notes": "Variable — % of Gross",    "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } },
+      { "particulars": "Miscellaneous",                     "notes": "Variable",                  "assumption": "",                 "values": { "Total (3 Shows — Korea)": null } }
+    ],
+    "total": { "Total (3 Shows — Korea)": 19500000 }
+  },
+
+  "investor_scenarios": [
+    {
+      "label": "Scenario A — $12M Equity",
+      "equity": 12000000,
+      "agency_fees": 250000,
+      "blufin_fees": 250000,
+      "total_fees": 500000,
+      "hurdle_rate": 0.20,
+      "return_of_capital": 12000000,
+      "distribution_after_hurdle": { "investor": 1224381, "blufin": 1224381 },
+      "total_investor_return": 15624381,
+      "investor_profit": 3624381,
+      "moic": 1.30,
+      "absolute_return": 0.302,
+      "cash_flow": {
+        "Feb-26": { "investor_capital_in": 12000000, "artist_fee_out": -1950000, "net_operating": -542500, "total": 9507500 },
+        "Mar-26": { "artist_fee_out": -7800000, "total": 1707500 },
+        "Apr-26": { "total": 1707500 },
+        "May-26": { "net_operating_profit": 17828134, "total": 19535634 },
+        "Jun-26": { "net_operating_profit": 7640629, "total": 27176263 },
+        "Jul-26": { "artist_fee_out": -9750000, "agency_fees_out": -250000, "blufin_fees_out": -250000, "return_of_capital": -6000000, "net_operating": -1007500, "total": 9918763 },
+        "Aug-26": { "total": 9918763 },
+        "Sep-26": { "net_operating_profit": 930000, "return_of_capital": -6000000, "total": 4848763 }
+      }
+    },
+    {
+      "label": "Scenario B — $25M Equity",
+      "equity": 25000000,
+      "agency_fees": 500000,
+      "blufin_fees": 500000,
+      "total_fees": 1000000,
+      "hurdle_rate": 0.20,
+      "return_of_capital": 25000000,
+      "distribution_after_hurdle": { "investor": 275131, "blufin": 275131 },
+      "total_investor_return": 30275131,
+      "investor_profit": 5275131,
+      "moic": 1.21,
+      "absolute_return": 0.211,
+      "cash_flow": {
+        "Feb-26": { "investor_capital_in": 25000000, "artist_fee_out": -1950000, "net_operating": -542500, "total": 22507500 },
+        "Mar-26": { "artist_fee_out": -7800000, "total": 14707500 },
+        "Apr-26": { "total": 14707500 },
+        "May-26": { "net_operating_profit": 18669184, "total": 33376684 },
+        "Jun-26": { "net_operating_profit": 8001079, "total": 41377763 },
+        "Jul-26": { "artist_fee_out": -9750000, "agency_fees_out": -500000, "blufin_fees_out": -500000, "return_of_capital": -12500000, "net_operating": -1007500, "total": 17120263 },
+        "Aug-26": { "total": 17120263 },
+        "Sep-26": { "net_operating_profit": 930000, "return_of_capital": -12500000, "total": 5550263 }
+      }
+    },
+    {
+      "label": "PDF Deck — $25M Bridge",
+      "equity": 25000000,
+      "total_attendance": 240000,
+      "avg_ticket_price": 260,
+      "expected_ticket_revenue": 62512125,
+      "absolute_return": 0.262,
+      "moic": 1.26,
+      "note": "Investor summary deck — 240K attendance @ $260 avg (6-show basis)"
+    }
+  ],
+
+  "cash_flow_milestones": [
+    { "month": "Feb-26", "event": "Bridge capital in — sign artist",     "direction": "in" },
+    { "month": "Feb-26", "event": "1st MG payment to Justin ($1.95M)",   "direction": "out" },
+    { "month": "Mar-26", "event": "2nd MG payment to Justin ($7.8M)",    "direction": "out" },
+    { "month": "May-26", "event": "Ticket sales open (4 months)",        "direction": "in" },
+    { "month": "Jul-26", "event": "3rd MG payment to Justin ($9.75M)",   "direction": "out" },
+    { "month": "Jul-26", "event": "Agency & BluFin fees paid",           "direction": "out" },
+    { "month": "Jul-26", "event": "Return of capital — tranche 1",       "direction": "out" },
+    { "month": "Sep-26", "event": "Concerts — Korea (3 shows)",          "direction": "in" },
+    { "month": "Sep-26", "event": "Return of capital — tranche 2",       "direction": "out" },
+    { "month": "Dec-26", "event": "Hurdle 20% distribution",             "direction": "out" }
+  ],
+
+  "summary": {
+    "broker_fee": 500000,
+    "total_cost": 20500000,
+    "total_ticket_revenue": 28299450,
+    "profit": 3624381,
+    "roi": 0.302,
+    "note": "Korea 3-show model. Variable operating costs (venue, production, staffing, insurance, tax) pending. Investor profit from Scenario A."
+  },
+
+  "data_completeness": {
+    "seat_pricing_korea":        "complete",
+    "seat_counts_korea":         "complete",
+    "ticket_revenue_korea":      "complete",
+    "artist_fee":                "complete",
+    "artist_payment_schedule":   "complete",
+    "agency_fees":               "complete — two scenarios ($250K / $500K)",
+    "blufin_fees":               "complete — two scenarios ($250K / $500K)",
+    "investor_scenarios":        "complete — two scenarios + PDF deck",
+    "cash_flow_monthly":         "complete — two scenarios",
+    "merchandise_revenue":       "partial — 20% split of $800K/show confirmed",
+    "sponsorship_revenue":       "partial — $150K/show confirmed",
+    "fb_revenue":                "missing",
+    "venue_fees":                "missing",
+    "production_costs":          "missing",
+    "staffing_costs":            "missing",
+    "insurance":                 "missing",
+    "taxes_gst":                 "missing",
+    "copyright_compass":         "missing"
+  }
+}
