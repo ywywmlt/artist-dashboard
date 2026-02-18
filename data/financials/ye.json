@@ -1,0 +1,330 @@
+{
+  "artist": "Ye",
+  "slug": "ye",
+  "revenue": {
+    "shows": [
+      {
+        "city": "Tokyo",
+        "schedule": "",
+        "venue_capacity": 53000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 0,
+        "avg_ticket_price": 184.42,
+        "ticket_revenue": 9774260.0
+      },
+      {
+        "city": "Tokyo",
+        "schedule": "",
+        "venue_capacity": 53000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 0,
+        "avg_ticket_price": 184.42,
+        "ticket_revenue": 9774260.0
+      }
+    ],
+    "markets": [
+      {
+        "city": "Tokyo",
+        "shows": [
+          {
+            "city": "Tokyo",
+            "schedule": "",
+            "venue_capacity": 53000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 0,
+            "avg_ticket_price": 217.16,
+            "ticket_revenue": 11509587.73
+          },
+          {
+            "city": "Tokyo",
+            "schedule": "",
+            "venue_capacity": 53000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 0,
+            "avg_ticket_price": 217.16,
+            "ticket_revenue": 11509587.73
+          }
+        ],
+        "total_capacity": 106000,
+        "total_revenue": 19548520.0
+      }
+    ],
+    "grand_total": {
+      "total_capacity": 106000,
+      "avg_ticket_price": 184.42,
+      "total_revenue": 19548520.0
+    }
+  },
+  "seat_assumptions": {
+    "pricing": {
+      "VIP Gold": {
+        "Tokyo": {
+          "aggressive": 866.39,
+          "conservative": 823.08
+        }
+      },
+      "VIP Silver": {
+        "Tokyo": {
+          "aggressive": 366.27,
+          "conservative": 347.95
+        }
+      },
+      "VIP Balcony": {
+        "Tokyo": {
+          "aggressive": 226.93,
+          "conservative": 215.59
+        }
+      },
+      "Front Restricted 1F": {
+        "Tokyo": {
+          "aggressive": 88.11,
+          "conservative": 83.71
+        }
+      },
+      "Front Restricted 2F": {
+        "Tokyo": {
+          "aggressive": 73.17,
+          "conservative": 69.51
+        }
+      },
+      "SS Seat": {
+        "Tokyo": {
+          "aggressive": 223.59,
+          "conservative": 212.41
+        }
+      },
+      "S Seat": {
+        "Tokyo": {
+          "aggressive": 141.46,
+          "conservative": 134.38
+        }
+      },
+      "A Seat": {
+        "Tokyo": {
+          "aggressive": 119.06,
+          "conservative": 113.1
+        }
+      },
+      "B Seat": {
+        "Tokyo": {
+          "aggressive": 74.26,
+          "conservative": 70.54
+        }
+      },
+      "Gold Box (group)": {
+        "Tokyo": {
+          "aggressive": 256.27,
+          "conservative": 243.45
+        }
+      },
+      "Silver Box (group)": {
+        "Tokyo": {
+          "aggressive": 190.27,
+          "conservative": 180.75
+        }
+      }
+    },
+    "counts": {
+      "VIP Gold": {
+        "Tokyo": 2000
+      },
+      "VIP Silver": {
+        "Tokyo": 4000
+      },
+      "VIP Balcony": {
+        "Tokyo": 4000
+      },
+      "Front Restricted 1F": {
+        "Tokyo": 1500
+      },
+      "Front Restricted 2F": {
+        "Tokyo": 1500
+      },
+      "SS Seat": {
+        "Tokyo": 8000
+      },
+      "S Seat": {
+        "Tokyo": 10000
+      },
+      "A Seat": {
+        "Tokyo": 11500
+      },
+      "B Seat": {
+        "Tokyo": 10000
+      },
+      "Gold Box (group)": {
+        "Tokyo": 250
+      },
+      "Silver Box (group)": {
+        "Tokyo": 250
+      }
+    },
+    "totals": {
+      "Tokyo": {
+        "total_seats": 53000,
+        "total_revenue": 9774245.0
+      }
+    }
+  },
+  "costs": {
+    "columns": [
+      "Tokyo",
+      "Tokyo (show 2)",
+      "Tokyo (show 3)"
+    ],
+    "line_items": [
+      {
+        "particulars": "Venue Fees",
+        "notes": "Revenue share \u2014 6.5% of gross ticket revenue",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 635327.0,
+          "Tokyo (show 3)": 635327.0
+        }
+      },
+      {
+        "particulars": "Load-in / Load-out Access Days",
+        "notes": "5 non-show days \u00d7 \u00a54.5M/day (\u00a5150/USD)",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 95000.0,
+          "Tokyo (show 3)": 95000.0
+        }
+      },
+      {
+        "particulars": "Hospitality",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 140000.0,
+          "Tokyo (show 3)": 140000.0
+        }
+      },
+      {
+        "particulars": "Advertising & Promotion",
+        "notes": "Split across 2-night run",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 217000.0,
+          "Tokyo (show 3)": 217000.0
+        }
+      },
+      {
+        "particulars": "Part Time Staffing",
+        "notes": "Security 800 staff + ushers + medical",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 188000.0,
+          "Tokyo (show 3)": 188000.0
+        }
+      },
+      {
+        "particulars": "Licenses & Permits",
+        "notes": "Assembly, fire, noise filings",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 50000.0,
+          "Tokyo (show 3)": 50000.0
+        }
+      },
+      {
+        "particulars": "Public Liability Insurance",
+        "notes": "\u00a52B coverage (\u00a5150/USD)",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 5000.0,
+          "Tokyo (show 3)": 5000.0
+        }
+      },
+      {
+        "particulars": "Cancellation / Postponement Insurance",
+        "notes": "2\u20135% of insured production costs",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 80000.0,
+          "Tokyo (show 3)": 80000.0
+        }
+      },
+      {
+        "particulars": "Catering & Backstage Groceries",
+        "notes": "Crew catering full production period",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 100000.0,
+          "Tokyo (show 3)": 100000.0
+        }
+      },
+      {
+        "particulars": "Production / Technical",
+        "notes": "Rigging, power, venue-mandated local crew",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 500000.0,
+          "Tokyo (show 3)": 500000.0
+        }
+      },
+      {
+        "particulars": "Music Copyright Fee \u2014 JASRAC",
+        "notes": "3% of gross ticket revenue (JASRAC PRO Japan)",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 293228.0,
+          "Tokyo (show 3)": 293228.0
+        }
+      },
+      {
+        "particulars": "Ticketing Platform Fees",
+        "notes": "Pia/e+/Lawson \u2014 4% of face value",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 202000.0,
+          "Tokyo (show 3)": 202000.0
+        }
+      },
+      {
+        "particulars": "Miscellaneous Costs",
+        "notes": "Transport, customs/ATA carnet, localization",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 80000.0,
+          "Tokyo (show 3)": 80000.0
+        }
+      },
+      {
+        "particulars": "Artist Fee",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 5000000.0,
+          "Tokyo (show 3)": 5000000.0
+        }
+      }
+    ],
+    "total": {
+      "Tokyo": null,
+      "Tokyo (show 2)": 7585555.0,
+      "Tokyo (show 3)": 7585555.0
+    }
+  },
+  "summary": {
+    "broker_fee": 0,
+    "total_cost": 15171110.0,
+    "total_ticket_revenue": 19548520.0,
+    "profit": 4377410.0,
+    "roi": 0.288534
+  }
+}
