@@ -1739,6 +1739,8 @@ function renderFinancials(d) {
     return `<td class="py-3 text-right text-sm font-bold text-red-400">${v != null ? fmtDollar(v) : '—'}</td>`;
   }).join('');
 
+  const brokerEmptyCells = costCols.map(() => `<td></td>`).join('');
+
   const costSection = `
     <div class="glass rounded-xl p-5">
       <h3 class="font-semibold text-white text-sm mb-4">Cost Assumptions</h3>
@@ -1749,11 +1751,18 @@ function renderFinancials(d) {
           ${costColHeaders}
         </tr></thead>
         <tbody>${costRows}</tbody>
-        <tfoot><tr class="border-t border-white/10">
-          <td class="py-3 pl-3 text-sm font-bold text-white">Total</td>
-          <td></td>
-          ${costTotalCells}
-        </tr></tfoot>
+        <tfoot>
+          <tr class="border-t border-white/10">
+            <td class="py-3 pl-3 text-sm font-bold text-white">Subtotal (per show)</td>
+            <td></td>
+            ${costTotalCells}
+          </tr>
+          <tr class="border-t border-white/5 bg-amber-500/5">
+            <td class="py-2.5 pl-3 text-sm text-amber-300 font-medium">Broker Fee</td>
+            <td class="py-2.5 text-[11px] text-amber-500/70">One-time</td>
+            <td class="py-2.5 text-right text-sm font-semibold text-amber-300" colspan="${costCols.length}">${fmtDollar(s.broker_fee)}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>`;
 
