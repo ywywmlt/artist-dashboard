@@ -9,8 +9,8 @@
         "venue_capacity": 53000,
         "occupancy_rate": 1.0,
         "expected_attendance": 0,
-        "avg_ticket_price": 165.95,
-        "ticket_revenue": 8795350.0
+        "avg_ticket_price": 177.19,
+        "ticket_revenue": 9391070.0
       },
       {
         "city": "Tokyo",
@@ -18,8 +18,8 @@
         "venue_capacity": 53000,
         "occupancy_rate": 1.0,
         "expected_attendance": 0,
-        "avg_ticket_price": 165.95,
-        "ticket_revenue": 8795350.0
+        "avg_ticket_price": 177.19,
+        "ticket_revenue": 9391070.0
       }
     ],
     "markets": [
@@ -46,13 +46,13 @@
           }
         ],
         "total_capacity": 106000,
-        "total_revenue": 17590700.0
+        "total_revenue": 18782140.0
       }
     ],
     "grand_total": {
       "total_capacity": 106000,
-      "avg_ticket_price": 165.95,
-      "total_revenue": 17590700.0
+      "avg_ticket_price": 177.19,
+      "total_revenue": 18782140.0
     }
   },
   "seat_assumptions": {
@@ -77,38 +77,38 @@
       },
       "Front Restricted 1F": {
         "Tokyo": {
-          "aggressive": 78.67,
-          "conservative": 74.74
+          "aggressive": 88.11,
+          "conservative": 83.71
         }
       },
       "Front Restricted 2F": {
         "Tokyo": {
-          "aggressive": 65.33,
-          "conservative": 62.06
+          "aggressive": 73.17,
+          "conservative": 69.51
         }
       },
       "SS Seat": {
         "Tokyo": {
-          "aggressive": 199.63,
-          "conservative": 189.65
+          "aggressive": 223.59,
+          "conservative": 212.41
         }
       },
       "S Seat": {
         "Tokyo": {
-          "aggressive": 126.3,
-          "conservative": 119.98
+          "aggressive": 141.46,
+          "conservative": 134.38
         }
       },
       "A Seat": {
         "Tokyo": {
-          "aggressive": 106.3,
-          "conservative": 100.98
+          "aggressive": 119.06,
+          "conservative": 113.1
         }
       },
       "B Seat": {
         "Tokyo": {
-          "aggressive": 66.3,
-          "conservative": 62.98
+          "aggressive": 74.26,
+          "conservative": 70.54
         }
       },
       "Gold Box (group)": {
@@ -162,7 +162,7 @@
     "totals": {
       "Tokyo": {
         "total_seats": 53000,
-        "total_revenue": 8795315.0
+        "total_revenue": 9390855.0
       }
     }
   },
@@ -303,8 +303,8 @@
   "summary": {
     "broker_fee": 500000.0,
     "total_cost": 18500000.0,
-    "total_ticket_revenue": 17590700.0,
-    "profit": -909300.0,
-    "roi": -0.049151
+    "total_ticket_revenue": 18782140.0,
+    "profit": 282140.0,
+    "roi": 0.015251
   }
 }
