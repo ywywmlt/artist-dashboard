@@ -257,10 +257,10 @@
     }
   },
   "summary": {
-    "broker_fee": 0,
-    "total_cost": 24000000.0,
+    "broker_fee": 500000,
+    "total_cost": 24500000.0,
     "total_ticket_revenue": 26471380.0,
-    "profit": 2471380.0,
-    "roi": 0.102974
+    "profit": 1971380.0,
+    "roi": 0.080464
   }
 }
