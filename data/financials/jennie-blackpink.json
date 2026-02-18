@@ -1,0 +1,266 @@
+{
+  "artist": "Jennie (Blackpink)",
+  "slug": "jennie-blackpink",
+  "revenue": {
+    "shows": [
+      {
+        "city": "Tokyo",
+        "schedule": "",
+        "venue_capacity": 53000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 0,
+        "avg_ticket_price": 217.16,
+        "ticket_revenue": 11509587.73
+      },
+      {
+        "city": "Tokyo",
+        "schedule": "",
+        "venue_capacity": 53000,
+        "occupancy_rate": 1.0,
+        "expected_attendance": 0,
+        "avg_ticket_price": 217.16,
+        "ticket_revenue": 11509587.73
+      }
+    ],
+    "markets": [
+      {
+        "city": "Tokyo",
+        "shows": [
+          {
+            "city": "Tokyo",
+            "schedule": "",
+            "venue_capacity": 53000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 0,
+            "avg_ticket_price": 217.16,
+            "ticket_revenue": 11509587.73
+          },
+          {
+            "city": "Tokyo",
+            "schedule": "",
+            "venue_capacity": 53000,
+            "occupancy_rate": 1.0,
+            "expected_attendance": 0,
+            "avg_ticket_price": 217.16,
+            "ticket_revenue": 11509587.73
+          }
+        ],
+        "total_capacity": 106000,
+        "total_revenue": 23019175.46
+      }
+    ],
+    "grand_total": {
+      "total_capacity": 106000,
+      "avg_ticket_price": 217.16,
+      "total_revenue": 23019175.46
+    }
+  },
+  "seat_assumptions": {
+    "pricing": {
+      "GA Standing (avg cross GA1-GA4)": {
+        "Tokyo": {
+          "aggressive": 160.0,
+          "conservative": 160.0
+        }
+      },
+      "Designated Seating - Lower Bowl": {
+        "Tokyo": {
+          "aggressive": 250.0,
+          "conservative": 220.0
+        }
+      },
+      "Designated Seating - Mid Bowl": {
+        "Tokyo": {
+          "aggressive": 220.0,
+          "conservative": 220.0
+        }
+      },
+      "VIP Lounge": {
+        "Tokyo": {
+          "aggressive": 800.0,
+          "conservative": 500.0
+        }
+      },
+      "VVIP Lounge / Pre-Show Party Package": {
+        "Tokyo": {
+          "aggressive": 1500.0,
+          "conservative": 1500.0
+        }
+      }
+    },
+    "counts": {
+      "GA Standing (avg cross GA1-GA4)": {
+        "Tokyo": 30000
+      },
+      "Designated Seating - Lower Bowl": {
+        "Tokyo": 10000
+      },
+      "Designated Seating - Mid Bowl": {
+        "Tokyo": 10000
+      },
+      "VIP Lounge": {
+        "Tokyo": 2000
+      },
+      "VVIP Lounge / Pre-Show Party Package": {
+        "Tokyo": 150
+      }
+    },
+    "totals": {
+      "Tokyo": {
+        "total_seats": 52150,
+        "total_revenue": 11325000.0
+      }
+    }
+  },
+  "costs": {
+    "columns": [
+      "Tokyo",
+      "Tokyo (show 2)",
+      "Tokyo (show 3)"
+    ],
+    "line_items": [
+      {
+        "particulars": "Venue Fees",
+        "notes": "as a % of Gross Revenue",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 3000000.0,
+          "Tokyo (show 3)": 3000000.0
+        }
+      },
+      {
+        "particulars": "Hospitality",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 1000000.0,
+          "Tokyo (show 3)": 1000000.0
+        }
+      },
+      {
+        "particulars": "Production",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 1500000.0,
+          "Tokyo (show 3)": 1500000.0
+        }
+      },
+      {
+        "particulars": "Advertising & Promotion",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Part Time Staffing",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Licenses & Permits",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Public Liability Insurance",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Cancellation/ Postponement Insurance to cover gross sales profit",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Catering & Backstage Groceries",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Miscellaneous Costs",
+        "notes": "Variable",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Music Copyright Fee - COMPASS",
+        "notes": "as a % of Gross Revenue",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Goods & Service Tax",
+        "notes": "as a % of Gross Revenue",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": null,
+          "Tokyo (show 3)": null
+        }
+      },
+      {
+        "particulars": "Artist Fee",
+        "notes": "",
+        "assumption": "",
+        "values": {
+          "Tokyo": null,
+          "Tokyo (show 2)": 2000000.0,
+          "Tokyo (show 3)": 2000000.0
+        }
+      }
+    ],
+    "total": {
+      "Tokyo": null,
+      "Tokyo (show 2)": 7500000.0,
+      "Tokyo (show 3)": 7500000.0
+    }
+  },
+  "summary": {
+    "broker_fee": 500000.0,
+    "total_cost": 15500000.0,
+    "total_ticket_revenue": 23019175.46,
+    "profit": 7519175.46,
+    "roi": 0.485108
+  }
+}
