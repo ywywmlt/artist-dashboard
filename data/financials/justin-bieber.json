@@ -9,8 +9,8 @@
         "venue_capacity": 53000,
         "occupancy_rate": 1.0,
         "expected_attendance": 0,
-        "avg_ticket_price": 217.16,
-        "ticket_revenue": 11509587.73
+        "avg_ticket_price": 249.73,
+        "ticket_revenue": 13235690.0
       },
       {
         "city": "Tokyo",
@@ -18,8 +18,8 @@
         "venue_capacity": 53000,
         "occupancy_rate": 1.0,
         "expected_attendance": 0,
-        "avg_ticket_price": 217.16,
-        "ticket_revenue": 11509587.73
+        "avg_ticket_price": 249.73,
+        "ticket_revenue": 13235690.0
       }
     ],
     "markets": [
@@ -32,8 +32,8 @@
             "venue_capacity": 53000,
             "occupancy_rate": 1.0,
             "expected_attendance": 0,
-            "avg_ticket_price": 217.16,
-            "ticket_revenue": 11509587.73
+            "avg_ticket_price": 249.73,
+            "ticket_revenue": 13235690.0
           },
           {
             "city": "Tokyo",
@@ -41,50 +41,50 @@
             "venue_capacity": 53000,
             "occupancy_rate": 1.0,
             "expected_attendance": 0,
-            "avg_ticket_price": 217.16,
-            "ticket_revenue": 11509587.73
+            "avg_ticket_price": 249.73,
+            "ticket_revenue": 13235690.0
           }
         ],
         "total_capacity": 106000,
-        "total_revenue": 23019175.46
+        "total_revenue": 26471380.0
       }
     ],
     "grand_total": {
       "total_capacity": 106000,
-      "avg_ticket_price": 217.16,
-      "total_revenue": 23019175.46
+      "avg_ticket_price": 249.73,
+      "total_revenue": 26471380.0
     }
   },
   "seat_assumptions": {
     "pricing": {
       "GA Standing (avg cross GA1-GA4)": {
         "Tokyo": {
-          "aggressive": 160.0,
-          "conservative": 160.0
+          "aggressive": 184.0,
+          "conservative": 184.0
         }
       },
       "Designated Seating - Lower Bowl": {
         "Tokyo": {
-          "aggressive": 250.0,
-          "conservative": 220.0
+          "aggressive": 287.5,
+          "conservative": 253.0
         }
       },
       "Designated Seating - Mid Bowl": {
         "Tokyo": {
-          "aggressive": 220.0,
-          "conservative": 220.0
+          "aggressive": 253.0,
+          "conservative": 253.0
         }
       },
       "VIP Lounge": {
         "Tokyo": {
-          "aggressive": 800.0,
-          "conservative": 500.0
+          "aggressive": 920.0,
+          "conservative": 575.0
         }
       },
       "VVIP Lounge / Pre-Show Party Package": {
         "Tokyo": {
-          "aggressive": 1500.0,
-          "conservative": 1500.0
+          "aggressive": 1725.0,
+          "conservative": 1725.0
         }
       }
     },
@@ -108,7 +108,7 @@
     "totals": {
       "Tokyo": {
         "total_seats": 52150,
-        "total_revenue": 11325000.0
+        "total_revenue": 13023750.0
       }
     }
   },
@@ -259,8 +259,8 @@
   "summary": {
     "broker_fee": 500000.0,
     "total_cost": 24500000.0,
-    "total_ticket_revenue": 23019175.46,
-    "profit": -1480824.54,
-    "roi": -0.060442
+    "total_ticket_revenue": 26471380.0,
+    "profit": 1971380.0,
+    "roi": 0.080464
   }
 }
