@@ -170,7 +170,11 @@
       <div class="glass rounded-xl p-5">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-semibold text-white text-sm">Artist Portfolio</h3>
-          <div class="flex gap-2">
+          <div class="flex items-center gap-2">
+            <div class="relative">
+              <input type="text" id="table-search" placeholder="Search artists..." class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-44" oninput="document.getElementById('global-search').value=this.value; handleSearch(this.value)">
+              <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            </div>
             <select id="filter-touring" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderArtistTable()">
               <option value="all">All Artists</option>
               <option value="touring">Touring</option>
@@ -731,7 +735,7 @@ function renderDashboard() {
 function renderArtistTable() {
   const filter = document.getElementById('filter-touring').value;
   const sort = document.getElementById('filter-sort').value;
-  const search = document.getElementById('global-search').value.toLowerCase();
+  const search = (document.getElementById('global-search')?.value || document.getElementById('table-search')?.value || '').toLowerCase();
 
   let data = artists.map(a => ({ ...a, touring: touringMap[a.spotify_id] || null }));
 
@@ -782,7 +786,19 @@ function renderArtistTable() {
   document.getElementById('table-pagination').innerHTML = pagBtns.join('');
 }
 
-function handleSearch(val) { currentPage = 1; renderArtistTable(); }
+function handleSearch(val) {
+  currentPage = 1;
+  showPage('dashboard');
+  renderArtistTable();
+  // Sync the inline table search box if it exists
+  const inline = document.getElementById('table-search');
+  if (inline && inline.value !== val) inline.value = val;
+  // Scroll table into view
+  setTimeout(() => {
+    const el = document.getElementById('artist-table-body');
+    if (el) el.closest('.glass')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
+}
 
 // ─── ARTIST PROFILE ───
 function fpoTag() { return '<span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">FPO DATA</span>'; }
