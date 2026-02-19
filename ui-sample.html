@@ -1889,21 +1889,18 @@ const VENUE_PRESETS = {
   stadium: { capacity: 40000, categories: [
     { name: 'GA Standing', price: 150, count: 15000 },
     { name: 'Lower Bowl',  price: 250, count: 12000 },
-    { name: 'Mid Deck',    price: 300, count: 8000  },
-    { name: 'VIP',         price: 500, count: 3500  },
-    { name: 'VVIP',        price: 1000, count: 1500 }
-  ]},
-  arena: { capacity: 18000, categories: [
-    { name: 'Floor GA',   price: 120, count: 4000 },
-    { name: 'Lower Bowl', price: 200, count: 8000 },
-    { name: 'Upper Bowl', price: 150, count: 4500 },
-    { name: 'VIP',        price: 400, count: 1500 }
-  ]},
-  theater: { capacity: 3000, categories: [
-    { name: 'General', price: 80,  count: 1800 },
-    { name: 'Premium', price: 150, count: 900  },
-    { name: 'VIP',     price: 300, count: 300  }
-  ]}
+    { name: 'Mid Deck',    price: 300, count:  8000 },
+    { name: 'VIP',         price: 500, count:  4500 },
+    { name: 'VVIP',        price:1000, count:   500 }]},
+  arena:   { capacity: 18000, categories: [
+    { name: 'Floor GA',    price: 120, count:  6000 },
+    { name: 'Lower Bowl',  price: 200, count:  8000 },
+    { name: 'Upper Bowl',  price: 150, count:  3500 },
+    { name: 'VIP',         price: 400, count:   500 }]},
+  theater: { capacity:  3000, categories: [
+    { name: 'General',     price:  80, count:  2000 },
+    { name: 'Premium',     price: 150, count:   800 },
+    { name: 'VIP',         price: 300, count:   200 }]}
 };
 
 function fdLoad() {
@@ -1923,15 +1920,15 @@ function computeProfile(p) {
 
   // Revenue
   const ar = p.additional_revenue || {};
-  const merch_rev = (Number(ar.merch_per_show)||0) * (Number(ar.merch_split_pct)||0) * n;
-  const fnb_rev   = (Number(ar.fnb_per_head)||0) * (Number(ar.fnb_buyer_pct)||0) * total_attendance;
+  const merch_rev   = (Number(ar.merch_per_show)||0) * (Number(ar.merch_split_pct)||0) * n;
+  const fnb_rev     = (Number(ar.fnb_per_head)||0) * (Number(ar.fnb_buyer_pct)||0) * total_attendance;
   const sponsor_rev = (Number(ar.sponsorship_per_show)||0) * n;
   const total_gross_rev = total_ticket_rev + merch_rev + fnb_rev + sponsor_rev;
 
   // Costs
   const co = p.costs || {};
-  const ticketing_fee_pct = Number(co.ticketing_fee_pct) || 0;      // e.g. 0.10 = 10%
-  const ticketing_fee     = total_ticket_rev * ticketing_fee_pct;    // 10% of gross ticket rev
+  const ticketing_fee_pct = Number(co.ticketing_fee_pct) || 0;
+  const ticketing_fee     = total_ticket_rev * ticketing_fee_pct;
   const op_per_show = (Number(co.venue_fee_per_show)||0) + (Number(co.production_per_show)||0)
                     + (Number(co.hospitality_per_show)||0) + (Number(co.insurance_per_show)||0);
   const total_op_costs = op_per_show * n;
@@ -1940,35 +1937,91 @@ function computeProfile(p) {
   const net_profit = total_gross_rev - total_costs;
   const roi = total_costs > 0 ? net_profit / total_costs : 0;
 
-  // Investor waterfall: return of capital → 20% hurdle (100% investor) → above hurdle split
-  const inv = p.investor || {};
-  const equity        = Number(inv.equity) || 0;
-  const hurdle_rate   = Number(inv.hurdle_rate) ?? 0.20;
-  const inv_split     = Number(inv.above_hurdle_investor_pct) ?? 0.50; // investor % above hurdle
+  return {
+    ticket_rev_per_show, total_ticket_rev, ticketing_fee,
+    merch_rev, fnb_rev, sponsor_rev, total_gross_rev,
+    total_op_costs, op_per_show, total_costs, net_profit, roi,
+    total_seats: total_seats_per_show, total_attendance, n
+  };
+}
+
+function computeScenario(c, scen) {
+  const equity      = Number(scen.equity) || 0;
+  const hurdle_rate = Number(scen.hurdle_rate) ?? 0.20;
+  const inv_split   = Number(scen.above_hurdle_investor_pct) ?? 0.50;
   const hurdle_amount = equity * hurdle_rate;
   let investor_dist = 0, blufin_dist = 0;
   if (equity > 0) {
-    if (net_profit <= hurdle_amount) {
-      investor_dist = net_profit;   // all profit (or loss) goes to investor up to hurdle
-      blufin_dist   = 0;
+    if (c.net_profit <= hurdle_amount) {
+      investor_dist = c.net_profit; blufin_dist = 0;
     } else {
-      const above  = net_profit - hurdle_amount;
+      const above  = c.net_profit - hurdle_amount;
       investor_dist = hurdle_amount + above * inv_split;
       blufin_dist   = above * (1 - inv_split);
     }
   }
   const total_inv_return = equity + investor_dist;
-  const moic      = equity > 0 ? total_inv_return / equity : 0;
+  const moic       = equity > 0 ? total_inv_return / equity : 0;
   const abs_return = equity > 0 ? investor_dist / equity : 0;
+  return { equity, hurdle_amount, investor_dist, blufin_dist, total_inv_return, moic, abs_return, hurdle_rate, inv_split };
+}
 
+function computeCashFlow(p, c) {
+  if (!p.concert_date) return null;
+  const concertDate = new Date(p.concert_date + 'T12:00:00');
+  const events = {};
+  const addEvt = (date, label, amount) => {
+    const d = new Date(date);
+    const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    const display = d.toLocaleDateString('en-US', { year:'numeric', month:'short' });
+    if (!events[key]) events[key] = { display, items: [], net: 0 };
+    events[key].items.push({ label, amount });
+    events[key].net += amount;
+  };
+  for (const pmt of (p.costs?.mg_schedule || [])) {
+    const d = new Date(concertDate);
+    d.setMonth(d.getMonth() - (Number(pmt.months_before) || 0));
+    const amt = -((p.costs?.artist_mg||0) * (pmt.pct||0));
+    if (amt !== 0) addEvt(d, pmt.label + ' — MG', amt);
+  }
+  const netTicket = c.total_ticket_rev - c.ticketing_fee;
+  if (netTicket) addEvt(concertDate, 'Net Ticket Revenue (after ticketing fee)', netTicket);
+  if (c.merch_rev > 0)   addEvt(concertDate, 'Merch Revenue', c.merch_rev);
+  if (c.fnb_rev > 0)     addEvt(concertDate, 'F&B Revenue', c.fnb_rev);
+  if (c.sponsor_rev > 0) addEvt(concertDate, 'Sponsorship', c.sponsor_rev);
+  if (c.total_op_costs > 0) addEvt(concertDate, 'Venue / Production / Operations', -c.total_op_costs);
+  if ((p.costs?.agency_fees||0) > 0) addEvt(concertDate, 'Agency Fees', -(p.costs.agency_fees));
+  if ((p.costs?.blufin_fees||0) > 0) addEvt(concertDate, 'BluFin Fees', -(p.costs.blufin_fees));
+  const sorted = Object.entries(events).sort(([a],[b]) => a.localeCompare(b)).map(([,v]) => v);
+  let balance = 0;
+  return sorted.map(row => { balance += row.net; return { ...row, balance }; });
+}
+
+function fdComputeCompleteness(p) {
+  const co = p.costs || {};
+  const cats = p.seat_categories || [];
+  const sched = co.mg_schedule || [];
+  const pctSum = sched.reduce((s,x) => s + (Number(x.pct)||0), 0);
+  const hasScens = (p.investor_scenarios||[]).some(s => Number(s.equity) > 0);
   return {
-    ticket_rev_per_show, total_ticket_rev, ticketing_fee,
-    merch_rev, fnb_rev, sponsor_rev, total_gross_rev,
-    total_op_costs, total_costs, net_profit, roi,
-    investor_dist, blufin_dist, total_inv_return, moic, abs_return,
-    hurdle_amount, total_seats: total_seats_per_show, total_attendance
+    'Artist Name':         p.artist?.trim() ? 'complete' : 'missing',
+    'Concert Date':        p.concert_date ? 'complete' : 'missing',
+    'City / Market':       p.city?.trim() ? 'complete' : 'missing',
+    'Venue Capacity':      (Number(p.venue_capacity) > 0) ? 'complete' : 'missing',
+    'Seat Categories':     cats.length > 0 && cats.some(c => c.price > 0 && c.count > 0)
+                             ? 'complete' : cats.length > 0 ? 'partial — prices or counts are zero' : 'missing',
+    'Artist MG':           (Number(co.artist_mg) > 0) ? 'complete' : 'missing',
+    'MG Payment Schedule': sched.length === 0 ? 'missing'
+                             : Math.abs(pctSum - 1) < 0.01 ? 'complete'
+                             : 'partial — ' + (pctSum*100).toFixed(0) + '% allocated (needs 100%)',
+    'Additional Revenue':  ((Number(p.additional_revenue?.merch_per_show)||0) > 0 || (Number(p.additional_revenue?.sponsorship_per_show)||0) > 0 || (Number(p.additional_revenue?.fnb_per_head)||0) > 0)
+                             ? 'complete' : 'partial — no merch, F&B, or sponsorship entered',
+    'Operating Costs':     ((Number(co.venue_fee_per_show)||0) + (Number(co.production_per_show)||0)) > 0
+                             ? 'complete' : 'partial — venue/production costs not entered',
+    'Investor Scenarios':  hasScens ? 'complete' : 'partial — no equity entered',
   };
 }
+
 
 // ─── Financial (Detail) — static Project Justin view ─────────────────────────
 
@@ -2170,21 +2223,34 @@ function renderFinDetail(d) {
     kpis + '<div class="space-y-4 mt-4">' + revenueSection + seatSection + mgSection + scenSection + cfSection + completenessSection + '</div>';
 }
 
-// ─── Financial Model Builder ───────────────────────────────────────────────────
+// ─── Financial Model Builder ─────────────────────────────────────────────────
 
-function initFinBuilder() {
-  fdLoad();
-  fdRender();
-}
+function initFinBuilder() { fdLoad(); fdRender(); }
 
 const FD_INPUT = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50';
 const FD_LABEL = 'block text-[10px] text-slate-500 uppercase tracking-wider mb-1';
 
+function fdMigrateProfile(p) {
+  if (!p.venue_capacity) p.venue_capacity = VENUE_PRESETS[p.venue_type || 'stadium']?.capacity || 40000;
+  if (p.investor && !p.investor_scenarios) {
+    p.investor_scenarios = [
+      { id: 'scen_a', label: 'Scenario A', ...p.investor },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+    ];
+    delete p.investor;
+  }
+  if (!p.investor_scenarios) {
+    p.investor_scenarios = [
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+    ];
+  }
+}
+
 function fdRender() {
   const sidebar = document.getElementById('fd-sidebar');
-  const main = document.getElementById('fd-main');
+  const main    = document.getElementById('fd-main');
   if (!sidebar || !main) return;
-  // Sidebar
   if (fdState.profiles.length === 0) {
     sidebar.innerHTML = '<div class="text-center py-8 text-slate-600 text-xs">No profiles yet</div>';
   } else {
@@ -2200,23 +2266,19 @@ function fdRender() {
           <span class="text-[10px] text-slate-500">${p.num_shows||1} show${(p.num_shows||1)>1?'s':''}</span>
         </div>
         <div class="text-[10px] text-slate-500 mt-0.5 truncate">${p.city||'—'}</div>
-        <div class="flex items-center justify-between mt-2">
+        <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5">
           <span class="text-[10px] text-slate-500">Net Profit</span>
           <span class="text-xs font-bold ${roiColor}">${fmtDollar(c.net_profit)}</span>
         </div>
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mt-0.5">
           <span class="text-[10px] text-slate-500">ROI</span>
           <span class="text-[10px] font-semibold ${roiColor}">${(c.roi*100).toFixed(1)}%</span>
         </div>
       </div>`;
     }).join('');
   }
-  // Main panel
-  if (fdState.mode === 'create' || fdState.mode === 'edit') {
-    main.innerHTML = fdRenderForm(fdState.draftProfile);
-  } else if (fdState.mode === 'view' && fdState.activeId) {
-    const p = fdState.profiles.find(x => x.id === fdState.activeId);
-    main.innerHTML = p ? fdRenderDetail(p) : fdEmptyState();
+  if (fdState.mode === 'edit' && fdState.draftProfile) {
+    main.innerHTML = fdRenderLive(fdState.draftProfile);
   } else {
     main.innerHTML = fdEmptyState();
   }
@@ -2228,7 +2290,7 @@ function fdEmptyState() {
       <svg class="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
     </div>
     <h3 class="text-base font-semibold text-white mb-2">No Profile Selected</h3>
-    <p class="text-sm text-slate-500 mb-6 max-w-xs">Create a new artist financial profile or select one from the left panel.</p>
+    <p class="text-sm text-slate-500 mb-6 max-w-xs">Create a new artist financial profile or select one from the left.</p>
     <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
       Add New Artist Profile
@@ -2238,16 +2300,15 @@ function fdEmptyState() {
 
 function fdStartCreate() {
   const preset = VENUE_PRESETS.stadium;
-  fdState.mode = 'create';
-  fdState.activeId = null;
+  fdState.mode = 'edit'; fdState.activeId = null;
   fdState.draftProfile = {
     id: fdGenId(), createdAt: new Date().toISOString(),
     artist: '', venue_type: 'stadium', city: '', num_shows: 1, concert_date: '',
+    venue_capacity: preset.capacity,
     seat_categories: preset.categories.map(c => ({...c})),
     additional_revenue: { merch_per_show: 0, merch_split_pct: 0.20, fnb_per_head: 0, fnb_buyer_pct: 0, sponsorship_per_show: 0 },
     costs: {
-      artist_mg: 0,
-      ticketing_fee_pct: 0.10,
+      artist_mg: 0, ticketing_fee_pct: 0.10,
       mg_schedule: [
         { label: '1st Payment', pct: 0.20, months_before: 7 },
         { label: '2nd Payment', pct: 0.80, months_before: 2 }
@@ -2255,21 +2316,20 @@ function fdStartCreate() {
       venue_fee_per_show: 0, production_per_show: 0, hospitality_per_show: 0,
       agency_fees: 0, blufin_fees: 0, insurance_per_show: 0
     },
-    investor: { equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+    investor_scenarios: [
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+    ]
   };
   fdRender();
 }
 
 function fdSelectProfile(id) {
-  fdState.activeId = id; fdState.mode = 'view'; fdState.draftProfile = null;
-  fdRender();
-}
-
-function fdStartEdit(id) {
   const p = fdState.profiles.find(x => x.id === id);
   if (!p) return;
-  fdState.mode = 'edit'; fdState.activeId = id;
+  fdState.activeId = id; fdState.mode = 'edit';
   fdState.draftProfile = JSON.parse(JSON.stringify(p));
+  fdMigrateProfile(fdState.draftProfile);
   fdRender();
 }
 
@@ -2286,13 +2346,12 @@ function fdSaveProfile() {
   if (!p.artist.trim()) { alert('Please enter an artist name.'); return; }
   const idx = fdState.profiles.findIndex(x => x.id === p.id);
   if (idx >= 0) fdState.profiles[idx] = p; else fdState.profiles.push(p);
-  fdSave(); fdState.mode = 'view'; fdState.activeId = p.id; fdState.draftProfile = null;
+  fdSave(); fdState.activeId = p.id;
   fdRender();
 }
 
 function fdCancelForm() {
-  if (fdState.mode === 'edit') { fdState.mode = 'view'; fdState.draftProfile = null; }
-  else { fdState.mode = 'list'; fdState.activeId = null; fdState.draftProfile = null; }
+  fdState.mode = 'list'; fdState.activeId = null; fdState.draftProfile = null;
   fdRender();
 }
 
@@ -2302,368 +2361,431 @@ function fdPatch(path, value) {
   let obj = fdState.draftProfile;
   for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
   obj[parts[parts.length - 1]] = value;
-  fdUpdateKPIs();
+  fdUpdateLive();
 }
 
 function fdPatchVenueType(val) {
   if (!fdState.draftProfile) return;
+  const preset = VENUE_PRESETS[val] || VENUE_PRESETS.stadium;
   fdState.draftProfile.venue_type = val;
-  fdState.draftProfile.seat_categories = (VENUE_PRESETS[val] || VENUE_PRESETS.stadium).categories.map(c => ({...c}));
-  document.getElementById('fd-main').innerHTML = fdRenderForm(fdState.draftProfile);
+  fdState.draftProfile.venue_capacity = preset.capacity;
+  fdState.draftProfile.seat_categories = preset.categories.map(c => ({...c}));
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
 }
 
-function fdUpdateKPIs() {
+function fdPatchScen(id, field, value) {
   if (!fdState.draftProfile) return;
-  const strip = document.getElementById('fd-kpi-strip');
-  if (strip) strip.innerHTML = fdKPIStripHTML(computeProfile(fdState.draftProfile));
+  const scen = fdState.draftProfile.investor_scenarios?.find(s => s.id === id);
+  if (scen) { scen[field] = value; fdUpdateLive(); }
 }
 
-function fdKPIStripHTML(c) {
-  const rc = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
-  const mc = c.moic >= 1 ? 'text-violet-400' : 'text-slate-400';
+function fdPatchScenLabel(id, value) {
+  if (!fdState.draftProfile) return;
+  const scen = fdState.draftProfile.investor_scenarios?.find(s => s.id === id);
+  if (scen) scen.label = value;
+}
+
+function fdUpdateLive() {
+  if (!fdState.draftProfile) return;
+  const p = fdState.draftProfile;
+  const c = computeProfile(p);
+  const upd = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  upd('fd-kpi-strip',    fdKPIStripHTML(c, p));
+  upd('fd-cat-totals',   fdCatTotalsHTML(p, c));
+  upd('fd-addl-derived', fdAddlDerivedHTML(p, c));
+  upd('fd-costs-summary',fdCostSummaryHTML(c));
+  upd('fd-pl-summary',   fdPLSummaryHTML(p, c));
+  upd('fd-cf-section',   fdCashFlowHTML(p, c));
+  upd('fd-completeness', fdCompletenessHTML(p));
+  for (const scen of (p.investor_scenarios || [])) {
+    upd('fd-scen-' + scen.id + '-result', fdScenResultHTML(c, scen));
+  }
+}
+
+function fdKPIStripHTML(c, p) {
+  const rc  = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const cap = Number(p?.venue_capacity) || 0;
+  const occ = cap > 0 ? ((c.total_seats / cap) * 100).toFixed(0) + '%' : '—';
+  const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+  const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(c, s).moic)) : 0;
+  const mc = bestMoic >= 1 ? 'text-violet-400' : 'text-slate-400';
   return `<div class="grid grid-cols-5 gap-3">
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div></div>
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_seats)} seats · ${c.n} show${c.n>1?'s':''} · ${occ} occ.</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ROI</div><div class="text-lg font-bold ${rc}">${(c.roi*100).toFixed(1)}%</div></div>
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">MOIC</div><div class="text-lg font-bold ${mc}">${c.moic>0?c.moic.toFixed(2)+'x':'—'}</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ROI</div><div class="text-lg font-bold ${rc}">${(c.roi*100).toFixed(2)}%</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Best MOIC</div><div class="text-lg font-bold ${mc}">${bestMoic > 0 ? bestMoic.toFixed(2)+'x' : '—'}</div></div>
   </div>`;
 }
 
-function fdRenderForm(p) {
+function fdCatTotalsHTML(p, c) {
+  const n = Number(p.num_shows)||1;
+  return `<tr class="border-t border-white/10 font-bold">
+    <td class="py-2 pl-2 text-sm text-white">Total</td>
+    <td class="py-2 text-right text-sm text-white pr-1">${fmtNum(c.total_seats)}</td>
+    <td></td>
+    <td class="py-2 text-right text-sm text-emerald-400 pr-1">${fmtDollar(c.ticket_rev_per_show)}</td>
+    <td class="py-2 text-right text-sm text-emerald-400 pr-2">${fmtDollar(c.total_ticket_rev)}</td>
+    <td></td>
+  </tr>`;
+}
+
+function fdAddlDerivedHTML(p, c) {
+  return `<div class="grid grid-cols-3 gap-2 mt-2 text-[10px]">
+    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">Merch: </span><span class="text-emerald-400 font-semibold">${fmtDollar(c.merch_rev)}</span></div>
+    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">F&amp;B: </span><span class="text-emerald-400 font-semibold">${fmtDollar(c.fnb_rev)}</span></div>
+    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">Sponsorship: </span><span class="text-emerald-400 font-semibold">${fmtDollar(c.sponsor_rev)}</span></div>
+  </div>`;
+}
+
+function fdCostSummaryHTML(c) {
+  return `<div class="grid grid-cols-3 gap-2 mt-3 text-[10px]">
+    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">Op. Cost / Show</div><div class="font-bold text-white">${fmtDollar(c.op_per_show)}</div></div>
+    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">Total Op. Costs</div><div class="font-bold text-red-400">${fmtDollar(c.total_op_costs)}</div></div>
+    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">All Costs</div><div class="font-bold text-red-400">${fmtDollar(c.total_costs)}</div></div>
+  </div>`;
+}
+
+function fdPLSummaryHTML(p, c) {
+  const rc = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const co = p.costs || {};
+  const n = Number(p.num_shows)||1;
+  return `<div class="space-y-1">
+    <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Gross Ticket Revenue</span><span class="text-sm font-semibold text-white">${fmtDollar(c.total_ticket_rev)}</span></div>
+    ${c.ticketing_fee>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Less: Ticketing Platform Fee (${((co.ticketing_fee_pct||0)*100).toFixed(0)}%)</span><span class="text-xs text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
+    ${c.merch_rev>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Merch Revenue (${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}% of $${fmtNum(p.additional_revenue?.merch_per_show||0)}/show)</span><span class="text-xs text-emerald-400">${fmtDollar(c.merch_rev)}</span></div>`:''}
+    ${c.fnb_rev>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  F&amp;B Revenue</span><span class="text-xs text-emerald-400">${fmtDollar(c.fnb_rev)}</span></div>`:''}
+    ${c.sponsor_rev>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Sponsorship Revenue</span><span class="text-xs text-emerald-400">${fmtDollar(c.sponsor_rev)}</span></div>`:''}
+    <div class="flex justify-between py-1.5 border-b border-white/10"><span class="text-sm font-semibold text-white">Total Gross Revenue</span><span class="text-sm font-semibold text-emerald-400">${fmtDollar(c.total_gross_rev)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Artist MG</span><span class="text-xs text-red-400">(${fmtDollar(co.artist_mg||0)})</span></div>
+    ${c.ticketing_fee>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Ticketing Platform Fee</span><span class="text-xs text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
+    ${c.total_op_costs>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Operating Costs × ${n} shows</span><span class="text-xs text-red-400">(${fmtDollar(c.total_op_costs)})</span></div>`:''}
+    ${(co.agency_fees||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Agency Fees</span><span class="text-xs text-red-400">(${fmtDollar(co.agency_fees)})</span></div>`:''}
+    ${(co.blufin_fees||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  BluFin Fees</span><span class="text-xs text-red-400">(${fmtDollar(co.blufin_fees)})</span></div>`:''}
+    <div class="flex justify-between py-2.5 border-t border-white/10 mt-1"><span class="text-base font-bold text-white">Net Profit</span><span class="text-base font-bold ${rc}">${fmtDollar(c.net_profit)}</span></div>
+    <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-semibold text-slate-300">ROI</span><span class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(2)}%</span></div>
+  </div>`;
+}
+
+function fdScenResultHTML(c, scen) {
+  const s = computeScenario(c, scen);
+  if (!s.equity) return `<div class="text-[10px] text-slate-600 text-center py-4">Enter equity to see returns</div>`;
+  const mc = s.moic >= 1 ? 'text-violet-400' : 'text-red-400';
+  const wfNote = c.net_profit <= s.hurdle_amount ? '(all profit ≤ hurdle, 100% to investor)' : '';
+  return `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Hurdle amount (${(s.hurdle_rate*100).toFixed(0)}%)</span><span class="text-[10px] text-white">${fmtDollar(s.hurdle_amount)}</span></div>
+    ${s.investor_dist !== s.hurdle_amount ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Above-hurdle (investor ${(s.inv_split*100).toFixed(0)}%)</span><span class="text-[10px] text-emerald-400">${fmtDollar(s.investor_dist - s.hurdle_amount < 0 ? 0 : s.investor_dist - s.hurdle_amount)}</span></div>` : ''}
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor distribution ${wfNote}</span><span class="text-[10px] text-emerald-400 font-semibold">${fmtDollar(s.investor_dist)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin distribution</span><span class="text-[10px] text-white">${fmtDollar(s.blufin_dist)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Total investor return (equity + dist.)</span><span class="text-[10px] font-bold text-emerald-400">${fmtDollar(s.total_inv_return)}</span></div>
+    <div class="flex justify-between py-1.5 bg-white/5 rounded px-2 mt-1"><span class="text-xs font-bold text-white">MOIC</span><span class="text-xs font-bold ${mc}">${s.moic.toFixed(2)}x</span></div>
+    <div class="flex justify-between py-1.5 bg-white/5 rounded px-2"><span class="text-xs font-bold text-white">Absolute Return</span><span class="text-xs font-bold ${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>
+  </div>`;
+}
+
+function fdCashFlowHTML(p, c) {
+  const rows = computeCashFlow(p, c);
+  if (!rows) return `<div class="text-center py-6 text-slate-600 text-xs">Enter a concert date to generate the cash flow timeline</div>`;
+  if (!rows.length) return `<div class="text-center py-6 text-slate-600 text-xs">No cash flow events — add MG and costs</div>`;
+  const rowsHTML = rows.map(row => {
+    const balColor = row.balance >= 0 ? 'text-emerald-400' : 'text-red-400';
+    const netColor = row.net >= 0 ? 'text-emerald-400' : 'text-red-400';
+    const itemsHTML = row.items.map(it =>
+      `<div class="flex justify-between text-[10px] py-0.5 leading-relaxed"><span class="text-slate-500 pr-2">${it.label}</span><span class="${it.amount>=0?'text-emerald-400/80':'text-red-400/80'} whitespace-nowrap">${fmtDollar(it.amount)}</span></div>`
+    ).join('');
+    return `<tr class="border-b border-white/5 align-top">
+      <td class="py-2.5 pl-3 text-sm text-slate-300 whitespace-nowrap font-medium">${row.display}</td>
+      <td class="py-2.5 px-3 min-w-[280px]">${itemsHTML}</td>
+      <td class="py-2.5 text-right text-sm font-semibold ${netColor} whitespace-nowrap">${fmtDollar(row.net)}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-bold ${balColor} whitespace-nowrap">${fmtDollar(row.balance)}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="w-full">
+    <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+      <th class="text-left pb-3 pl-3">Month</th><th class="text-left pb-3 px-3">Events</th><th class="text-right pb-3">Month Net</th><th class="text-right pb-3 pr-3">Running Balance</th>
+    </tr></thead>
+    <tbody>${rowsHTML}</tbody>
+  </table>`;
+}
+
+function fdCompletenessHTML(p) {
+  const checks = fdComputeCompleteness(p);
+  const icon  = v => v === 'missing' ? '❌' : v.startsWith('partial') ? '⚠️' : '✅';
+  const color = v => v === 'missing' ? 'text-red-400' : v.startsWith('partial') ? 'text-amber-400' : 'text-emerald-400';
+  const missing  = Object.values(checks).filter(v => v === 'missing').length;
+  const partial  = Object.values(checks).filter(v => v.startsWith('partial')).length;
+  const complete = Object.values(checks).length - missing - partial;
+  return `<div class="flex items-center gap-4 mb-3 text-[11px]">
+    <span class="text-emerald-400 font-semibold">${complete} complete</span>
+    <span class="text-amber-400 font-semibold">${partial} partial</span>
+    <span class="text-red-400 font-semibold">${missing} missing</span>
+  </div>` + Object.entries(checks).map(([k,v]) =>
+    `<div class="flex items-center gap-2 py-1.5 border-b border-white/5">
+      <span class="text-xs w-4 text-center">${icon(v)}</span>
+      <span class="text-sm text-slate-400 flex-1">${k}</span>
+      <span class="text-[11px] ${color(v)} text-right max-w-xs leading-tight">${v}</span>
+    </div>`
+  ).join('');
+}
+
+function fdRenderLive(p) {
   const c = computeProfile(p);
-  const cats = p.seat_categories || [];
-  const sched = p.costs?.mg_schedule || [];
-  const catRows = cats.map((cat, i) => `
-    <div class="flex gap-2 items-center">
-      <input type="text" class="${FD_INPUT} flex-1" placeholder="Category name" value="${cat.name.replace(/"/g,'&quot;')}" oninput="fdState.draftProfile.seat_categories[${i}].name=this.value">
-      <input type="number" class="${FD_INPUT} w-28" placeholder="Price $" value="${cat.price}" min="0" oninput="fdState.draftProfile.seat_categories[${i}].price=Number(this.value);fdUpdateKPIs()">
-      <input type="number" class="${FD_INPUT} w-28" placeholder="Seats" value="${cat.count}" min="0" oninput="fdState.draftProfile.seat_categories[${i}].count=Number(this.value);fdUpdateKPIs()">
-      <button onclick="fdRemoveCategory(${i})" class="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 p-1" title="Remove">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
+  const n = Number(p.num_shows)||1;
+  const cap = Number(p.venue_capacity)||0;
+  const occ = cap > 0 ? ((c.total_seats/cap)*100).toFixed(0)+'%' : '—';
+  const isNew = !fdState.profiles.find(x => x.id === p.id);
+
+  const catRows = (p.seat_categories||[]).map((cat,i) => {
+    const revPS  = (Number(cat.price)||0) * (Number(cat.count)||0);
+    const revTot = revPS * n;
+    return `<tr class="border-b border-white/5">
+      <td class="py-1.5 pl-2 pr-1"><input type="text" class="${FD_INPUT} text-xs py-1.5" value="${(cat.name||'').replace(/"/g,'&quot;')}" placeholder="Category name" oninput="fdState.draftProfile.seat_categories[${i}].name=this.value"></td>
+      <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${cat.count||0}" placeholder="Seats" oninput="fdState.draftProfile.seat_categories[${i}].count=Number(this.value);fdUpdateLive()"></td>
+      <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${cat.price||0}" placeholder="Price $" oninput="fdState.draftProfile.seat_categories[${i}].price=Number(this.value);fdUpdateLive()"></td>
+      <td class="py-1.5 text-right text-xs text-emerald-400 pr-1 whitespace-nowrap">${fmtDollar(revPS)}</td>
+      <td class="py-1.5 text-right text-xs text-emerald-400 pr-2 whitespace-nowrap">${fmtDollar(revTot)}</td>
+      <td class="py-1.5 pr-1"><button onclick="fdRemoveCategory(${i})" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
+    </tr>`;
+  }).join('');
+
+  const schedRows = (p.costs?.mg_schedule||[]).map((s,i) => {
+    const amt = (p.costs?.artist_mg||0) * (s.pct||0);
+    let dateStr = '—';
+    if (p.concert_date && s.months_before > 0) {
+      const d = new Date(p.concert_date+'T12:00:00'); d.setMonth(d.getMonth()-s.months_before);
+      dateStr = d.toLocaleDateString('en-US',{year:'numeric',month:'short'});
+    }
+    return `<tr class="border-b border-white/5">
+      <td class="py-1.5 pl-2 pr-1"><input type="text" class="${FD_INPUT} text-xs py-1.5" value="${(s.label||'').replace(/"/g,'&quot;')}" placeholder="Label" oninput="fdState.draftProfile.costs.mg_schedule[${i}].label=this.value"></td>
+      <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5 w-20" min="0" max="100" value="${((s.pct||0)*100).toFixed(0)}" placeholder="%" oninput="fdState.draftProfile.costs.mg_schedule[${i}].pct=Number(this.value)/100;fdUpdateLive()"></td>
+      <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5 w-24" min="0" value="${s.months_before||0}" placeholder="months" oninput="fdState.draftProfile.costs.mg_schedule[${i}].months_before=Number(this.value);fdUpdateLive()"></td>
+      <td class="py-1.5 text-center text-xs text-slate-400 whitespace-nowrap">${dateStr}</td>
+      <td class="py-1.5 text-right text-xs font-semibold text-red-400 pr-2 whitespace-nowrap">${amt>0?fmtDollar(amt):'—'}</td>
+      <td class="py-1.5 pr-1"><button onclick="fdRemoveMGSchedule(${i})" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
+    </tr>`;
+  }).join('');
+
+  const scenCards = (p.investor_scenarios||[]).map((scen,i) => `
+    <div class="glass rounded-xl p-4 flex-1 min-w-0">
+      <div class="flex items-center justify-between mb-3">
+        <input type="text" class="bg-transparent border-b border-white/10 text-[11px] font-semibold text-violet-300 uppercase tracking-wider w-28 focus:outline-none focus:border-violet-500/50 pb-0.5" value="${(scen.label||'').replace(/"/g,'&quot;')}" oninput="fdPatchScenLabel('${scen.id}',this.value)">
+        ${i >= 2 ? `<button onclick="fdRemoveScenario('${scen.id}')" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>` : '<div class="w-5"></div>'}
+      </div>
+      <div class="space-y-2">
+        <div><label class="${FD_LABEL}">Equity Invested ($)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${scen.equity||0}" oninput="fdPatchScen('${scen.id}','equity',Number(this.value))"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="${FD_LABEL}">Hurdle Rate (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.hurdle_rate??0.20)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','hurdle_rate',Number(this.value)/100)"></div>
+          <div><label class="${FD_LABEL}">Inv. Split Above Hurdle (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.above_hurdle_investor_pct??0.50)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','above_hurdle_investor_pct',Number(this.value)/100)"></div>
+        </div>
+      </div>
+      <div id="fd-scen-${scen.id}-result">${fdScenResultHTML(c, scen)}</div>
     </div>`).join('');
-  const totalSeats = cats.reduce((s, c) => s+(Number(c.count)||0), 0);
-  const totalRevPS = cats.reduce((s, c) => s+(Number(c.price)||0)*(Number(c.count)||0), 0);
-  const schedRows = sched.map((s, i) => `
-    <div class="flex gap-2 items-center">
-      <input type="text" class="${FD_INPUT} flex-1" placeholder="Label" value="${s.label.replace(/"/g,'&quot;')}" oninput="fdState.draftProfile.costs.mg_schedule[${i}].label=this.value">
-      <input type="number" class="${FD_INPUT} w-24" placeholder="%" value="${(s.pct*100).toFixed(0)}" min="0" max="100" oninput="fdState.draftProfile.costs.mg_schedule[${i}].pct=Number(this.value)/100;fdUpdateKPIs()">
-      <input type="number" class="${FD_INPUT} w-28" placeholder="Months before" value="${s.months_before}" min="0" oninput="fdState.draftProfile.costs.mg_schedule[${i}].months_before=Number(this.value)">
-      <button onclick="fdRemoveMGSchedule(${i})" class="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0 p-1" title="Remove">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>`).join('');
-  return `<div class="p-6 space-y-5">
-    <div id="fd-kpi-strip">${fdKPIStripHTML(c)}</div>
-    <div class="glass rounded-xl p-5 space-y-4">
-      <h3 class="text-sm font-semibold text-white">1 — Artist &amp; Venue</h3>
-      <div class="grid grid-cols-2 gap-4">
-        <div><label class="${FD_LABEL}">Artist Name</label><input type="text" class="${FD_INPUT}" placeholder="e.g. Justin Bieber" value="${p.artist.replace(/"/g,'&quot;')}" oninput="fdPatch('artist',this.value)"></div>
-        <div><label class="${FD_LABEL}">Venue Type</label><select class="${FD_INPUT}" onchange="fdPatchVenueType(this.value)">
-          <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (~40,000 capacity)</option>
-          <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (~18,000 capacity)</option>
-          <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (~3,000 capacity)</option>
-        </select></div>
-        <div><label class="${FD_LABEL}">City</label><input type="text" class="${FD_INPUT}" placeholder="e.g. Seoul, Korea" value="${p.city.replace(/"/g,'&quot;')}" oninput="fdPatch('city',this.value)"></div>
-        <div><label class="${FD_LABEL}">Number of Shows</label><input type="number" class="${FD_INPUT}" min="1" value="${p.num_shows}" oninput="fdPatch('num_shows',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Concert Date</label><input type="date" class="${FD_INPUT}" value="${p.concert_date}" onchange="fdPatch('concert_date',this.value)"></div>
+
+  return `<div class="p-5 space-y-4" style="height:100%;overflow-y:auto">
+    <!-- Header -->
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex-1 min-w-0">
+        <input type="text" class="w-full bg-transparent border-b border-white/10 text-xl font-bold text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 pb-1 mb-2" placeholder="Artist Name" value="${(p.artist||'').replace(/"/g,'&quot;')}" oninput="fdPatch('artist',this.value)">
+        <div class="flex flex-wrap items-center gap-2">
+          <select class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" onchange="fdPatchVenueType(this.value)">
+            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium</option>
+            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena</option>
+            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater</option>
+          </select>
+          <input type="text" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-40" placeholder="City, Country" value="${(p.city||'').replace(/"/g,'&quot;')}" oninput="fdPatch('city',this.value)">
+          <div class="flex items-center gap-1"><span class="text-[10px] text-slate-500">Shows:</span><input type="number" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50 w-14" min="1" value="${p.num_shows||1}" oninput="fdPatch('num_shows',Number(this.value));fdUpdateLive()"></div>
+          <input type="date" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" value="${p.concert_date||''}" onchange="fdPatch('concert_date',this.value)">
+        </div>
+      </div>
+      <div class="flex gap-2 flex-shrink-0">
+        <button onclick="fdSaveProfile()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">${isNew ? 'Save Profile' : 'Save Changes'}</button>
+        ${!isNew ? `<button onclick="fdDeleteProfile('${p.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-2 rounded-lg transition-colors">Delete</button>` : ''}
+        <button onclick="fdCancelForm()" class="bg-white/5 hover:bg-white/10 text-slate-400 text-xs px-3 py-2 rounded-lg transition-colors">Cancel</button>
       </div>
     </div>
-    <div class="glass rounded-xl p-5 space-y-3">
-      <div class="flex items-center justify-between">
-        <h3 class="text-sm font-semibold text-white">2 — Seat Categories</h3>
+
+    <!-- KPI Strip -->
+    <div id="fd-kpi-strip">${fdKPIStripHTML(c, p)}</div>
+
+    <!-- 1. Venue & Capacity -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">1 — Venue &amp; Capacity</h3>
+      <div class="grid grid-cols-4 gap-4">
+        <div>
+          <label class="${FD_LABEL}">Venue Type</label>
+          <select class="${FD_INPUT}" onchange="fdPatchVenueType(this.value)">
+            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (preset ~40K)</option>
+            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (preset ~18K)</option>
+            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (preset ~3K)</option>
+          </select>
+          <div class="text-[9px] text-slate-600 mt-1">Changes reset seat categories to preset</div>
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Venue Capacity (editable)</label>
+          <input type="number" class="${FD_INPUT}" min="0" value="${p.venue_capacity||0}" oninput="fdPatch('venue_capacity',Number(this.value));fdUpdateLive()">
+          <div class="text-[9px] text-slate-600 mt-1">Total seats in venue</div>
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Occupancy Rate</label>
+          <div class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 text-center font-bold">${occ}</div>
+          <div class="text-[9px] text-slate-600 mt-1">Category seats ÷ venue capacity</div>
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Total Attendance</label>
+          <div class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-semibold text-center">${fmtNum(c.total_attendance)}</div>
+          <div class="text-[9px] text-slate-600 mt-1">${fmtNum(c.total_seats)}/show × ${n} show${n>1?'s':''}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Seat Categories -->
+    <div class="glass rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">2 — Seat Categories</h3>
         <button onclick="fdAddCategory()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Category</button>
       </div>
-      <div class="grid grid-cols-3 gap-2 text-[9px] text-slate-500 uppercase tracking-wider px-1 pr-8"><span>Name</span><span>Price (USD)</span><span>Seat Count</span></div>
-      <div id="fd-categories" class="space-y-2">${catRows}</div>
-      <div class="flex items-center justify-between pt-2 border-t border-white/5 text-xs">
-        <span class="text-slate-500">Total: <span class="text-white font-semibold">${fmtNum(totalSeats)} seats</span></span>
-        <span class="text-slate-500">Revenue/show: <span class="text-emerald-400 font-semibold">${fmtDollar(totalRevPS)}</span></span>
-      </div>
+      <table class="w-full">
+        <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+          <th class="text-left pb-2 pl-2">Category Name</th><th class="text-left pb-2 px-1">Seat Count</th><th class="text-left pb-2 px-1">Price (USD)</th><th class="text-right pb-2 pr-1">Rev / Show</th><th class="text-right pb-2 pr-2">Total (${n} shows)</th><th class="pb-2 w-8"></th>
+        </tr></thead>
+        <tbody>${catRows}</tbody>
+        <tfoot id="fd-cat-totals">${fdCatTotalsHTML(p,c)}</tfoot>
+      </table>
     </div>
-    <div class="glass rounded-xl p-5 space-y-4">
-      <h3 class="text-sm font-semibold text-white">3 — Additional Revenue</h3>
+
+    <!-- 3. Additional Revenue -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">3 — Additional Revenue</h3>
       <div class="grid grid-cols-3 gap-4">
-        <div><label class="${FD_LABEL}">Merch Expected / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.merch_per_show||0}" oninput="fdPatch('additional_revenue.merch_per_show',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Merch Split Received (%)</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.merch_split_pct',Number(this.value)/100);fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Sponsorship / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.sponsorship_per_show||0}" oninput="fdPatch('additional_revenue.sponsorship_per_show',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Avg F&amp;B Spend / Head ($)</label><input type="number" class="${FD_INPUT}" min="0" step="0.01" value="${p.additional_revenue?.fnb_per_head||0}" oninput="fdPatch('additional_revenue.fnb_per_head',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">F&amp;B Buyer % of Attendance</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.fnb_buyer_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.fnb_buyer_pct',Number(this.value)/100);fdUpdateKPIs()"></div>
-      </div>
-    </div>
-    <div class="glass rounded-xl p-5 space-y-4">
-      <h3 class="text-sm font-semibold text-white">4 — Artist MG</h3>
-      <div><label class="${FD_LABEL}">Total MG ($)</label><input type="number" class="${FD_INPUT} max-w-xs" min="0" value="${p.costs?.artist_mg||0}" oninput="fdPatch('costs.artist_mg',Number(this.value));fdUpdateKPIs()"></div>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <span class="text-xs text-slate-400">Payment Schedule</span>
-          <button onclick="fdAddMGSchedule()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Payment</button>
+        <div>
+          <label class="${FD_LABEL}">Merch Expected / Show ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.merch_per_show||0}" oninput="fdPatch('additional_revenue.merch_per_show',Number(this.value));fdUpdateLive()">
         </div>
-        <div class="grid grid-cols-3 gap-2 text-[9px] text-slate-500 uppercase tracking-wider px-1 pr-8"><span>Label</span><span>% of MG</span><span>Months Before</span></div>
-        <div id="fd-mg-schedule" class="space-y-2">${schedRows}</div>
+        <div>
+          <label class="${FD_LABEL}">Promoter Merch Split (%)</label>
+          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.merch_split_pct',Number(this.value)/100);fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Sponsorship / Show ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.sponsorship_per_show||0}" oninput="fdPatch('additional_revenue.sponsorship_per_show',Number(this.value));fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Avg F&amp;B Spend / Head ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" step="0.01" value="${p.additional_revenue?.fnb_per_head||0}" oninput="fdPatch('additional_revenue.fnb_per_head',Number(this.value));fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">F&amp;B Buyer % of Attendance</label>
+          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.fnb_buyer_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.fnb_buyer_pct',Number(this.value)/100);fdUpdateLive()">
+        </div>
       </div>
+      <div id="fd-addl-derived">${fdAddlDerivedHTML(p,c)}</div>
     </div>
-    <div class="glass rounded-xl p-5 space-y-4">
-      <h3 class="text-sm font-semibold text-white">5 — Operating Costs</h3>
+
+    <!-- 4. Artist MG & Payment Schedule -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">4 — Artist Fee &amp; MG Payment Schedule</h3>
+      <div class="grid grid-cols-2 gap-4 mb-4">
+        <div>
+          <label class="${FD_LABEL}">Total MG ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.artist_mg||0}" oninput="fdPatch('costs.artist_mg',Number(this.value));fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Ticketing Platform Fee (%)</label>
+          <input type="number" class="${FD_INPUT}" min="0" max="100" step="0.1" value="${((p.costs?.ticketing_fee_pct||0)*100).toFixed(1)}" oninput="fdPatch('costs.ticketing_fee_pct',Number(this.value)/100);fdUpdateLive()">
+          <div class="text-[9px] text-slate-600 mt-1">→ Fee: ${fmtDollar(c.ticketing_fee)} (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}% of ticket revenue)</div>
+        </div>
+      </div>
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[10px] text-slate-500 uppercase tracking-wider">Payment Schedule</span>
+        <button onclick="fdAddMGSchedule()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Payment</button>
+      </div>
+      <table class="w-full">
+        <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+          <th class="text-left pb-2 pl-2">Label</th><th class="text-left pb-2 px-1">% of MG</th><th class="text-left pb-2 px-1">Months Before</th><th class="text-center pb-2">Est. Date</th><th class="text-right pb-2 pr-2">Amount</th><th class="pb-2 w-8"></th>
+        </tr></thead>
+        <tbody>${schedRows}</tbody>
+        <tfoot><tr class="border-t border-white/10"><td class="py-2 pl-2 text-xs font-bold text-white" colspan="3">Total MG</td><td></td><td class="py-2 text-right pr-2 text-xs font-bold text-red-400">${fmtDollar(p.costs?.artist_mg||0)}</td><td></td></tr></tfoot>
+      </table>
+    </div>
+
+    <!-- 5. Operating Costs -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">5 — Operating Costs</h3>
       <div class="grid grid-cols-3 gap-4">
-        <div><label class="${FD_LABEL}">Ticketing Platform Fee (%)</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="0.1" value="${((p.costs?.ticketing_fee_pct||0)*100).toFixed(1)}" oninput="fdPatch('costs.ticketing_fee_pct',Number(this.value)/100);fdUpdateKPIs()"><div class="text-[9px] text-slate-600 mt-1">% of gross ticket revenue</div></div>
-        <div><label class="${FD_LABEL}">Venue Fee / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.venue_fee_per_show||0}" oninput="fdPatch('costs.venue_fee_per_show',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Production / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.production_per_show||0}" oninput="fdPatch('costs.production_per_show',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Hospitality / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.hospitality_per_show||0}" oninput="fdPatch('costs.hospitality_per_show',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Insurance / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.insurance_per_show||0}" oninput="fdPatch('costs.insurance_per_show',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Agency Fees (one-time) ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.agency_fees||0}" oninput="fdPatch('costs.agency_fees',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">BluFin Fees (one-time) ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.blufin_fees||0}" oninput="fdPatch('costs.blufin_fees',Number(this.value));fdUpdateKPIs()"><div class="text-[9px] text-slate-600 mt-1">project cost, separate from waterfall</div></div>
+        <div><label class="${FD_LABEL}">Venue Fee / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.venue_fee_per_show||0}" oninput="fdPatch('costs.venue_fee_per_show',Number(this.value));fdUpdateLive()"></div>
+        <div><label class="${FD_LABEL}">Production / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.production_per_show||0}" oninput="fdPatch('costs.production_per_show',Number(this.value));fdUpdateLive()"></div>
+        <div><label class="${FD_LABEL}">Hospitality / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.hospitality_per_show||0}" oninput="fdPatch('costs.hospitality_per_show',Number(this.value));fdUpdateLive()"></div>
+        <div><label class="${FD_LABEL}">Insurance / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.insurance_per_show||0}" oninput="fdPatch('costs.insurance_per_show',Number(this.value));fdUpdateLive()"></div>
+        <div><label class="${FD_LABEL}">Agency Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.agency_fees||0}" oninput="fdPatch('costs.agency_fees',Number(this.value));fdUpdateLive()"></div>
+        <div><label class="${FD_LABEL}">BluFin Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.blufin_fees||0}" oninput="fdPatch('costs.blufin_fees',Number(this.value));fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">project cost, before waterfall</div></div>
       </div>
+      <div id="fd-costs-summary">${fdCostSummaryHTML(c)}</div>
     </div>
-    <div class="glass rounded-xl p-5 space-y-4">
-      <h3 class="text-sm font-semibold text-white">6 — Investor <span class="text-slate-600 text-xs font-normal">(optional)</span></h3>
-      <div class="grid grid-cols-3 gap-4">
-        <div><label class="${FD_LABEL}">Equity Invested ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.investor?.equity||0}" oninput="fdPatch('investor.equity',Number(this.value));fdUpdateKPIs()"></div>
-        <div><label class="${FD_LABEL}">Hurdle Rate (%)</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.investor?.hurdle_rate??0.20)*100).toFixed(0)}" oninput="fdPatch('investor.hurdle_rate',Number(this.value)/100);fdUpdateKPIs()"><div class="text-[9px] text-slate-600 mt-1">preferred return before split</div></div>
-        <div><label class="${FD_LABEL}">Investor Split Above Hurdle (%)</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.investor?.above_hurdle_investor_pct??0.50)*100).toFixed(0)}" oninput="fdPatch('investor.above_hurdle_investor_pct',Number(this.value)/100);fdUpdateKPIs()"><div class="text-[9px] text-slate-600 mt-1">investor % of profit above hurdle</div></div>
+
+    <!-- P&L Summary -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">P&amp;L Summary</h3>
+      <div id="fd-pl-summary">${fdPLSummaryHTML(p,c)}</div>
+    </div>
+
+    <!-- 6. Investor Scenarios -->
+    <div class="glass rounded-xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">6 — Investor Scenarios</h3>
+        <button onclick="fdAddScenario()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Scenario</button>
       </div>
-      <div class="bg-white/3 rounded-lg p-3 text-[10px] text-slate-500 leading-relaxed">
-        <span class="text-slate-400 font-medium">Waterfall:</span> 1. Return of capital → 2. Up to ${((p.investor?.hurdle_rate??0.20)*100).toFixed(0)}% absolute return (100% investor) → 3. Above hurdle: ${((p.investor?.above_hurdle_investor_pct??0.50)*100).toFixed(0)}% investor / ${(100-((p.investor?.above_hurdle_investor_pct??0.50)*100)).toFixed(0)}% BluFin. MOIC and absolute return are <span class="text-violet-400">auto-calculated</span>.
-      </div>
+      <div class="text-[9px] text-slate-500 mb-3 leading-relaxed">Waterfall: ① Return of capital → ② Preferred return (100% investor up to hurdle) → ③ Above hurdle: investor % / (100% − investor %) BluFin</div>
+      <div class="flex gap-3 flex-wrap">${scenCards}</div>
     </div>
-    <div class="flex items-center gap-3 pb-4">
-      <button onclick="fdSaveProfile()" class="bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">Save Profile</button>
-      <button onclick="fdCancelForm()" class="bg-white/5 hover:bg-white/10 text-slate-300 text-sm px-4 py-2 rounded-lg transition-colors">Cancel</button>
+
+    <!-- Monthly Cash Flow -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">Monthly Cash Flow — Project P&amp;L</h3>
+      <div id="fd-cf-section">${fdCashFlowHTML(p,c)}</div>
     </div>
+
+    <!-- Model Completeness -->
+    <div class="glass rounded-xl p-4 pb-8">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">Model Completeness</h3>
+      <div id="fd-completeness">${fdCompletenessHTML(p)}</div>
+    </div>
+
   </div>`;
 }
 
 function fdAddCategory() {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.seat_categories.push({ name: '', price: 0, count: 0 });
-  document.getElementById('fd-main').innerHTML = fdRenderForm(fdState.draftProfile);
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
 }
 function fdRemoveCategory(i) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.seat_categories.splice(i, 1);
-  document.getElementById('fd-main').innerHTML = fdRenderForm(fdState.draftProfile);
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
 }
 function fdAddMGSchedule() {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.costs.mg_schedule.push({ label: '', pct: 0, months_before: 0 });
-  document.getElementById('fd-main').innerHTML = fdRenderForm(fdState.draftProfile);
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
 }
 function fdRemoveMGSchedule(i) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.costs.mg_schedule.splice(i, 1);
-  document.getElementById('fd-main').innerHTML = fdRenderForm(fdState.draftProfile);
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+}
+function fdAddScenario() {
+  if (!fdState.draftProfile) return;
+  const id = 'scen_' + fdGenId();
+  const letter = String.fromCharCode(65 + fdState.draftProfile.investor_scenarios.length);
+  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 });
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+}
+function fdRemoveScenario(id) {
+  if (!fdState.draftProfile) return;
+  fdState.draftProfile.investor_scenarios = fdState.draftProfile.investor_scenarios.filter(s => s.id !== id);
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
 }
 
-function fdRenderDetail(p) {
-  const c = computeProfile(p);
-  const rc = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
-  const vbg = p.venue_type==='stadium' ? 'bg-violet-500/15 text-violet-300' : p.venue_type==='arena' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300';
-  const dateLabel = p.concert_date ? new Date(p.concert_date+'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '';
-  const n = Number(p.num_shows)||1;
-
-  // ── KPI grid (5 cards, matching Financial Detail style) ──
-  const kpiGrid = `<div class="grid grid-cols-5 gap-4">
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Ticket Revenue</div><div class="text-2xl font-bold text-white">${fmtDollar(c.total_ticket_rev)}</div><div class="text-[11px] text-slate-400 mt-1">${fmtNum(c.total_seats)} seats/show · ${n} show${n>1?'s':''}</div></div>
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Gross Revenue</div><div class="text-2xl font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[11px] text-slate-400 mt-1">incl. merch${c.fnb_rev>0?' + F&B':''} + sponsorship</div></div>
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Costs</div><div class="text-2xl font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[11px] text-slate-400 mt-1">MG + ticketing + ops</div></div>
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Net Profit / ROI</div><div class="text-2xl font-bold ${rc}">${fmtDollar(c.net_profit)}</div><div class="text-[11px] ${rc} mt-1">${(c.roi*100).toFixed(1)}% ROI</div></div>
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">${Number(p.investor?.equity)>0?'MOIC / Abs. Return':'Investor'}</div><div class="text-2xl font-bold text-violet-400">${Number(p.investor?.equity)>0?c.moic.toFixed(2)+'x':'—'}</div><div class="text-[11px] text-violet-300 mt-1">${Number(p.investor?.equity)>0?(c.abs_return*100).toFixed(1)+'% abs. return':'No equity entered'}</div></div>
-  </div>`;
-
-  // ── Seat categories table ──
-  const catRows = (p.seat_categories||[]).map(cat => {
-    const revPS = Number(cat.price) * Number(cat.count);
-    const revTotal = revPS * n;
-    return `<tr class="border-b border-white/5">
-      <td class="py-2.5 pl-3 text-sm text-slate-300">${cat.name}</td>
-      <td class="py-2.5 text-right text-sm text-white">${fmtNum(Number(cat.count))}</td>
-      <td class="py-2.5 text-right text-sm text-white">$${Number(cat.price).toLocaleString()}</td>
-      <td class="py-2.5 text-right text-sm text-emerald-400">${fmtDollar(revPS)}</td>
-      <td class="py-2.5 text-right pr-3 text-sm font-semibold text-emerald-400">${fmtDollar(revTotal)}</td>
-    </tr>`;
-  }).join('');
-
-  // ── Revenue section ──
-  const revenueSection = `<div class="glass rounded-xl p-5">
-    <h3 class="font-semibold text-white text-sm mb-4">Revenue — Seat Categories &amp; Additional</h3>
-    <table class="w-full">
-      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-        <th class="text-left pb-3 pl-3">Category</th>
-        <th class="text-right pb-3">Seats / Show</th>
-        <th class="text-right pb-3">Price</th>
-        <th class="text-right pb-3">Revenue / Show</th>
-        <th class="text-right pb-3 pr-3">Total (${n} shows)</th>
-      </tr></thead>
-      <tbody>${catRows}</tbody>
-      <tfoot>
-        <tr class="border-t border-white/10">
-          <td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Ticket Revenue</td>
-          <td class="py-2.5 text-right text-sm font-bold text-emerald-400">${fmtDollar(c.ticket_rev_per_show)}</td>
-          <td class="py-2.5 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(c.total_ticket_rev)}</td>
-        </tr>
-        ${c.ticketing_fee>0?`<tr class="opacity-70"><td class="py-1.5 pl-3 text-sm text-red-400" colspan="3">Less: Ticketing Platform Fee (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}%)</td><td class="py-1.5 text-right text-sm text-red-400">${fmtDollar(c.ticketing_fee/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-red-400">(${fmtDollar(c.ticketing_fee)})</td></tr>`:''}
-        ${c.merch_rev>0?`<tr><td class="py-1.5 pl-3 text-sm text-slate-400" colspan="3">Merch (${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}% of $${fmtNum(p.additional_revenue?.merch_per_show||0)}/show)</td><td class="py-1.5 text-right text-sm text-emerald-400">${fmtDollar(c.merch_rev/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.merch_rev)}</td></tr>`:''}
-        ${c.fnb_rev>0?`<tr><td class="py-1.5 pl-3 text-sm text-slate-400" colspan="3">F&amp;B ($${p.additional_revenue?.fnb_per_head||0}/head × ${((p.additional_revenue?.fnb_buyer_pct||0)*100).toFixed(0)}%)</td><td class="py-1.5 text-right text-sm text-emerald-400">${fmtDollar(c.fnb_rev/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.fnb_rev)}</td></tr>`:''}
-        ${c.sponsor_rev>0?`<tr><td class="py-1.5 pl-3 text-sm text-slate-400" colspan="3">Sponsorship ($${fmtNum(p.additional_revenue?.sponsorship_per_show||0)}/show)</td><td class="py-1.5 text-right text-sm text-emerald-400">${fmtDollar(c.sponsor_rev/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.sponsor_rev)}</td></tr>`:''}
-        <tr class="border-t border-white/10 bg-white/2">
-          <td class="py-3 pl-3 text-sm font-bold text-white" colspan="3">Total Gross Revenue</td>
-          <td class="py-3 text-right text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev/n)}</td>
-          <td class="py-3 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>`;
-
-  // ── Cost section ──
-  const costRows = [
-    { label: 'Artist MG', val: p.costs?.artist_mg||0, perShow: false, color: 'text-red-400' },
-    ...(c.ticketing_fee>0 ? [{ label: `Ticketing Platform Fee (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}% of ticket rev)`, val: c.ticketing_fee, perShow: false }] : []),
-    ...(p.costs?.venue_fee_per_show>0 ? [{ label: 'Venue Fee', val: p.costs.venue_fee_per_show, perShow: true }] : []),
-    ...(p.costs?.production_per_show>0 ? [{ label: 'Production', val: p.costs.production_per_show, perShow: true }] : []),
-    ...(p.costs?.hospitality_per_show>0 ? [{ label: 'Hospitality', val: p.costs.hospitality_per_show, perShow: true }] : []),
-    ...(p.costs?.insurance_per_show>0 ? [{ label: 'Insurance', val: p.costs.insurance_per_show, perShow: true }] : []),
-    ...(p.costs?.agency_fees>0 ? [{ label: 'Agency Fees', val: p.costs.agency_fees, perShow: false }] : []),
-    ...(p.costs?.blufin_fees>0 ? [{ label: 'BluFin Fees', val: p.costs.blufin_fees, perShow: false }] : []),
-  ].map(r => {
-    const total = r.perShow ? r.val * n : r.val;
-    return `<tr class="border-b border-white/5">
-      <td class="py-2.5 pl-3 text-sm text-slate-300">${r.label}</td>
-      <td class="py-2.5 text-right text-sm text-slate-400">${r.perShow ? fmtDollar(r.val) : '—'}</td>
-      <td class="py-2.5 text-right pr-3 text-sm font-semibold ${r.color||'text-white'}">${fmtDollar(total)}</td>
-    </tr>`;
-  }).join('');
-
-  const costSection = `<div class="glass rounded-xl p-5">
-    <h3 class="font-semibold text-white text-sm mb-4">Cost Assumptions</h3>
-    <table class="w-full">
-      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-        <th class="text-left pb-3 pl-3">Item</th>
-        <th class="text-right pb-3">Per Show</th>
-        <th class="text-right pb-3 pr-3">Total (${n} shows)</th>
-      </tr></thead>
-      <tbody>${costRows}</tbody>
-      <tfoot>
-        <tr class="border-t border-white/10">
-          <td class="py-3 pl-3 text-sm font-bold text-white">Total Costs</td>
-          <td></td>
-          <td class="py-3 text-right pr-3 text-sm font-bold text-red-400">${fmtDollar(c.total_costs)}</td>
-        </tr>
-        <tr class="bg-white/3">
-          <td class="py-3 pl-3 text-sm font-bold text-white">Net Profit</td>
-          <td></td>
-          <td class="py-3 text-right pr-3 text-sm font-bold ${rc}">${fmtDollar(c.net_profit)}</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>`;
-
-  // ── P&L Summary ──
-  const plSection = `<div class="glass rounded-xl p-5">
-    <h3 class="font-semibold text-white text-sm mb-4">P&amp;L Summary</h3>
-    <div class="space-y-2">
-      <div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Gross Ticket Revenue</span><span class="text-sm font-semibold text-white">${fmtDollar(c.total_ticket_rev)}</span></div>
-      ${c.ticketing_fee>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Less: Ticketing Platform Fee</span><span class="text-sm text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
-      ${c.merch_rev>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Merch Revenue</span><span class="text-sm text-emerald-400">${fmtDollar(c.merch_rev)}</span></div>`:''}
-      ${c.fnb_rev>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">F&amp;B Revenue</span><span class="text-sm text-emerald-400">${fmtDollar(c.fnb_rev)}</span></div>`:''}
-      ${c.sponsor_rev>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Sponsorship Revenue</span><span class="text-sm text-emerald-400">${fmtDollar(c.sponsor_rev)}</span></div>`:''}
-      <div class="flex justify-between py-2 border-b border-white/10"><span class="text-sm font-semibold text-white">Total Gross Revenue</span><span class="text-sm font-semibold text-emerald-400">${fmtDollar(c.total_gross_rev)}</span></div>
-      <div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Artist MG</span><span class="text-sm text-red-400">(${fmtDollar(p.costs?.artist_mg||0)})</span></div>
-      <div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Operating Costs</span><span class="text-sm text-red-400">(${fmtDollar(c.total_op_costs + (p.costs?.agency_fees||0) + (p.costs?.blufin_fees||0))})</span></div>
-      <div class="flex justify-between py-3"><span class="text-base font-bold text-white">Net Profit</span><span class="text-base font-bold ${rc}">${fmtDollar(c.net_profit)}</span></div>
-      <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm text-slate-400">ROI (net profit / total costs)</span><span class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(2)}%</span></div>
-    </div>
-  </div>`;
-
-  // ── MG Payment Timeline ──
-  const mgRows = (p.costs?.mg_schedule||[]).map(s => {
-    const amt = (p.costs?.artist_mg||0) * (s.pct||0);
-    let dateStr = '—';
-    if (p.concert_date && s.months_before > 0) {
-      const d = new Date(p.concert_date + 'T12:00:00');
-      d.setMonth(d.getMonth() - s.months_before);
-      dateStr = d.toLocaleDateString('en-US', { year:'numeric', month:'short' });
-    }
-    return `<tr class="border-b border-white/5">
-      <td class="py-2.5 pl-3 text-sm text-slate-300">${s.label}</td>
-      <td class="py-2.5 text-sm text-slate-400">${dateStr}</td>
-      <td class="py-2.5 text-right text-sm text-white">${s.months_before>0?s.months_before+' mo before':'—'}</td>
-      <td class="py-2.5 text-right text-sm text-white">${(s.pct*100).toFixed(0)}%</td>
-      <td class="py-2.5 text-right pr-3 text-sm font-semibold text-red-400">${fmtDollar(amt)}</td>
-    </tr>`;
-  }).join('');
-  const mgSection = (p.costs?.mg_schedule||[]).length>0 ? `<div class="glass rounded-xl p-5">
-    <div class="flex items-center gap-6 mb-4">
-      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Total MG</div><div class="text-xl font-bold text-red-400 mt-1">${fmtDollar(p.costs?.artist_mg||0)}</div></div>
-      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Concert Date</div><div class="text-xl font-bold text-white mt-1">${dateLabel||'—'}</div></div>
-      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Ticketing Fee</div><div class="text-xl font-bold text-white mt-1">${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}%</div></div>
-    </div>
-    <h3 class="font-semibold text-white text-sm mb-3">Artist Fee — MG Payment Schedule</h3>
-    <table class="w-full">
-      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-        <th class="text-left pb-3 pl-3">Payment</th><th class="text-left pb-3">Est. Date</th><th class="text-right pb-3">Timing</th><th class="text-right pb-3">% of MG</th><th class="text-right pb-3 pr-3">Amount</th>
-      </tr></thead>
-      <tbody>${mgRows}</tbody>
-      <tfoot><tr class="border-t border-white/10">
-        <td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Total</td>
-        <td class="py-2.5 text-right text-sm font-bold text-white">100%</td>
-        <td class="py-2.5 text-right pr-3 text-sm font-bold text-red-400">${fmtDollar(p.costs?.artist_mg||0)}</td>
-      </tr></tfoot>
-    </table>
-  </div>` : '';
-
-  // ── Investor waterfall (full breakdown) ──
-  const invSection = (Number(p.investor?.equity)>0) ? `<div class="glass rounded-xl p-5">
-    <h3 class="text-sm font-semibold text-white mb-4">Investor Returns — Distribution Waterfall</h3>
-    <div class="grid grid-cols-3 gap-4 mb-5">
-      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Equity Invested</div><div class="text-xl font-bold text-white mt-1">${fmtDollar(p.investor.equity)}</div></div>
-      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Hurdle Rate</div><div class="text-xl font-bold text-white mt-1">${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}% (${fmtDollar(c.hurdle_amount)})</div></div>
-      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Split Above Hurdle</div><div class="text-xl font-bold text-white mt-1">${((p.investor.above_hurdle_investor_pct??0.50)*100).toFixed(0)}% Investor / ${(100-((p.investor.above_hurdle_investor_pct??0.50)*100)).toFixed(0)}% BluFin</div></div>
-    </div>
-    <div class="space-y-2.5">
-      <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-2">Step 1 — Return of Capital</div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Capital returned to investor</span><span class="text-sm font-semibold text-white">${fmtDollar(p.investor.equity)}</span></div>
-      <div class="text-[9px] text-slate-500 uppercase tracking-wider mt-3 mb-2">Step 2 — Preferred Return (up to ${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}%)</div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Net profit available</span><span class="text-sm ${c.net_profit>=0?'text-emerald-400':'text-red-400'}">${fmtDollar(c.net_profit)}</span></div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Hurdle amount (${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}% × equity)</span><span class="text-sm text-white">${fmtDollar(c.hurdle_amount)}</span></div>
-      ${c.net_profit > c.hurdle_amount ? `
-      <div class="text-[9px] text-slate-500 uppercase tracking-wider mt-3 mb-2">Step 3 — Above Hurdle Split</div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Amount above hurdle</span><span class="text-sm text-white">${fmtDollar(c.net_profit - c.hurdle_amount)}</span></div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Investor share (${((p.investor.above_hurdle_investor_pct??0.50)*100).toFixed(0)}%)</span><span class="text-sm text-emerald-400">${fmtDollar((c.net_profit - c.hurdle_amount) * (p.investor.above_hurdle_investor_pct??0.50))}</span></div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">BluFin share (${(100-((p.investor.above_hurdle_investor_pct??0.50)*100)).toFixed(0)}%)</span><span class="text-sm text-white">${fmtDollar(c.blufin_dist)}</span></div>` : ''}
-      <div class="h-px bg-white/10 my-2"></div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total investor distribution</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(c.investor_dist)}</span></div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">BluFin distribution</span><span class="text-sm text-white">${fmtDollar(c.blufin_dist)}</span></div>
-      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total investor return (equity + dist.)</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(c.total_inv_return)}</span></div>
-      <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3 mt-1"><span class="text-sm font-bold text-white">MOIC</span><span class="text-sm font-bold text-violet-400">${c.moic.toFixed(2)}x</span></div>
-      <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Absolute Return</span><span class="text-sm font-bold text-violet-400">${(c.abs_return*100).toFixed(1)}%</span></div>
-    </div>
-  </div>` : '';
-
-  return `<div class="p-6 space-y-5">
-    <div class="flex items-start justify-between">
-      <div>
-        <h2 class="text-xl font-bold text-white">${p.artist||'Unnamed Artist'}</h2>
-        <div class="flex items-center gap-2 mt-1 flex-wrap">
-          <span class="${vbg} text-[10px] px-2 py-0.5 rounded font-medium uppercase">${p.venue_type}</span>
-          <span class="text-sm text-slate-400">${n} show${n>1?'s':''}</span>
-          <span class="text-sm text-slate-500">·</span><span class="text-sm text-slate-400">${p.city||'—'}</span>
-          ${dateLabel?`<span class="text-sm text-slate-500">·</span><span class="text-sm text-slate-400">${dateLabel}</span>`:''}
-        </div>
-      </div>
-      <div class="flex gap-2 flex-shrink-0">
-        <button onclick="fdStartEdit('${p.id}')" class="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-1.5 rounded-lg transition-colors">Edit</button>
-        <button onclick="fdDeleteProfile('${p.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors">Delete</button>
-      </div>
-    </div>
-    ${kpiGrid}
-    ${revenueSection}
-    ${costSection}
-    ${plSection}
-    ${mgSection}
-    ${invSection}
-  </div>`;
-}
 
 
 // ─── Chart.js defaults ───
