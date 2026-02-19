@@ -1903,6 +1903,18 @@ const VENUE_PRESETS = {
     { name: 'VIP',         price: 300, count:   200 }]}
 };
 
+const TICKETING_CO_PRESETS = {
+  ticketmaster: { label: 'Ticketmaster',          days_after_show: 5,  advance_pct: 0,    advance_days_before: 0  },
+  livenation:   { label: 'Live Nation',            days_after_show: 3,  advance_pct: 0,    advance_days_before: 0  },
+  axs:          { label: 'AXS',                    days_after_show: 7,  advance_pct: 0,    advance_days_before: 0  },
+  seetickets:   { label: 'See Tickets (UK/EU)',     days_after_show: 30, advance_pct: 0,    advance_days_before: 0  },
+  interpark:    { label: 'Interpark (Korea)',       days_after_show: 14, advance_pct: 0.50, advance_days_before: 7  },
+  melon:        { label: 'Melon Ticket (Korea)',    days_after_show: 14, advance_pct: 0,    advance_days_before: 0  },
+  yes24:        { label: 'Yes24 Live (Korea)',      days_after_show: 14, advance_pct: 0,    advance_days_before: 0  },
+  eventbrite:   { label: 'Eventbrite',             days_after_show: 5,  advance_pct: 0,    advance_days_before: 0  },
+  custom:       { label: 'Custom',                 days_after_show: 0,  advance_pct: 0,    advance_days_before: 0  },
+};
+
 function fdLoad() {
   try { fdState.profiles = JSON.parse(localStorage.getItem(FD_KEY) || '[]'); }
   catch(e) { fdState.profiles = []; }
@@ -1984,8 +1996,25 @@ function computeCashFlow(p, c) {
     const amt = -((p.costs?.artist_mg||0) * (pmt.pct||0));
     if (amt !== 0) addEvt(d, pmt.label + ' — MG', amt);
   }
+  // Ticket revenue settlement — timing driven by ticketing company
+  const ts       = p.ticketing_settlement || {};
   const netTicket = c.total_ticket_rev - c.ticketing_fee;
-  if (netTicket) addEvt(concertDate, 'Net Ticket Revenue (after ticketing fee)', netTicket);
+  const advPct    = Number(ts.advance_pct) || 0;
+  const daysAfter = Number(ts.days_after_show) || 0;
+  const advBefore = Number(ts.advance_days_before) || 0;
+  const coName    = TICKETING_CO_PRESETS[ts.company]?.label || ts.company || 'Ticketing Co.';
+  if (advPct > 0 && netTicket) {
+    const advDate = new Date(concertDate); advDate.setDate(advDate.getDate() - advBefore);
+    addEvt(advDate, coName + ' — Advance Settlement (' + (advPct*100).toFixed(0) + '% of net ticket rev, ' + advBefore + 'd before show)', netTicket * advPct);
+  }
+  const finalPct = 1 - advPct;
+  if (finalPct > 0 && netTicket) {
+    const settleDate = new Date(concertDate); settleDate.setDate(settleDate.getDate() + daysAfter);
+    const settleLbl = daysAfter === 0
+      ? coName + ' — Ticket Settlement (' + (finalPct*100).toFixed(0) + '%, at show date)'
+      : coName + ' — Ticket Settlement (' + (finalPct*100).toFixed(0) + '%, +' + daysAfter + 'd after show)';
+    addEvt(settleDate, settleLbl, netTicket * finalPct);
+  }
   if (c.merch_rev > 0)   addEvt(concertDate, 'Merch Revenue', c.merch_rev);
   if (c.fnb_rev > 0)     addEvt(concertDate, 'F&B Revenue', c.fnb_rev);
   if (c.sponsor_rev > 0) addEvt(concertDate, 'Sponsorship', c.sponsor_rev);
@@ -2232,6 +2261,7 @@ const FD_LABEL = 'block text-[10px] text-slate-500 uppercase tracking-wider mb-1
 
 function fdMigrateProfile(p) {
   if (!p.venue_capacity) p.venue_capacity = VENUE_PRESETS[p.venue_type || 'stadium']?.capacity || 40000;
+  if (!p.ticketing_settlement) p.ticketing_settlement = { company: 'custom', days_after_show: 0, advance_pct: 0, advance_days_before: 0 };
   if (p.investor && !p.investor_scenarios) {
     p.investor_scenarios = [
       { id: 'scen_a', label: 'Scenario A', ...p.investor },
@@ -2316,6 +2346,7 @@ function fdStartCreate() {
       venue_fee_per_show: 0, production_per_show: 0, hospitality_per_show: 0,
       agency_fees: 0, blufin_fees: 0, insurance_per_show: 0
     },
+    ticketing_settlement: { company: 'ticketmaster', days_after_show: 5, advance_pct: 0, advance_days_before: 0 },
     investor_scenarios: [
       { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 },
       { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
@@ -2370,6 +2401,19 @@ function fdPatchVenueType(val) {
   fdState.draftProfile.venue_type = val;
   fdState.draftProfile.venue_capacity = preset.capacity;
   fdState.draftProfile.seat_categories = preset.categories.map(c => ({...c}));
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+}
+
+function fdPatchTicketingCo(val) {
+  if (!fdState.draftProfile) return;
+  const preset = TICKETING_CO_PRESETS[val];
+  if (!preset) return;
+  fdState.draftProfile.ticketing_settlement = {
+    company: val,
+    days_after_show: preset.days_after_show,
+    advance_pct: preset.advance_pct,
+    advance_days_before: preset.advance_days_before
+  };
   document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
 }
 
@@ -2695,7 +2739,57 @@ function fdRenderLive(p) {
           <div class="text-[9px] text-slate-600 mt-1">→ Fee: ${fmtDollar(c.ticketing_fee)} (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}% of ticket revenue)</div>
         </div>
       </div>
-      <div class="flex items-center justify-between mb-2">
+      <!-- Ticketing Company & Settlement -->
+      <div class="mt-4 pt-4 border-t border-white/5">
+        <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Ticketing Company &amp; Revenue Settlement</div>
+        ${(() => {
+          const ts = p.ticketing_settlement || {};
+          const netT = c.total_ticket_rev - c.ticketing_fee;
+          const advAmt = netT * (Number(ts.advance_pct)||0);
+          const finalAmt = netT * (1 - (Number(ts.advance_pct)||0));
+          const coOptions = Object.entries(TICKETING_CO_PRESETS).map(([k,v]) =>
+            `<option value="${k}" ${ts.company===k?'selected':''}>${v.label}</option>`
+          ).join('');
+          const settleSummary = (() => {
+            if (!p.concert_date) return 'Enter a concert date to see settlement dates.';
+            const cd = new Date(p.concert_date + 'T12:00:00');
+            const lines = [];
+            if ((Number(ts.advance_pct)||0) > 0) {
+              const ad = new Date(cd); ad.setDate(ad.getDate() - (Number(ts.advance_days_before)||0));
+              lines.push('Advance: ' + fmtDollar(advAmt) + ' on ' + ad.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}));
+            }
+            const sd = new Date(cd); sd.setDate(sd.getDate() + (Number(ts.days_after_show)||0));
+            lines.push('Final settlement: ' + fmtDollar(finalAmt) + ' on ' + sd.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}));
+            return lines.join(' · ');
+          })();
+          return `<div class="grid grid-cols-4 gap-3">
+            <div>
+              <label class="${FD_LABEL}">Ticketing Company</label>
+              <select class="${FD_INPUT}" onchange="fdPatchTicketingCo(this.value)">${coOptions}</select>
+            </div>
+            <div>
+              <label class="${FD_LABEL}">Settlement After Show (days)</label>
+              <input type="number" class="${FD_INPUT}" min="0" value="${ts.days_after_show||0}" oninput="fdPatch('ticketing_settlement.days_after_show',Number(this.value));fdUpdateLive()">
+              <div class="text-[9px] text-slate-600 mt-1">Days after last show date</div>
+            </div>
+            <div>
+              <label class="${FD_LABEL}">Advance Payment (%)</label>
+              <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((Number(ts.advance_pct)||0)*100).toFixed(0)}" oninput="fdPatch('ticketing_settlement.advance_pct',Number(this.value)/100);fdUpdateLive()">
+              <div class="text-[9px] text-slate-600 mt-1">% paid before show date</div>
+            </div>
+            <div>
+              <label class="${FD_LABEL}">Advance Timing (days before)</label>
+              <input type="number" class="${FD_INPUT}" min="0" value="${ts.advance_days_before||0}" oninput="fdPatch('ticketing_settlement.advance_days_before',Number(this.value));fdUpdateLive()">
+              <div class="text-[9px] text-slate-600 mt-1">Days before show for advance</div>
+            </div>
+          </div>
+          <div class="mt-2 bg-white/3 rounded-lg px-3 py-2 text-[10px] text-slate-400 leading-relaxed">
+            <span class="text-slate-500 font-medium">Net ticket rev: </span><span class="text-white">${fmtDollar(netT)}</span>
+            <span class="mx-2 text-slate-600">·</span>${settleSummary}
+          </div>`;
+        })()}
+      </div>
+      <div class="flex items-center justify-between mb-2 mt-4 pt-4 border-t border-white/5">
         <span class="text-[10px] text-slate-500 uppercase tracking-wider">Payment Schedule</span>
         <button onclick="fdAddMGSchedule()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Payment</button>
       </div>
