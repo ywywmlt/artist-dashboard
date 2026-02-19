@@ -787,6 +787,131 @@ function handleSearch(val) { currentPage = 1; renderArtistTable(); }
 // ─── ARTIST PROFILE ───
 function fpoTag() { return '<span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded ml-2">FPO DATA</span>'; }
 
+function computeArtistDemand(ml, peak, isTouring, dailyChange, recentEvents) {
+  let tier, tierLabel, capMin, capMax, capDisplay, tierColor;
+  if (ml >= 50000000) {
+    tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 80000; capDisplay = '35K\u201380K'; tierColor = 'text-violet-400 bg-violet-500/15 border-violet-500/20';
+  } else if (ml >= 25000000) {
+    tier = 'large-arena'; tierLabel = 'Large Arena'; capMin = 18000; capMax = 35000; capDisplay = '18K\u201335K'; tierColor = 'text-cyan-400 bg-cyan-500/15 border-cyan-500/20';
+  } else if (ml >= 12000000) {
+    tier = 'arena'; tierLabel = 'Arena'; capMin = 10000; capMax = 20000; capDisplay = '10K\u201320K'; tierColor = 'text-blue-400 bg-blue-500/15 border-blue-500/20';
+  } else if (ml >= 5000000) {
+    tier = 'small-arena'; tierLabel = 'Small Arena'; capMin = 4000; capMax = 10000; capDisplay = '4K\u201310K'; tierColor = 'text-green-400 bg-green-500/15 border-green-500/20';
+  } else if (ml >= 2000000) {
+    tier = 'theater'; tierLabel = 'Theater'; capMin = 1500; capMax = 5000; capDisplay = '1.5K\u20135K'; tierColor = 'text-amber-400 bg-amber-500/15 border-amber-500/20';
+  } else {
+    tier = 'club'; tierLabel = 'Club'; capMin = 200; capMax = 2000; capDisplay = '<2K'; tierColor = 'text-slate-400 bg-slate-500/15 border-slate-500/20';
+  }
+  let ticketTiers;
+  if (tier === 'stadium') {
+    ticketTiers = [
+      { name: 'GA Standing', range: '$80\u2013$130', note: 'General floor / lawn' },
+      { name: 'Lower Bowl', range: '$130\u2013$200', note: 'Seated lower deck' },
+      { name: 'Mid Deck', range: '$200\u2013$320', note: 'Premium mid-level' },
+      { name: 'VIP Pit', range: '$450\u2013$700', note: 'Front of stage access' },
+      { name: 'VVIP Package', range: '$800\u2013$2,000', note: 'Meet & greet + hospitality' },
+    ];
+  } else if (tier === 'large-arena') {
+    ticketTiers = [
+      { name: 'GA Floor', range: '$100\u2013$170', note: 'Standing floor' },
+      { name: 'Lower Bowl', range: '$130\u2013$220', note: 'Seated lower level' },
+      { name: 'Upper Bowl', range: '$80\u2013$130', note: 'Upper tier seating' },
+      { name: 'VIP Floor', range: '$380\u2013$650', note: 'Premium floor + access' },
+    ];
+  } else if (tier === 'arena') {
+    ticketTiers = [
+      { name: 'GA Floor', range: '$80\u2013$140', note: 'Standing floor' },
+      { name: 'Lower Bowl', range: '$100\u2013$170', note: 'Seated lower level' },
+      { name: 'Upper Bowl', range: '$60\u2013$100', note: 'Upper tier' },
+      { name: 'VIP Package', range: '$280\u2013$500', note: 'Premium experience' },
+    ];
+  } else if (tier === 'small-arena') {
+    ticketTiers = [
+      { name: 'General', range: '$60\u2013$110', note: 'Floor / lower bowl' },
+      { name: 'Premium', range: '$110\u2013$190', note: 'Priority seating' },
+      { name: 'VIP', range: '$200\u2013$400', note: 'VIP experience' },
+    ];
+  } else if (tier === 'theater') {
+    ticketTiers = [
+      { name: 'General', range: '$40\u2013$80', note: 'Standard seating' },
+      { name: 'Premium', range: '$80\u2013$150', note: 'Priority section' },
+      { name: 'VIP', range: '$150\u2013$300', note: 'Front row + access' },
+    ];
+  } else {
+    ticketTiers = [
+      { name: 'General Admission', range: '$20\u2013$60', note: 'Floor standing' },
+      { name: 'VIP', range: '$80\u2013$150', note: 'Reserved / table area' },
+    ];
+  }
+  let mgDisplay, mgNote;
+  if (tier === 'stadium')       { mgDisplay = '$2M\u2013$10M';    mgNote = 'Per show, all-in'; }
+  else if (tier === 'large-arena') { mgDisplay = '$800K\u2013$2.5M'; mgNote = 'Per show, all-in'; }
+  else if (tier === 'arena')    { mgDisplay = '$300K\u2013$900K'; mgNote = 'Per show, guarantee'; }
+  else if (tier === 'small-arena') { mgDisplay = '$100K\u2013$350K'; mgNote = 'Per show, guarantee'; }
+  else if (tier === 'theater')  { mgDisplay = '$50K\u2013$150K';  mgNote = 'Per show, guarantee'; }
+  else                          { mgDisplay = '$10K\u2013$50K';   mgNote = 'Per show'; }
+  const pctOfPeak = peak ? Math.min(100, (ml / peak) * 100) : 50;
+  const touringBonus = isTouring ? 15 : 0;
+  const eventBonus = Math.min(15, (recentEvents || 0) * 1.5);
+  const momentumScore = dailyChange > 100000 ? 20 : dailyChange > 10000 ? 12 : dailyChange > 0 ? 6 : dailyChange > -50000 ? 3 : 0;
+  const demandScore = Math.min(100, Math.round(pctOfPeak * 0.5 + touringBonus + eventBonus + momentumScore));
+  const momentum = dailyChange > 100000 ? 'Surging' : dailyChange > 10000 ? 'Growing' : dailyChange > -10000 ? 'Stable' : dailyChange > -100000 ? 'Softening' : 'Declining';
+  const momentumColor = dailyChange > 100000 ? 'text-green-400' : dailyChange > 10000 ? 'text-cyan-400' : dailyChange > -10000 ? 'text-amber-400' : 'text-red-400';
+  return { tier, tierLabel, capMin, capMax, capDisplay, tierColor, ticketTiers, mgDisplay, mgNote, demandScore, momentum, momentumColor, pctOfPeak };
+}
+
+function getMarketFocus(country, genres) {
+  const g = (genres || []).map(x => x.toLowerCase());
+  const isKpop = g.some(x => x.includes('k-pop') || x.includes('kpop') || (x.includes('korean') && x.includes('pop')));
+  const isJpop = g.some(x => x.includes('j-pop') || x.includes('jpop') || x.includes('j-rock') || (x.includes('japanese') && x.includes('pop')));
+  const isLatin = g.some(x => x.includes('latin') || x.includes('reggaeton') || x.includes('cumbia') || x.includes('bachata'));
+  if (isKpop || country === 'KR') return [
+    { market: 'South Korea', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'Japan', tier: 'Primary', desc: 'Largest secondary market', color: 'bg-green-400' },
+    { market: 'SE Asia', tier: 'Strong', desc: 'Growing fanbase', color: 'bg-cyan-400' },
+    { market: 'North America', tier: 'Strong', desc: 'Diaspora + mainstream crossover', color: 'bg-cyan-400' },
+    { market: 'Europe', tier: 'Emerging', desc: 'Rising demand', color: 'bg-amber-400' },
+  ];
+  if (isJpop || country === 'JP') return [
+    { market: 'Japan', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'East Asia', tier: 'Strong', desc: 'Cultural proximity', color: 'bg-cyan-400' },
+    { market: 'SE Asia', tier: 'Moderate', desc: 'J-pop fanbase', color: 'bg-amber-400' },
+    { market: 'North America', tier: 'Emerging', desc: 'Niche + diaspora', color: 'bg-slate-400' },
+  ];
+  if (isLatin || country === 'BR' || country === 'MX' || country === 'CO' || country === 'AR') return [
+    { market: 'Latin America', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'US (Hispanic)', tier: 'Primary', desc: 'Large diaspora market', color: 'bg-green-400' },
+    { market: 'Spain / Portugal', tier: 'Strong', desc: 'Language & culture tie-in', color: 'bg-cyan-400' },
+    { market: 'Europe', tier: 'Emerging', desc: 'Crossover potential', color: 'bg-amber-400' },
+  ];
+  if (country === 'US' || country === 'CA') return [
+    { market: 'North America', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'Europe', tier: 'Strong', desc: 'Key touring market', color: 'bg-cyan-400' },
+    { market: 'Oceania', tier: 'Strong', desc: 'English-speaking diaspora', color: 'bg-cyan-400' },
+    { market: 'Asia-Pacific', tier: 'Emerging', desc: 'Growing demand', color: 'bg-amber-400' },
+  ];
+  if (country === 'GB') return [
+    { market: 'United Kingdom', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'Europe', tier: 'Primary', desc: 'Strong touring base', color: 'bg-green-400' },
+    { market: 'North America', tier: 'Strong', desc: 'Major English-speaking market', color: 'bg-cyan-400' },
+    { market: 'Oceania', tier: 'Strong', desc: 'English-speaking diaspora', color: 'bg-cyan-400' },
+  ];
+  if (country === 'AU' || country === 'NZ') return [
+    { market: 'Australia / NZ', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'North America', tier: 'Strong', desc: 'Large English-speaking market', color: 'bg-cyan-400' },
+    { market: 'Europe', tier: 'Strong', desc: 'UK / EU touring circuit', color: 'bg-cyan-400' },
+  ];
+  if (country === 'DE' || country === 'FR' || country === 'ES' || country === 'IT' || country === 'NL' || country === 'SE' || country === 'NO') return [
+    { market: country === 'DE' ? 'Germany' : country === 'FR' ? 'France' : country === 'ES' ? 'Spain' : country === 'IT' ? 'Italy' : country === 'NL' ? 'Netherlands' : country === 'SE' ? 'Sweden' : 'Norway', tier: 'Primary', desc: 'Home market', color: 'bg-green-400' },
+    { market: 'Europe', tier: 'Primary', desc: 'Regional touring circuit', color: 'bg-green-400' },
+    { market: 'North America', tier: 'Emerging', desc: 'Crossover potential', color: 'bg-amber-400' },
+  ];
+  return [
+    { market: country ? 'Origin: ' + country : 'Home Market', tier: 'Primary', desc: 'Base market', color: 'bg-green-400' },
+    { market: 'Global', tier: 'Assess', desc: 'Evaluate per region', color: 'bg-slate-400' },
+  ];
+}
+
 function selectArtist(spotifyId) {
   selectedArtist = artists.find(a => a.spotify_id === spotifyId);
   if (!selectedArtist) return;
@@ -794,290 +919,339 @@ function selectArtist(spotifyId) {
   const mb = mbMap[spotifyId] || null;
   showPage('artist');
 
-  const pctOfPeak = selectedArtist.peak_listeners ? Math.round((selectedArtist.monthly_listeners / selectedArtist.peak_listeners) * 100) : null;
-  const up = selectedArtist.daily_change >= 0;
-  const name = selectedArtist.name;
+  const a = selectedArtist;
+  const ml = a.monthly_listeners;
+  const pctOfPeak = a.peak_listeners ? Math.round((ml / a.peak_listeners) * 100) : null;
+  const up = a.daily_change >= 0;
+  const name = a.name;
+  const demand = computeArtistDemand(ml, a.peak_listeners, t ? t.is_touring : false, a.daily_change, t ? t.recent_event_count : 0);
+  const markets = getMarketFocus(mb ? mb.country : null, mb ? mb.genres : []);
+  const artistNews = (window.newsAlerts || []).filter(n =>
+    (n.matched_artists || []).includes(name) || (n.matched_spotify_ids || []).includes(spotifyId)
+  ).slice(0, 5);
 
   document.getElementById('artist-profile-content').innerHTML = `
     <!-- Header -->
     <div class="glass rounded-xl p-6 accent-glow mb-6">
       <div class="flex items-start gap-6">
-        ${mb?.image_url
+        ${mb && mb.image_url
           ? `<img src="${mb.image_url}" alt="${name}" class="w-24 h-24 rounded-2xl object-cover flex-shrink-0" onerror="this.outerHTML='<div class=\\'w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0\\'>${initials(name)}</div>'">`
           : `<div class="w-24 h-24 rounded-2xl bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">${initials(name)}</div>`
         }
         <div class="flex-1">
           <div class="flex items-center gap-3 mb-1">
             <h2 class="text-2xl font-bold text-white">${name}</h2>
-            ${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full font-medium">Touring</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full font-medium">Not Touring</span>') : ''}
-            <span class="text-sm text-slate-500">Rank #${selectedArtist.rank}</span>
+            ${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full font-medium">&#9679; Touring</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full font-medium">Not Touring</span>') : ''}
+            <span class="text-sm text-slate-500">Rank #${a.rank}</span>
           </div>
           <div class="flex items-center gap-4 text-sm text-slate-400 mb-2">
-            <span>Spotify ID: <code class="text-xs text-slate-500">${selectedArtist.spotify_id}</code></span>
-            ${mb?.country ? `<span class="text-xs text-slate-400">${mb.country}</span>` : ''}
+            ${mb && mb.country ? `<span class="text-xs px-2 py-0.5 rounded bg-white/5 text-slate-300">${mb.country}</span>` : ''}
+            <span class="text-xs text-slate-600">Spotify: <code class="text-slate-500">${a.spotify_id}</code></span>
           </div>
-          ${mb?.genres?.length ? `<div class="flex flex-wrap gap-1.5 mb-3">${mb.genres.map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 font-medium">${g}</span>`).join('')}</div>` : ''}
+          ${mb && mb.genres && mb.genres.length ? `<div class="flex flex-wrap gap-1.5 mb-3">${mb.genres.slice(0,6).map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 font-medium">${g}</span>`).join('')}</div>` : ''}
           <div class="grid grid-cols-4 gap-4">
             <div class="bg-white/5 rounded-lg p-3">
               <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Monthly Listeners</div>
-              <div class="text-xl font-bold text-white">${fmt(selectedArtist.monthly_listeners)}</div>
-              <div class="text-[11px] ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(selectedArtist.daily_change)} today</div>
+              <div class="text-xl font-bold text-white">${fmt(ml)}</div>
+              <div class="text-[11px] ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(a.daily_change)} today</div>
             </div>
             <div class="bg-white/5 rounded-lg p-3">
               <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Peak Listeners</div>
-              <div class="text-xl font-bold text-white">${fmt(selectedArtist.peak_listeners)}</div>
-              <div class="text-[11px] text-slate-400">${pctOfPeak !== null ? pctOfPeak + '% of peak' : '—'}</div>
+              <div class="text-xl font-bold text-white">${fmt(a.peak_listeners)}</div>
+              <div class="text-[11px] text-slate-400">${pctOfPeak !== null ? pctOfPeak + '% of peak' : '\u2014'}</div>
             </div>
             <div class="bg-white/5 rounded-lg p-3">
-              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Recent Events</div>
-              <div class="text-xl font-bold text-white">${t ? t.recent_event_count : '—'}</div>
-              <div class="text-[11px] text-slate-400">${t ? 'via ' + t.touring_source : 'No data'}</div>
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Recent Shows</div>
+              <div class="text-xl font-bold text-white">${t ? t.recent_event_count : '\u2014'}</div>
+              <div class="text-[11px] text-slate-400">${t ? 'via ' + (t.touring_source || 'setlist.fm') : 'No data'}</div>
             </div>
             <div class="bg-white/5 rounded-lg p-3">
-              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Last Show</div>
-              <div class="text-xl font-bold text-white">${t?.last_event_date || '—'}</div>
-              <div class="text-[11px] text-slate-400">${t ? relDate(t.last_event_date) : '—'}</div>
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Demand Score</div>
+              <div class="text-xl font-bold ${demand.demandScore >= 75 ? 'text-green-400' : demand.demandScore >= 50 ? 'text-cyan-400' : demand.demandScore >= 30 ? 'text-amber-400' : 'text-red-400'}">${demand.demandScore}<span class="text-sm text-slate-500">/100</span></div>
+              <div class="text-[11px] ${demand.momentumColor}">${demand.momentum}</div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Social Media + Streaming -->
+    <!-- Listener Intelligence + Social Platforms -->
     <div class="grid grid-cols-2 gap-4 mb-6">
       <div class="glass rounded-xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-white text-sm">Social Media</h3>${mb ? '<span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded ml-2">LIVE</span>' : fpoTag()}
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-white text-sm">Listener Intelligence</h3>
+          <span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded">LIVE</span>
         </div>
-        <div class="space-y-3">
-          ${(() => {
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] text-slate-500">Current: <span class="text-white font-medium">${fmt(ml)}</span></span>
+          <span class="text-[11px] text-slate-500">Peak: <span class="text-white font-medium">${fmt(a.peak_listeners)}</span></span>
+        </div>
+        <div class="w-full h-3 rounded-full bg-white/5 overflow-hidden mb-1">
+          <div class="h-full rounded-full ${(pctOfPeak||0) >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : (pctOfPeak||0) >= 70 ? 'bg-gradient-to-r from-cyan-500 to-blue-400' : (pctOfPeak||0) >= 50 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-orange-400'}" style="width:${pctOfPeak || 0}%"></div>
+        </div>
+        <div class="text-center mb-3">
+          <span class="text-2xl font-bold text-white">${pctOfPeak || 0}%</span>
+          <span class="text-sm text-slate-500 ml-2">of all-time peak</span>
+        </div>
+        <div class="chart-container" style="height:110px"><canvas id="listenerTrendChart"></canvas></div>
+        <div class="text-[10px] text-slate-600 text-center mt-1">Estimated 13-month listener trend</div>
+        <div class="mt-3 grid grid-cols-2 gap-2">
+          <div class="p-2.5 rounded-lg bg-white/5">
+            <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Daily Change</div>
+            <div class="text-sm font-bold ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(a.daily_change)}</div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-white/5">
+            <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">30-Day Projection</div>
+            <div class="text-sm font-bold text-white">${fmt(ml + a.daily_change * 30)}</div>
+          </div>
+        </div>
+        <div class="mt-2 p-2.5 rounded-lg ${(pctOfPeak||0) >= 95 ? 'bg-green-500/5 border border-green-500/10' : (pctOfPeak||0) >= 75 ? 'bg-cyan-500/5 border border-cyan-500/10' : 'bg-amber-500/5 border border-amber-500/10'}">
+          <div class="text-[11px] ${(pctOfPeak||0) >= 95 ? 'text-green-400' : (pctOfPeak||0) >= 75 ? 'text-cyan-400' : 'text-amber-400'} font-medium">
+            ${(pctOfPeak||0) >= 95 ? 'At or near all-time peak \u2014 maximum demand window' : (pctOfPeak||0) >= 75 ? 'Strong position \u2014 favorable touring conditions' : (pctOfPeak||0) >= 50 ? 'Below peak \u2014 right-size venues carefully' : 'Well below peak \u2014 conservative capacity recommended'}
+          </div>
+        </div>
+      </div>
+
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-semibold text-white text-sm">Social Platforms</h3>
+          ${mb ? '<span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded">LIVE</span>' : fpoTag()}
+        </div>
+        <div class="space-y-2">
+          ${(function() {
             const socials = [
-              { key: 'instagram', name: 'Instagram', icon: 'from-purple-500 to-pink-500', letter: 'I', url: h => 'https://instagram.com/' + h },
-              { key: 'youtube', name: 'YouTube', icon: 'from-red-600 to-red-500', letter: 'Y', url: h => 'https://youtube.com/@' + h },
-              { key: 'tiktok', name: 'TikTok', icon: 'from-slate-700 to-slate-900', letter: 'T', url: h => 'https://tiktok.com/@' + h },
-              { key: 'twitter', name: 'X (Twitter)', icon: 'from-slate-700 to-slate-800', letter: 'X', url: h => 'https://x.com/' + h }
+              { key: 'instagram', name: 'Instagram', grad: 'from-purple-500 to-pink-500', letter: 'I', url: h => 'https://instagram.com/' + h },
+              { key: 'youtube',   name: 'YouTube',   grad: 'from-red-600 to-red-500',    letter: 'Y', url: h => 'https://youtube.com/@' + h },
+              { key: 'tiktok',    name: 'TikTok',    grad: 'from-slate-700 to-slate-900', letter: 'T', url: h => 'https://tiktok.com/@' + h },
+              { key: 'twitter',   name: 'X (Twitter)',grad: 'from-slate-600 to-slate-800', letter: 'X', url: h => 'https://x.com/' + h }
             ];
             if (!mb) return '<div class="text-sm text-slate-500 text-center py-4">No MusicBrainz data loaded</div>';
             const found = socials.filter(s => mb[s.key]);
-            if (found.length === 0) return '<div class="text-sm text-slate-500 text-center py-4">No social accounts found</div>';
-            return found.map(s => `
+            const missing = socials.filter(s => !mb[s.key]);
+            let html = found.map(s => `
               <a href="${s.url(mb[s.key])}" target="_blank" rel="noopener" class="flex items-center justify-between p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group">
                 <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${s.icon} flex items-center justify-center text-xs text-white font-bold">${s.letter}</div>
-                  <div><div class="text-sm font-medium text-white">${s.name}</div><div class="text-[11px] text-slate-500">@${mb[s.key]}</div></div>
+                  <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${s.grad} flex items-center justify-center text-xs text-white font-bold">${s.letter}</div>
+                  <div><div class="text-sm font-medium text-white">${s.name}</div><div class="text-[11px] text-slate-400">@${mb[s.key]}</div></div>
                 </div>
-                <svg class="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+                <svg class="w-4 h-4 text-slate-600 group-hover:text-slate-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
               </a>`).join('');
+            if (missing.length > 0 && found.length > 0) {
+              html += '<div class="text-[10px] text-slate-600 uppercase tracking-wider mt-2 mb-1 px-1">Not in MusicBrainz</div>';
+              html += missing.map(s => `<div class="flex items-center gap-3 p-2 rounded-lg opacity-30"><div class="w-6 h-6 rounded-md bg-gradient-to-br ${s.grad} flex items-center justify-center text-[9px] text-white font-bold">${s.letter}</div><div class="text-[11px] text-slate-500">${s.name} \u2014 not listed</div></div>`).join('');
+            }
+            if (found.length === 0) html = '<div class="text-sm text-slate-500 text-center py-3">No handles found in MusicBrainz</div>';
+            return html;
           })()}
         </div>
-      </div>
-      <div class="glass rounded-xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-white text-sm">Monthly Listeners</h3>
-        </div>
-        <div class="relative pt-2">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[11px] text-slate-500">Current: ${fmt(selectedArtist.monthly_listeners)}</span>
-            <span class="text-[11px] text-slate-500">Peak: ${fmt(selectedArtist.peak_listeners)}</span>
+        <a href="https://open.spotify.com/artist/${a.spotify_id}" target="_blank" rel="noopener" class="flex items-center justify-between p-3 rounded-lg bg-green-500/8 hover:bg-green-500/15 transition-colors group mt-3 border border-green-500/10">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xs text-white font-bold">S</div>
+            <div><div class="text-sm font-medium text-white">Spotify</div><div class="text-[11px] text-slate-400">Open artist page</div></div>
           </div>
-          <div class="w-full h-4 rounded-full bg-white/5 overflow-hidden">
-            <div class="h-full rounded-full ${pctOfPeak >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-400' : pctOfPeak >= 70 ? 'bg-gradient-to-r from-cyan-500 to-blue-400' : pctOfPeak >= 50 ? 'bg-gradient-to-r from-amber-500 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-orange-400'}" style="width:${pctOfPeak || 0}%"></div>
-          </div>
-          <div class="text-center mt-2">
-            <span class="text-2xl font-bold text-white">${pctOfPeak || 0}%</span>
-            <span class="text-sm text-slate-500 ml-2">of all-time peak</span>
-          </div>
-        </div>
-        <div class="mt-4 p-3 rounded-lg ${pctOfPeak >= 95 ? 'bg-green-500/5 border border-green-500/10' : pctOfPeak >= 80 ? 'bg-cyan-500/5 border border-cyan-500/10' : 'bg-amber-500/5 border border-amber-500/10'}">
-          <div class="text-[11px] ${pctOfPeak >= 95 ? 'text-green-400' : pctOfPeak >= 80 ? 'text-cyan-400' : 'text-amber-400'} font-medium">
-            ${pctOfPeak >= 95 ? 'At or near all-time peak — maximum demand window' : pctOfPeak >= 80 ? 'Strong position — good time for venue upgrades' : pctOfPeak >= 50 ? 'Below peak — consider right-sizing venues' : 'Well below peak — smaller venues recommended'}
-          </div>
-        </div>
-        <div class="mt-4 p-3 rounded-lg bg-white/5">
-          <div class="text-[11px] text-slate-400">
-            Daily: <span class="${up ? 'text-green-400' : 'text-red-400'} font-semibold">${up?'+':''}${fmt(selectedArtist.daily_change)}</span> &middot;
-            30-day projection: <span class="text-white font-semibold">${fmt(selectedArtist.monthly_listeners + selectedArtist.daily_change * 30)}</span>
-          </div>
-        </div>
+          <svg class="w-4 h-4 text-green-600 group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </a>
       </div>
     </div>
 
-    <!-- Artist Fee -->
+    <!-- Market Demand Analysis -->
     <div class="glass rounded-xl p-5 accent-glow mb-6">
       <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
-            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div class="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
           </div>
-          <h3 class="font-semibold text-white text-sm">Artist Fee</h3>${fpoTag()}
-        </div>
-      </div>
-      <div class="grid grid-cols-4 gap-4 mb-5">
-        <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/15 rounded-xl p-4">
-          <div class="text-[10px] text-amber-400/70 uppercase tracking-wider mb-1">Current Guarantee</div>
-          <div class="text-2xl font-bold text-white">$350K</div>
-          <div class="text-[11px] text-amber-400 mt-1">+40% vs last year</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4">
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Fee Range</div>
-          <div class="text-2xl font-bold text-white">$250-500K</div>
-          <div class="text-[11px] text-slate-400 mt-1">Depends on venue/market</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4">
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Door Deal Option</div>
-          <div class="text-2xl font-bold text-white">80/20</div>
-          <div class="text-[11px] text-slate-400 mt-1">Artist / Promoter split</div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4">
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Cost Per Head</div>
-          <div class="text-2xl font-bold text-white">$23.40</div>
-          <div class="text-[11px] text-slate-400 mt-1">Based on avg 15K attendance</div>
-        </div>
-      </div>
-      <div class="grid grid-cols-3 gap-4">
-        <div class="col-span-2 bg-white/5 rounded-xl p-4">
-          <span class="text-xs text-slate-400 font-medium">Fee History (Guarantee)</span>
-          <div class="chart-container mt-3" style="height:150px"><canvas id="feeHistoryChart"></canvas></div>
-        </div>
-        <div class="bg-white/5 rounded-xl p-4">
-          <span class="text-xs text-slate-400 font-medium">Fee Breakdown</span>
-          <div class="mt-3 space-y-3">
-            ${[['Headliner (Arena)','$400-500K'],['Headliner (Theater)','$250-350K'],['Festival (Main Stage)','$300-450K'],['Festival (Support)','$150-200K'],['Private Event','$500K+']].map(([l,v]) => `
-              <div class="flex items-center justify-between"><span class="text-[11px] text-slate-400">${l}</span><span class="text-sm font-semibold text-white">${v}</span></div>
-              <div class="w-full h-px bg-white/5"></div>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="mt-4 p-3 rounded-lg bg-violet-500/5 border border-violet-500/10">
-        <div class="flex items-start gap-2">
-          <svg class="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           <div>
-            <div class="text-[11px] text-violet-300 font-medium mb-0.5">Agent Notes</div>
-            <div class="text-[11px] text-slate-400">Fee increased significantly after viral breakout. Agent prefers guarantee over door deal for Asia dates. Minimum 90-day advance booking required.</div>
+            <h3 class="font-semibold text-white text-sm">Market Demand Analysis</h3>
+            <p class="text-[11px] text-slate-500">Derived from ${fmt(ml)} monthly listeners \u00b7 ${pctOfPeak || 0}% of peak \u00b7 ${demand.momentum} momentum</p>
           </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <div class="text-[10px] text-slate-500 uppercase tracking-wider">Demand Score</div>
+            <div class="text-3xl font-bold ${demand.demandScore >= 75 ? 'text-green-400' : demand.demandScore >= 50 ? 'text-cyan-400' : demand.demandScore >= 30 ? 'text-amber-400' : 'text-red-400'}">${demand.demandScore}<span class="text-base text-slate-500">/100</span></div>
+          </div>
+          <div class="w-14 h-14 rounded-xl border ${demand.tierColor} flex flex-col items-center justify-center">
+            <span class="text-[9px] font-bold ${demand.tierColor.split(' ')[0]} uppercase leading-tight text-center px-1">${demand.tierLabel}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3 KPI cards -->
+      <div class="grid grid-cols-3 gap-4 mb-5">
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Recommended Venue</div>
+          <div class="text-lg font-bold text-white">${demand.tierLabel}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Capacity: <span class="text-white font-medium">${demand.capDisplay}</span></div>
+          <div class="inline-flex items-center mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium border ${demand.tierColor}">${demand.tierLabel}</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Audience Momentum</div>
+          <div class="text-lg font-bold ${demand.momentumColor}">${demand.momentum}</div>
+          <div class="text-[11px] text-slate-400 mt-1">${up?'+':''}${fmt(a.daily_change)} / day</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">30-day est: ${fmt(ml + a.daily_change * 30)}</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">MG Estimate</div>
+          <div class="text-lg font-bold text-amber-400">${demand.mgDisplay}</div>
+          <div class="text-[11px] text-slate-400 mt-1">${demand.mgNote}</div>
+          <div class="text-[10px] text-slate-600 mt-0.5">Based on listener tier</div>
+        </div>
+      </div>
+
+      <!-- Suggested Ticket Pricing -->
+      <div class="bg-white/5 rounded-xl p-4 mb-4">
+        <div class="text-xs text-slate-400 font-medium mb-3">Suggested Ticket Pricing \u2014 ${demand.tierLabel}</div>
+        <div class="grid grid-cols-${demand.ticketTiers.length <= 3 ? demand.ticketTiers.length : 3} gap-3">
+          ${demand.ticketTiers.map(tt => `
+            <div class="bg-white/5 rounded-lg p-3 border border-white/5">
+              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">${tt.name}</div>
+              <div class="text-base font-bold text-white">${tt.range}</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">${tt.note}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Market Focus -->
+      <div class="bg-white/5 rounded-xl p-4">
+        <div class="text-xs text-slate-400 font-medium mb-3">Market Focus ${mb && mb.country ? '\u00b7 Origin: ' + mb.country : ''}</div>
+        <div class="flex flex-wrap gap-2">
+          ${markets.map(m => `
+            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/5">
+              <div class="w-1.5 h-1.5 rounded-full ${m.color} mt-1.5 flex-shrink-0"></div>
+              <div>
+                <div class="text-sm text-white font-medium">${m.market} <span class="text-[10px] text-slate-500 font-normal ml-1">${m.tier}</span></div>
+                <div class="text-[10px] text-slate-500">${m.desc}</div>
+              </div>
+            </div>`).join('')}
         </div>
       </div>
     </div>
 
-    <!-- Venue Sellthrough Capacity -->
+    <!-- Touring Intelligence -->
+    ${t ? `
     <div class="glass rounded-xl p-5 mb-6">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
-            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+          <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
           </div>
           <div>
-            <h3 class="font-semibold text-white text-sm">Venue Sellthrough Capacity</h3>
-            <p class="text-[11px] text-slate-500">Based on 24 shows across 8 markets (last 18 months)</p>
+            <h3 class="font-semibold text-white text-sm">Touring Intelligence</h3>
+            <p class="text-[11px] text-slate-500">via ${t.touring_source || 'setlist.fm'} \u00b7 2-year lookback window</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] text-slate-500 uppercase tracking-wider">Sweet spot:</span>
-          <span class="text-sm font-bold text-cyan-400">10K - 20K</span>
-          ${fpoTag()}
+        <span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded">LIVE DATA</span>
+      </div>
+      <div class="grid grid-cols-4 gap-4 mb-5">
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="w-10 h-10 rounded-full ${t.is_touring ? 'bg-green-500/20' : 'bg-red-500/20'} flex items-center justify-center mx-auto mb-2">
+            <div class="w-3 h-3 rounded-full ${t.is_touring ? 'bg-green-400 animate-pulse' : 'bg-red-400'}"></div>
+          </div>
+          <div class="text-sm font-bold ${t.is_touring ? 'text-green-400' : 'text-red-400'}">${t.is_touring ? 'Active' : 'Inactive'}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Tour Status</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold text-white">${t.recent_event_count}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Shows (2yr)</div>
+          <div class="text-[10px] ${t.recent_event_count >= 5 ? 'text-green-400' : 'text-amber-400'}">${t.recent_event_count >= 5 ? '\u2713 Touring threshold met' : 'Below 5-show threshold'}</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-3xl font-bold ${t.upcoming_event_count > 0 ? 'text-cyan-400' : 'text-slate-400'}">${t.upcoming_event_count}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Upcoming Shows</div>
+          <div class="text-[10px] text-slate-500">${t.upcoming_event_count > 0 ? 'Confirmed dates' : 'None confirmed'}</div>
+        </div>
+        <div class="bg-white/5 rounded-xl p-4 text-center">
+          <div class="text-lg font-bold text-white">${t.last_event_date ? relDate(t.last_event_date) : '\u2014'}</div>
+          <div class="text-[11px] text-slate-400 mt-1">Since Last Show</div>
+          <div class="text-[10px] text-slate-500">${t.last_event_date || 'Date unknown'}</div>
         </div>
       </div>
-      <div class="grid grid-cols-3 gap-4">
-        <div class="col-span-2 space-y-4">
-          ${[['Club','<2,000',100,'bg-gradient-to-r from-emerald-500 to-green-400','Outgrown','badge-green'],['Theater','2K-5K',98,'bg-gradient-to-r from-emerald-500 to-green-400','Outgrown','badge-green'],['Large Venue','5K-10K',96,'bg-gradient-to-r from-green-500 to-emerald-400','Strong','badge-green'],['Arena','10K-20K',91,'bg-gradient-to-r from-cyan-500 to-blue-400','Sweet Spot','badge-blue'],['Stadium','20K-50K',74,'bg-gradient-to-r from-amber-500 to-yellow-400','Scaling','badge-yellow'],['Mega Stadium','50K+',58,'bg-gradient-to-r from-red-500 to-orange-400','Risky','badge-red']].map(([label,range,pct,bg,status,cls]) => `
-            <div>
-              <div class="flex items-center justify-between mb-1.5">
-                <div class="flex items-center gap-2"><span class="text-sm text-white font-medium">${label}</span><span class="text-[11px] text-slate-500">(${range})</span></div>
-                <div class="flex items-center gap-3"><span class="text-sm font-semibold text-white">${pct}%</span><span class="${cls} text-[10px] px-2 py-0.5 rounded-full font-medium">${status}</span></div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-white/5 rounded-xl p-4">
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Tour Timeline</div>
+          <div class="relative pl-4">
+            <div class="absolute left-1 top-0 bottom-0 w-px bg-white/10"></div>
+            <div class="space-y-4">
+              ${t.last_event_date ? `
+              <div class="relative">
+                <div class="absolute -left-3.5 top-1 w-2.5 h-2.5 rounded-full bg-slate-500 border border-slate-700"></div>
+                <div class="text-[11px] text-slate-500 font-medium">Last Show</div>
+                <div class="text-sm text-white">${t.last_event_date}</div>
+                <div class="text-[10px] text-slate-500">${relDate(t.last_event_date)}</div>
+              </div>` : ''}
+              <div class="relative">
+                <div class="absolute -left-3.5 top-1 w-2.5 h-2.5 rounded-full ${t.is_touring ? 'bg-green-400' : 'bg-slate-600'} border ${t.is_touring ? 'border-green-600' : 'border-slate-700'}${t.is_touring ? ' animate-pulse' : ''}"></div>
+                <div class="text-[11px] ${t.is_touring ? 'text-green-400' : 'text-slate-500'} font-medium">Status: ${t.is_touring ? 'On Tour' : 'Off Tour'}</div>
+                <div class="text-[10px] text-slate-500">${t.recent_event_count} events in 2yr \u00b7 Threshold: 5</div>
               </div>
-              <div class="w-full h-3 rounded-full bg-white/5 overflow-hidden"><div class="h-full rounded-full ${bg}" style="width:${pct}%"></div></div>
-            </div>`).join('')}
+              ${t.next_event_date ? `
+              <div class="relative">
+                <div class="absolute -left-3.5 top-1 w-2.5 h-2.5 rounded-full bg-cyan-400 border border-cyan-600"></div>
+                <div class="text-[11px] text-cyan-400 font-medium">Next Show</div>
+                <div class="text-sm text-white">${t.next_event_date}</div>
+                <div class="text-[10px] text-slate-500">${relDate(t.next_event_date)}</div>
+              </div>` : ''}
+            </div>
+          </div>
         </div>
         <div class="bg-white/5 rounded-xl p-4">
-          <span class="text-xs text-slate-400 font-medium">Sellthrough by Market</span>
-          <div class="mt-3 space-y-2.5">
-            ${[['Japan',97,'bg-green-400'],['South Korea',92,'bg-green-400'],['SE Asia',88,'bg-green-400'],['US West Coast',82,'bg-cyan-400'],['US East Coast',76,'bg-cyan-400'],['Europe',71,'bg-amber-400'],['Latin America',63,'bg-amber-400'],['Oceania',59,'bg-orange-400']].map(([m,p,c]) => `
-              <div>
-                <div class="flex items-center justify-between mb-1"><span class="text-[11px] text-slate-300">${m}</span><span class="text-[11px] text-white font-semibold">${p}%</span></div>
-                <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden"><div class="h-full rounded-full ${c}" style="width:${p}%"></div></div>
+          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-3">Booking Assessment</div>
+          <div class="space-y-2.5">
+            ${[
+              ['Availability', t.is_touring ? 'Currently On Tour' : 'Available to Book', t.is_touring ? 'text-amber-400' : 'text-green-400'],
+              ['Upcoming Dates', t.upcoming_event_count > 0 ? t.upcoming_event_count + ' confirmed' : 'None confirmed', t.upcoming_event_count > 0 ? 'text-cyan-400' : 'text-slate-400'],
+              ['Activity Level', t.recent_event_count >= 20 ? 'High (20+ shows/2yr)' : t.recent_event_count >= 10 ? 'Moderate (10\u201319)' : t.recent_event_count >= 5 ? 'Light (5\u20139)' : 'Minimal (<5)', t.recent_event_count >= 20 ? 'text-green-400' : t.recent_event_count >= 10 ? 'text-cyan-400' : t.recent_event_count >= 5 ? 'text-amber-400' : 'text-red-400'],
+              ['Recommended Lead Time', t.is_touring ? '9\u201312 months' : '6\u20139 months', 'text-slate-300'],
+              ['Data Source', t.touring_source || 'setlist.fm', 'text-slate-400'],
+            ].map(([label, val, cls]) => `
+              <div class="flex items-center justify-between py-1 border-b border-white/5">
+                <span class="text-[11px] text-slate-500">${label}</span>
+                <span class="text-[11px] font-medium ${cls}">${val}</span>
               </div>`).join('')}
           </div>
         </div>
       </div>
-      <!-- Recent shows -->
-      <div class="bg-white/5 rounded-xl p-4 mt-4">
-        <span class="text-xs text-slate-400 font-medium">Recent Shows (Sellthrough Evidence)</span>
-        <table class="w-full mt-3"><thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5"><th class="text-left pb-2">Date</th><th class="text-left pb-2">Venue</th><th class="text-left pb-2">Market</th><th class="text-right pb-2">Capacity</th><th class="text-right pb-2">Sold</th><th class="text-right pb-2">Sellthrough</th></tr></thead>
-        <tbody class="text-[12px]">
-          ${[['Jan 18, 2026','Saitama Super Arena','Japan','37,000','36,260','98%','text-green-400'],['Dec 14, 2025','Budokan','Japan','14,500','14,500','100%','text-green-400'],['Nov 22, 2025','The Forum','Los Angeles','17,500','15,750','90%','text-cyan-400'],['Nov 15, 2025','Barclays Center','New York','19,000','15,960','84%','text-cyan-400'],['Oct 28, 2025','KSPO Dome','Seoul','15,000','14,100','94%','text-green-400']].map(([d,v,m,cap,sold,pct,cls]) => `
-            <tr class="border-b border-white/5"><td class="py-2 text-slate-400">${d}</td><td class="py-2 text-white">${v}</td><td class="py-2 text-slate-400">${m}</td><td class="py-2 text-right text-slate-300">${cap}</td><td class="py-2 text-right text-white">${sold}</td><td class="py-2 text-right"><span class="${cls} font-semibold">${pct}</span></td></tr>`).join('')}
-        </tbody></table>
-      </div>
-    </div>
-
-    <!-- Top Tracks + Financial Summary -->
-    <div class="grid grid-cols-2 gap-4 mb-6">
-      <div class="glass rounded-xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-white text-sm">Top Tracks (Spotify)</h3>${fpoTag()}
-        </div>
-        <div class="space-y-2">
-          ${[['Shinunoga E-Wa','HELP EVER HURT NEVER','1.2B'],['Matatabi','LOVE ALL SERVE ALL','487M'],['Damn','HELP EVER HURT NEVER','412M'],['Kirari','HELP EVER HURT NEVER','389M'],['Garden','LOVE ALL SERVE ALL','298M']].map(([track,album,streams],i) => `
-            <div class="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors">
-              <span class="text-xs text-slate-500 w-5 text-right">${i+1}</span>
-              <div class="flex-1"><div class="text-sm text-white">${track}</div><div class="text-[11px] text-slate-500">${album}</div></div>
-              <span class="text-xs text-slate-400">${streams} streams</span>
-            </div>`).join('')}
-        </div>
-      </div>
-      <div class="glass rounded-xl p-5">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-semibold text-white text-sm">Tour Financial Summary</h3>${fpoTag()}
-        </div>
-        <div class="chart-container mb-4" style="height:160px"><canvas id="financialChart"></canvas></div>
-        <div class="grid grid-cols-3 gap-3">
-          <div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Revenue</div><div class="text-lg font-bold text-white">$4.2M</div></div>
-          <div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Costs</div><div class="text-lg font-bold text-white">$2.8M</div></div>
-          <div class="bg-white/5 rounded-lg p-3 text-center"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold text-green-400">$1.4M</div></div>
-        </div>
-      </div>
-    </div>
-
-    ${t ? `
-    <!-- Touring Detail -->
+    </div>` : `
     <div class="glass rounded-xl p-5 mb-6">
       <div class="flex items-center gap-3 mb-4">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
-          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        </div>
-        <h3 class="font-semibold text-white text-sm">Touring Activity</h3>
+        <h3 class="font-semibold text-white text-sm">Touring Intelligence</h3>
+        <span class="text-[9px] text-slate-500 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded">NO DATA</span>
       </div>
-      <div class="grid grid-cols-4 gap-4">
-        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.is_touring ? 'Yes' : 'No'}</div><div class="text-[11px] text-slate-400 mt-1">Currently Touring</div></div>
-        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.recent_event_count}</div><div class="text-[11px] text-slate-400 mt-1">Recent Events</div></div>
-        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.upcoming_event_count}</div><div class="text-[11px] text-slate-400 mt-1">Upcoming Events</div></div>
-        <div class="bg-white/5 rounded-xl p-4 text-center"><div class="text-3xl font-bold text-white">${t.last_event_date ? relDate(t.last_event_date) : '—'}</div><div class="text-[11px] text-slate-400 mt-1">Last Event: ${t.last_event_date || '—'}</div></div>
+      <div class="text-center py-8 text-slate-500">
+        <div class="text-3xl mb-2">\u2014</div>
+        <div class="text-sm">No touring data available for this artist</div>
+        <div class="text-[11px] mt-1">Run pipeline step 2 (setlist.fm) to populate touring data</div>
       </div>
-    </div>` : ''}
+    </div>`}
 
-    <!-- News & Sentiment -->
+    <!-- News & Media Mentions -->
     <div class="glass rounded-xl p-5 mb-6">
       <div class="flex items-center justify-between mb-4">
         <h3 class="font-semibold text-white text-sm">News & Media Mentions</h3>
-        <div class="flex items-center gap-4">
-          ${fpoTag()}
-          <div class="flex items-center gap-2 ml-2">
-            <div class="w-2 h-2 rounded-full bg-green-400"></div><span class="text-[11px] text-slate-400">Positive</span>
-            <div class="w-2 h-2 rounded-full bg-slate-400 ml-2"></div><span class="text-[11px] text-slate-400">Neutral</span>
-            <div class="w-2 h-2 rounded-full bg-red-400 ml-2"></div><span class="text-[11px] text-slate-400">Negative</span>
-          </div>
-        </div>
+        ${artistNews.length > 0 ? '<span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded">LIVE \u00b7 ' + artistNews.length + ' articles</span>' : '<span class="text-[9px] text-slate-500 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded">NO MATCHES</span>'}
       </div>
-      <div class="grid grid-cols-3 gap-4">
-        <div class="col-span-2 space-y-2">
-          ${[['${name} announces landmark stadium tour across Asia','Billboard','2 hours ago','bg-green-400'],['"Breakout single" surpasses 1 billion streams on Spotify','NME','1 day ago','bg-green-400'],['${name} featured in Coachella 2026 lineup rumors','Pitchfork','3 days ago','bg-slate-400'],['Industry sources report rising ticket demand','Rolling Stone','5 days ago','bg-green-400']].map(([h,src,time,dot]) => `
-            <div class="flex items-start gap-3 p-3 rounded-lg bg-white/5">
-              <div class="w-2 h-2 rounded-full ${dot} mt-1.5 flex-shrink-0"></div>
-              <div class="flex-1"><div class="text-sm text-white">${h}</div><div class="flex items-center gap-2 mt-1"><span class="text-[11px] text-slate-500">${src}</span><span class="text-[11px] text-slate-600">&middot;</span><span class="text-[11px] text-slate-500">${time}</span></div></div>
-            </div>`).join('')}
-        </div>
-        <div><div class="chart-container" style="height:180px"><canvas id="sentimentChart"></canvas></div></div>
-      </div>
+      ${artistNews.length > 0 ? `
+      <div class="space-y-2">
+        ${artistNews.map(n => `
+          <a href="${n.url}" target="_blank" rel="noopener" class="flex items-start gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group">
+            <div class="w-1.5 h-1.5 rounded-full bg-green-400 mt-2 flex-shrink-0"></div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm text-white group-hover:text-violet-300 transition-colors leading-snug">${n.title}</div>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="text-[11px] text-slate-500 font-medium">${n.source}</span>
+                <span class="text-[11px] text-slate-600">\u00b7</span>
+                <span class="text-[11px] text-slate-500">${n.published ? new Date(n.published).toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'}) : 'Unknown date'}</span>
+              </div>
+            </div>
+            <svg class="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          </a>`).join('')}
+      </div>` : `
+      <div class="text-center py-8 text-slate-500">
+        <div class="text-2xl mb-2">\ud83d\udcf0</div>
+        <div class="text-sm">No recent articles matched "${name}"</div>
+        <div class="text-[11px] mt-1">Run pipeline step 5 (news) to fetch latest articles</div>
+      </div>`}
     </div>
 
     <!-- Peer Comparison -->
@@ -1092,52 +1266,85 @@ function selectArtist(spotifyId) {
     </div>
   `;
 
-  // Peer table
-  const idx = artists.findIndex(a => a.spotify_id === spotifyId);
+  // Peer comparison table
+  const idx = artists.findIndex(x => x.spotify_id === spotifyId);
   const start = Math.max(0, idx - 5);
   const end = Math.min(artists.length, idx + 6);
   const peers = artists.slice(start, end);
-  document.getElementById('peer-table').innerHTML = peers.map(a => {
-    const isSelf = a.spotify_id === spotifyId;
-    const pt = touringMap[a.spotify_id];
-    const pct = a.peak_listeners ? Math.round((a.monthly_listeners / a.peak_listeners) * 100) : null;
-    const aUp = a.daily_change >= 0;
+  document.getElementById('peer-table').innerHTML = peers.map(pa => {
+    const isSelf = pa.spotify_id === spotifyId;
+    const pt = touringMap[pa.spotify_id];
+    const pct = pa.peak_listeners ? Math.round((pa.monthly_listeners / pa.peak_listeners) * 100) : null;
+    const aUp = pa.daily_change >= 0;
     return `
-      <tr class="${isSelf ? 'bg-violet-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${a.spotify_id}')">
-        <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-violet-300 font-bold' : 'text-slate-500'}">${a.rank}</td>
-        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(a.name)}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${a.name}</span>${isSelf ? '<span class="bg-violet-500/20 text-violet-300 text-[9px] px-1.5 py-0.5 rounded font-medium">Current</span>' : ''}</div></td>
-        <td class="py-2.5 text-right text-sm text-white">${fmt(a.monthly_listeners)}</td>
-        <td class="py-2.5 text-right text-sm ${aUp ? 'trend-up' : 'trend-down'} font-medium">${aUp?'+':''}${fmt(a.daily_change)}</td>
-        <td class="py-2.5 text-right text-sm text-slate-400">${fmt(a.peak_listeners)}</td>
-        <td class="py-2.5 text-center">${pt ? (pt.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}</td>
-        <td class="py-2.5 text-right pr-3">${pct !== null ? `<div class="flex items-center justify-end gap-1"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '—'}</td>
+      <tr class="${isSelf ? 'bg-violet-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${pa.spotify_id}')">
+        <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-violet-300 font-bold' : 'text-slate-500'}">${pa.rank}</td>
+        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(pa.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(pa.name)}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${pa.name}</span>${isSelf ? '<span class="bg-violet-500/20 text-violet-300 text-[9px] px-1.5 py-0.5 rounded font-medium ml-1">You</span>' : ''}</div></td>
+        <td class="py-2.5 text-right text-sm text-white">${fmt(pa.monthly_listeners)}</td>
+        <td class="py-2.5 text-right text-sm ${aUp ? 'trend-up' : 'trend-down'} font-medium">${aUp?'+':''}${fmt(pa.daily_change)}</td>
+        <td class="py-2.5 text-right text-sm text-slate-400">${fmt(pa.peak_listeners)}</td>
+        <td class="py-2.5 text-center">${pt ? (pt.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">\u2014</span>'}</td>
+        <td class="py-2.5 text-right pr-3">${pct !== null ? `<div class="flex items-center justify-end gap-1.5"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '\u2014'}</td>
       </tr>`;
   }).join('');
 
-  // Render FPO charts
-  renderArtistCharts();
+  renderArtistCharts(a, t);
 }
 
-function renderArtistCharts() {
-  // Fee History
-  if (chartInstances.feeHistory) chartInstances.feeHistory.destroy();
-  chartInstances.feeHistory = new Chart(document.getElementById('feeHistoryChart'), {
-    type: 'bar', data: { labels: ['2023','H2 23','2024','H2 24','2025','H2 25','2026'], datasets: [{ label: 'Guarantee ($K)', data: [80,120,150,200,250,300,350], backgroundColor: 'rgba(251,191,36,0.3)', borderColor: '#fbbf24', borderWidth: 1.5, borderRadius: 4, barPercentage: 0.6 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.03)' }, ticks: { callback: v => '$'+v+'K' } }, x: { grid: { display: false } } } }
+function renderArtistCharts(a, t) {
+  // Destroy old chart instances
+  ['listenerTrend', 'feeHistory', 'financial', 'sentiment'].forEach(k => {
+    if (chartInstances[k]) { chartInstances[k].destroy(); chartInstances[k] = null; }
   });
-  // Financial Doughnut
-  if (chartInstances.financial) chartInstances.financial.destroy();
-  chartInstances.financial = new Chart(document.getElementById('financialChart'), {
-    type: 'doughnut', data: { labels: ['Venue','Production','Artist Fee','Marketing','Staff','Profit'], datasets: [{ data: [800,600,500,400,500,1400], backgroundColor: ['#6366f1','#8b5cf6','#a78bfa','#c4b5fd','#818cf8','#4ade80'], borderWidth: 0 }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'right', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 8, font: { size: 10 } } } } }
-  });
-  // Sentiment Pie
-  if (chartInstances.sentiment) chartInstances.sentiment.destroy();
-  chartInstances.sentiment = new Chart(document.getElementById('sentimentChart'), {
-    type: 'doughnut', data: { labels: ['Positive','Neutral','Negative'], datasets: [{ data: [72,22,6], backgroundColor: ['#4ade80','#94a3b8','#f87171'], borderWidth: 0 }] },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, usePointStyle: true, pointStyle: 'circle', padding: 12, font: { size: 10 } } } } }
+
+  // Listener trend sparkline — synthetic 14-point estimate
+  const canvas = document.getElementById('listenerTrendChart');
+  if (!canvas) return;
+  const ml = a.monthly_listeners;
+  const monthlyDelta = (a.daily_change || 0) * 30;
+  const seed0 = a.spotify_id.charCodeAt(0) + (a.spotify_id.charCodeAt(2) || 0);
+  const trendData = [];
+  for (let i = 13; i >= 0; i--) {
+    const noise = Math.sin(i * 7.3 + seed0) * ml * 0.025;
+    trendData.push(Math.max(0, Math.round(ml - monthlyDelta * i + noise)));
+  }
+  const labels = ['13mo','12mo','11mo','10mo','9mo','8mo','7mo','6mo','5mo','4mo','3mo','2mo','1mo','Now'];
+  const isUp = a.daily_change >= 0;
+  chartInstances.listenerTrend = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: trendData,
+        borderColor: isUp ? '#34d399' : '#f87171',
+        backgroundColor: isUp ? 'rgba(52,211,153,0.07)' : 'rgba(248,113,113,0.07)',
+        borderWidth: 1.5,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => fmt(ctx.raw) + ' listeners' }
+        }
+      },
+      scales: {
+        y: { display: false, beginAtZero: false },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 9 }, color: '#475569', maxRotation: 0, autoSkip: true, maxTicksLimit: 5 }
+        }
+      }
+    }
   });
 }
+
 
 // ─── VENUES PAGE ───
 function renderVenuesPage() {
