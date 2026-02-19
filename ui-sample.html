@@ -117,9 +117,17 @@
         <p class="text-xs text-slate-500" id="page-subtitle">Loading data...</p>
       </div>
       <div class="flex items-center gap-3">
-        <div class="relative">
-          <input type="text" placeholder="Search artists..." id="global-search" class="bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-64" oninput="handleSearch(this.value)">
-          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <div class="relative" id="search-wrapper">
+          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <input type="text" placeholder="Find an artist..." id="global-search" autocomplete="off"
+            class="bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-72"
+            oninput="artistSearch(this.value)"
+            onkeydown="artistSearchKey(event)"
+            onfocus="if(this.value.trim()) artistSearch(this.value)">
+          <button id="search-clear" onclick="clearArtistSearch()" class="absolute right-2.5 top-2 text-slate-600 hover:text-slate-400 hidden">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+          <div id="search-dropdown" class="hidden absolute top-full left-0 mt-1 w-96 bg-[#12121a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"></div>
         </div>
       </div>
     </header>
@@ -172,7 +180,7 @@
           <h3 class="font-semibold text-white text-sm">Artist Portfolio</h3>
           <div class="flex items-center gap-2">
             <div class="relative">
-              <input type="text" id="table-search" placeholder="Search artists..." class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-44" oninput="document.getElementById('global-search').value=this.value; handleSearch(this.value)">
+              <input type="text" id="table-search" placeholder="Filter table..." class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-44" oninput="currentPage=1;renderArtistTable()">
               <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
             <select id="filter-touring" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderArtistTable()">
@@ -735,7 +743,7 @@ function renderDashboard() {
 function renderArtistTable() {
   const filter = document.getElementById('filter-touring').value;
   const sort = document.getElementById('filter-sort').value;
-  const search = (document.getElementById('global-search')?.value || document.getElementById('table-search')?.value || '').toLowerCase();
+  const search = (document.getElementById('table-search')?.value || '').toLowerCase();
 
   let data = artists.map(a => ({ ...a, touring: touringMap[a.spotify_id] || null }));
 
@@ -786,18 +794,77 @@ function renderArtistTable() {
   document.getElementById('table-pagination').innerHTML = pagBtns.join('');
 }
 
+let _searchIdx = -1;
+
+function artistSearch(val) {
+  const dd = document.getElementById('search-dropdown');
+  const clr = document.getElementById('search-clear');
+  _searchIdx = -1;
+  if (clr) clr.classList.toggle('hidden', !val.trim());
+  if (!val.trim() || !artists.length) { dd.classList.add('hidden'); return; }
+  const q = val.toLowerCase();
+  const matches = artists.filter(a => a.name.toLowerCase().includes(q)).slice(0, 8);
+  if (!matches.length) {
+    dd.innerHTML = '<div class="px-4 py-3 text-sm text-slate-500">No artists found</div>';
+    dd.classList.remove('hidden');
+    return;
+  }
+  dd.innerHTML = matches.map((a, i) => {
+    const t = touringMap[a.spotify_id];
+    const nameHL = a.name.replace(new RegExp('(' + val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'i'), '<span class="text-violet-300 font-semibold">$1</span>');
+    return `<div class="search-item flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 cursor-pointer transition-colors" data-id="${a.spotify_id}" data-idx="${i}" onmousedown="pickArtist('${a.spotify_id}')">
+      <div class="w-7 h-7 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0">${initials(a.name)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm text-white truncate">${nameHL}</div>
+        <div class="text-[10px] text-slate-500">#${a.rank} &middot; ${fmt(a.monthly_listeners)} listeners</div>
+      </div>
+      ${t ? (t.is_touring ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 flex-shrink-0">Touring</span>' : '') : ''}
+    </div>`;
+  }).join('<div class="h-px bg-white/5 mx-3"></div>');
+  dd.classList.remove('hidden');
+}
+
+function artistSearchKey(e) {
+  const dd = document.getElementById('search-dropdown');
+  const items = dd.querySelectorAll('.search-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _searchIdx = Math.min(_searchIdx + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _searchIdx = Math.max(_searchIdx - 1, -1);
+  } else if (e.key === 'Enter') {
+    if (_searchIdx >= 0 && items[_searchIdx]) { items[_searchIdx].dispatchEvent(new MouseEvent('mousedown')); }
+    else if (items.length === 1) { items[0].dispatchEvent(new MouseEvent('mousedown')); }
+    return;
+  } else if (e.key === 'Escape') {
+    clearArtistSearch(); return;
+  } else { return; }
+  items.forEach((el, i) => el.classList.toggle('bg-white/8', i === _searchIdx));
+}
+
+function pickArtist(id) {
+  clearArtistSearch();
+  selectArtist(id);
+}
+
+function clearArtistSearch() {
+  document.getElementById('global-search').value = '';
+  document.getElementById('search-dropdown').classList.add('hidden');
+  document.getElementById('search-clear').classList.add('hidden');
+  _searchIdx = -1;
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  if (!document.getElementById('search-wrapper')?.contains(e.target)) {
+    document.getElementById('search-dropdown')?.classList.add('hidden');
+  }
+});
+
 function handleSearch(val) {
   currentPage = 1;
-  showPage('dashboard');
   renderArtistTable();
-  // Sync the inline table search box if it exists
-  const inline = document.getElementById('table-search');
-  if (inline && inline.value !== val) inline.value = val;
-  // Scroll table into view
-  setTimeout(() => {
-    const el = document.getElementById('artist-table-body');
-    if (el) el.closest('.glass')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 50);
 }
 
 // ─── ARTIST PROFILE ───
