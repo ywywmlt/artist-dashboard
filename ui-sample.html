@@ -27,7 +27,7 @@
   .tab-btn.active { color: #a78bfa; border-color: #a78bfa; }
   .page { display: none; }
   .page.active { display: block; }
-  #page-findetail.active { display: flex; }
+  #page-finbuilder.active { display: flex; }
   .artist-row:hover { background: rgba(139,92,246,0.08); }
   .pulse-dot { animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
@@ -76,6 +76,10 @@
       <a href="#" onclick="showPage('findetail')" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-findetail">
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Financial (Detail)
+      </a>
+      <a href="#" onclick="showPage('finbuilder')" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-finbuilder">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        Fin. Model Builder
       </a>
       <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
@@ -375,8 +379,29 @@
       </div>
     </div>
 
+    <!-- FINANCIAL DETAIL PAGE (static — Project Justin) -->
+    <div id="page-findetail" class="page p-6 space-y-6">
+      <div class="glass rounded-xl p-5">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white text-sm">Project Justin — Korea 3 Shows</h3>
+            <p class="text-[11px] text-slate-500">Comprehensive investor model · Concert start Sep-26 · Internal use only</p>
+          </div>
+          <div class="ml-auto flex items-center gap-2">
+            <span class="text-[10px] text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">INTERNAL — NOT FOR DISTRIBUTION</span>
+          </div>
+        </div>
+      </div>
+      <div id="findetail-content">
+        <div class="text-center py-20 text-slate-500">Loading model...</div>
+      </div>
+    </div>
+
     <!-- FINANCIAL MODEL BUILDER PAGE -->
-    <div id="page-findetail" class="page" style="height:calc(100vh - 57px);display:flex;flex-direction:column;overflow:hidden;">
+    <div id="page-finbuilder" class="page" style="height:calc(100vh - 57px);display:flex;flex-direction:column;overflow:hidden;">
       <!-- Top bar -->
       <div class="flex items-center justify-between px-5 py-3 border-b border-white/5 flex-shrink-0" style="background:rgba(255,255,255,0.02);">
         <div class="flex items-center gap-3">
@@ -413,6 +438,8 @@ let financialsLoaded = false;
 let finIndex = [];
 let currentFinData = null;
 let fdState = { profiles: [], activeId: null, mode: 'list', draftProfile: null };
+let finDetailLoaded = false;
+let finDetailData = null;
 
 // ─── Helpers ───
 function fmt(n) {
@@ -458,11 +485,12 @@ function showPage(page) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('nav-' + page)?.classList.add('active');
-  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial Model Builder' };
+  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder' };
   document.getElementById('page-title').textContent = titles[page] || page;
   if (page === 'calendar' && !calendarLoaded) loadCalendarData();
   if (page === 'financials' && !financialsLoaded) initFinancials();
-  if (page === 'findetail') initFinDetail();
+  if (page === 'findetail' && !finDetailLoaded) initFinDetail();
+  if (page === 'finbuilder') initFinBuilder();
 }
 
 // ─── Data Loading ───
@@ -1942,7 +1970,209 @@ function computeProfile(p) {
   };
 }
 
-function initFinDetail() {
+// ─── Financial (Detail) — static Project Justin view ─────────────────────────
+
+async function initFinDetail() {
+  finDetailLoaded = true;
+  try {
+    const res = await fetch('data/financials/project-justin-kr-mc.json');
+    if (!res.ok) throw new Error('Not found');
+    finDetailData = await res.json();
+    renderFinDetail(finDetailData);
+  } catch(e) {
+    document.getElementById('findetail-content').innerHTML = `<div class="text-center py-16 text-red-400">Failed to load model: ${e.message}</div>`;
+  }
+}
+
+function renderFinDetail(d) {
+  const rev = d.revenue;
+  const seats = d.seat_assumptions;
+  const artistFee = d.artist_fee;
+  const scenarios = d.investor_scenarios || [];
+  const completeness = d.data_completeness || {};
+
+  const totalTicket = rev.grand_total.total_revenue;
+  const totalGross  = rev.total_gross_revenue;
+  const mg          = artistFee.mg_total;
+  const scenA       = scenarios.find(s => s.equity === 12000000) || {};
+  const scenB       = scenarios.find(s => s.equity === 25000000 && s.moic) || {};
+
+  const kpis = `<div class="grid grid-cols-5 gap-4">
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Ticket Revenue</div><div class="text-2xl font-bold text-white">${fmtDollar(totalTicket)}</div><div class="text-[11px] text-slate-400 mt-1">${fmtNum(rev.grand_total.total_capacity)} seats · ${rev.total_shows || d.total_shows} shows</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Gross Revenue</div><div class="text-2xl font-bold text-emerald-400">${fmtDollar(totalGross)}</div><div class="text-[11px] text-slate-400 mt-1">incl. merch + sponsorship</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Artist MG</div><div class="text-2xl font-bold text-red-400">${fmtDollar(mg)}</div><div class="text-[11px] text-slate-400 mt-1">Justin · payment schedule</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI (Scen. A $12M)</div><div class="text-2xl font-bold text-violet-400">${scenA.absolute_return != null ? (scenA.absolute_return*100).toFixed(1)+'%' : '—'}</div><div class="text-[11px] text-slate-400 mt-1">${scenA.moic ? scenA.moic.toFixed(2)+'x MOIC' : ''}</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI (Scen. B $25M)</div><div class="text-2xl font-bold text-violet-300">${scenB.absolute_return != null ? (scenB.absolute_return*100).toFixed(1)+'%' : '—'}</div><div class="text-[11px] text-slate-400 mt-1">${scenB.moic ? scenB.moic.toFixed(2)+'x MOIC' : ''}</div></div>
+  </div>`;
+
+  const showRows = rev.shows.map((show,i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-2.5 pl-3 text-sm text-slate-300">${show.city}</td>
+      <td class="py-2.5 text-sm text-slate-400">Show ${show.show || i+1}</td>
+      <td class="py-2.5 text-right text-sm text-white">${fmtNum(show.venue_capacity)}</td>
+      <td class="py-2.5 text-right text-sm text-white">${(show.occupancy_rate*100).toFixed(0)}%</td>
+      <td class="py-2.5 text-right text-sm text-white">${fmtNum(show.expected_attendance)}</td>
+      <td class="py-2.5 text-right text-sm text-white">$${show.avg_ticket_price.toFixed(2)}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-semibold text-emerald-400">${fmtDollar(show.ticket_revenue)}</td>
+    </tr>`).join('');
+
+  const addl = rev.additional_revenue;
+  const addlRows = [
+    { label: 'Merchandise (20% split)', note: addl.merchandise.note, val: addl.merchandise.total },
+    { label: 'F&B Revenue',            note: addl.fb.note,           val: addl.fb.total },
+    { label: 'Sponsorship',            note: addl.sponsorship.note,  val: addl.sponsorship.total }
+  ].map(r => `
+    <tr class="border-b border-white/5 ${!r.val ? 'opacity-50' : ''}">
+      <td class="py-2 pl-3 text-sm text-slate-300" colspan="6">${r.label} <span class="text-[10px] text-slate-500 ml-2">${r.note}</span></td>
+      <td class="py-2 text-right pr-3 text-sm font-semibold ${r.val ? 'text-emerald-400' : 'text-amber-500/70'}">${r.val ? fmtDollar(r.val) : 'Pending'}</td>
+    </tr>`).join('');
+
+  const revenueSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">Revenue — 3 Shows (Korea)</h3>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Market</th><th class="text-left pb-3">Show</th><th class="text-right pb-3">Capacity</th><th class="text-right pb-3">Occ.</th><th class="text-right pb-3">Attendance</th><th class="text-right pb-3">Avg Price</th><th class="text-right pb-3 pr-3">Ticket Revenue</th>
+      </tr></thead>
+      <tbody>${showRows}${addlRows}</tbody>
+      <tfoot><tr class="border-t border-white/10">
+        <td class="py-3 pl-3 text-sm font-bold text-white" colspan="6">Total Gross Revenue</td>
+        <td class="py-3 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(rev.total_gross_revenue)}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+
+  const cats = Object.keys(seats.pricing);
+  const mkts = [...new Set(cats.flatMap(c => Object.keys(seats.pricing[c])))];
+  const seatRows = cats.map(cat => {
+    const pCells = mkts.flatMap(mkt => {
+      const p = seats.pricing[cat]?.[mkt] || {};
+      return [
+        `<td class="py-2.5 text-right text-sm text-white">${p.aggressive != null ? '$'+p.aggressive : '—'}</td>`,
+        `<td class="py-2.5 text-right text-sm text-slate-400">${p.conservative != null ? '$'+p.conservative : '—'}</td>`
+      ];
+    }).join('');
+    const cCells = mkts.map(mkt => {
+      const cnt = seats.counts[cat]?.[mkt];
+      return `<td class="py-2.5 text-right text-sm text-white">${cnt != null ? fmtNum(cnt) : '—'}</td>`;
+    }).join('');
+    return `<tr class="border-b border-white/5"><td class="py-2.5 pl-3 text-sm text-slate-300">${cat}</td>${pCells}${cCells}</tr>`;
+  }).join('');
+  const seatHdrs = mkts.flatMap(m => [`<th class="text-right pb-3">${m} (Agg)</th>`,`<th class="text-right pb-3">${m} (Con)</th>`]).join('')
+                 + mkts.map(m => `<th class="text-right pb-3">${m} Seats</th>`).join('');
+  const seatTotals = mkts.map(mkt => {
+    const t = seats.totals[mkt];
+    return `<td class="py-3 text-right text-sm font-bold text-white" colspan="2">${t ? fmtNum(t.total_seats)+' seats · '+fmtDollar(t.revenue_per_show)+'/show' : '—'}</td>`;
+  }).join('');
+  const seatSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">Seat Assumptions — Korea</h3>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Category</th>${seatHdrs}
+      </tr></thead>
+      <tbody>${seatRows}</tbody>
+      <tfoot><tr class="border-t border-white/10"><td class="py-3 pl-3 text-sm font-bold text-white">Total</td>${seatTotals}</tr></tfoot>
+    </table>
+  </div>`;
+
+  const pmtRows = artistFee.payment_schedule.map(p => `
+    <tr class="border-b border-white/5 ${!p.amount ? 'opacity-40' : ''}">
+      <td class="py-2.5 pl-3 text-sm text-slate-300">${p.payment}</td>
+      <td class="py-2.5 text-sm text-slate-400">${p.date || '—'}</td>
+      <td class="py-2.5 text-right text-sm text-white">${p.months_before_concert > 0 ? p.months_before_concert+' months before' : '—'}</td>
+      <td class="py-2.5 text-right text-sm text-white">${p.pct > 0 ? (p.pct*100).toFixed(0)+'%' : '—'}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-semibold ${p.amount ? 'text-red-400' : 'text-slate-600'}">${p.amount ? fmtDollar(p.amount) : '—'}</td>
+    </tr>`).join('');
+  const mgSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">Artist Fee — MG Payment Schedule</h3>
+    <div class="flex items-center gap-6 mb-4">
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Total MG</div><div class="text-xl font-bold text-red-400 mt-1">${fmtDollar(artistFee.mg_total)}</div></div>
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Concert Start</div><div class="text-xl font-bold text-white mt-1">${d.concert_start_date}</div></div>
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Sponsorship Royalty</div><div class="text-xl font-bold text-white mt-1">${(artistFee.sponsorship_royalty_pct*100).toFixed(0)}%</div></div>
+    </div>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Payment</th><th class="text-left pb-3">Date</th><th class="text-right pb-3">Timing</th><th class="text-right pb-3">% of MG</th><th class="text-right pb-3 pr-3">Amount</th>
+      </tr></thead>
+      <tbody>${pmtRows}</tbody>
+      <tfoot><tr class="border-t border-white/10">
+        <td class="py-3 pl-3 text-sm font-bold text-white" colspan="3">Total</td>
+        <td class="py-3 text-right text-sm font-bold text-white">100%</td>
+        <td class="py-3 text-right pr-3 text-sm font-bold text-red-400">${fmtDollar(artistFee.mg_total)}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+
+  const scenRows = scenarios.filter(s => s.moic).map(s => `
+    <div class="glass rounded-xl p-5 flex-1">
+      <div class="text-[11px] text-violet-400 font-semibold uppercase tracking-wider mb-3">${s.label}</div>
+      <div class="space-y-2.5">
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Equity Invested</span><span class="text-sm font-semibold text-white">${fmtDollar(s.equity)}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Agency Fees</span><span class="text-sm text-white">${fmtDollar(s.agency_fees)}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">BluFin Fees</span><span class="text-sm text-white">${fmtDollar(s.blufin_fees)}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Hurdle Rate</span><span class="text-sm text-white">${(s.hurdle_rate*100).toFixed(0)}%</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Dist. after Hurdle — Investor</span><span class="text-sm text-white">${fmtDollar(s.distribution_after_hurdle?.investor)}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Dist. after Hurdle — BluFin</span><span class="text-sm text-white">${fmtDollar(s.distribution_after_hurdle?.blufin)}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total Investor Return</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(s.total_investor_return)}</span></div>
+        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Investor Profit</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(s.investor_profit)}</span></div>
+        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3 mt-2"><span class="text-sm font-bold text-white">MOIC</span><span class="text-sm font-bold text-violet-400">${s.moic.toFixed(2)}x</span></div>
+        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Absolute Return</span><span class="text-sm font-bold text-violet-400">${(s.absolute_return*100).toFixed(1)}%</span></div>
+      </div>
+    </div>`).join('');
+  const scenSection = `<div>
+    <h3 class="font-semibold text-white text-sm mb-4">Investor Scenarios</h3>
+    <div class="flex gap-4">${scenRows}</div>
+  </div>`;
+
+  const cfScen = scenarios.filter(s => s.cash_flow);
+  const cfMonths = cfScen.length ? Object.keys(cfScen[0].cash_flow) : [];
+  const cfHeaders = cfScen.map(s => `<th class="text-right pb-3 text-violet-300">${s.label.split(' — ')[0]}</th>`).join('');
+  const cfRows = cfMonths.map(month => {
+    const cells = cfScen.map(s => {
+      const v = s.cash_flow[month].total;
+      return `<td class="py-2.5 text-right text-sm font-semibold ${v >= 0 ? 'text-emerald-400' : 'text-red-400'}">${fmtDollar(v)}</td>`;
+    }).join('');
+    return `<tr class="border-b border-white/5"><td class="py-2.5 pl-3 text-sm text-slate-300">${month}</td>${cells}</tr>`;
+  }).join('');
+  const cfSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">Monthly Cash Flow — Running Balance</h3>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Month</th>${cfHeaders}
+      </tr></thead>
+      <tbody>${cfRows}</tbody>
+    </table>
+  </div>`;
+
+  const statusIcon = v => v === 'missing' ? '❌' : v.startsWith('partial') ? '⚠️' : '✅';
+  const compRows = Object.entries(completeness).map(([k, v]) => {
+    const label = k.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+    const color = v === 'missing' ? 'text-red-400' : v.startsWith('partial') ? 'text-amber-400' : 'text-emerald-400';
+    return `<div class="flex items-start gap-2 py-1.5 border-b border-white/5">
+      <span class="text-xs mt-0.5">${statusIcon(v)}</span>
+      <span class="text-sm text-slate-400 flex-1">${label}</span>
+      <span class="text-[11px] ${color} text-right max-w-xs">${v}</span>
+    </div>`;
+  }).join('');
+  const missingCount = Object.values(completeness).filter(v => v === 'missing').length;
+  const partialCount = Object.values(completeness).filter(v => v.startsWith('partial')).length;
+  const completenessSection = `<div class="glass rounded-xl p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-semibold text-white text-sm">Model Completeness</h3>
+      <div class="flex gap-3 text-[11px]">
+        <span class="text-red-400">${missingCount} missing</span>
+        <span class="text-amber-400">${partialCount} partial</span>
+        <span class="text-emerald-400">${Object.values(completeness).length - missingCount - partialCount} complete</span>
+      </div>
+    </div>${compRows}
+  </div>`;
+
+  document.getElementById('findetail-content').innerHTML =
+    kpis + '<div class="space-y-4 mt-4">' + revenueSection + seatSection + mgSection + scenSection + cfSection + completenessSection + '</div>';
+}
+
+// ─── Financial Model Builder ───────────────────────────────────────────────────
+
+function initFinBuilder() {
   fdLoad();
   fdRender();
 }
@@ -2229,13 +2459,123 @@ function fdRenderDetail(p) {
   const c = computeProfile(p);
   const rc = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
   const vbg = p.venue_type==='stadium' ? 'bg-violet-500/15 text-violet-300' : p.venue_type==='arena' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300';
-  const catRows = (p.seat_categories||[]).map(cat => `
-    <tr class="border-b border-white/5">
+  const dateLabel = p.concert_date ? new Date(p.concert_date+'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '';
+  const n = Number(p.num_shows)||1;
+
+  // ── KPI grid (5 cards, matching Financial Detail style) ──
+  const kpiGrid = `<div class="grid grid-cols-5 gap-4">
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Ticket Revenue</div><div class="text-2xl font-bold text-white">${fmtDollar(c.total_ticket_rev)}</div><div class="text-[11px] text-slate-400 mt-1">${fmtNum(c.total_seats)} seats/show · ${n} show${n>1?'s':''}</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Gross Revenue</div><div class="text-2xl font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[11px] text-slate-400 mt-1">incl. merch${c.fnb_rev>0?' + F&B':''} + sponsorship</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Costs</div><div class="text-2xl font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[11px] text-slate-400 mt-1">MG + ticketing + ops</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Net Profit / ROI</div><div class="text-2xl font-bold ${rc}">${fmtDollar(c.net_profit)}</div><div class="text-[11px] ${rc} mt-1">${(c.roi*100).toFixed(1)}% ROI</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">${Number(p.investor?.equity)>0?'MOIC / Abs. Return':'Investor'}</div><div class="text-2xl font-bold text-violet-400">${Number(p.investor?.equity)>0?c.moic.toFixed(2)+'x':'—'}</div><div class="text-[11px] text-violet-300 mt-1">${Number(p.investor?.equity)>0?(c.abs_return*100).toFixed(1)+'% abs. return':'No equity entered'}</div></div>
+  </div>`;
+
+  // ── Seat categories table ──
+  const catRows = (p.seat_categories||[]).map(cat => {
+    const revPS = Number(cat.price) * Number(cat.count);
+    const revTotal = revPS * n;
+    return `<tr class="border-b border-white/5">
       <td class="py-2.5 pl-3 text-sm text-slate-300">${cat.name}</td>
       <td class="py-2.5 text-right text-sm text-white">${fmtNum(Number(cat.count))}</td>
       <td class="py-2.5 text-right text-sm text-white">$${Number(cat.price).toLocaleString()}</td>
-      <td class="py-2.5 text-right pr-3 text-sm font-semibold text-emerald-400">${fmtDollar(Number(cat.price)*Number(cat.count))}</td>
-    </tr>`).join('');
+      <td class="py-2.5 text-right text-sm text-emerald-400">${fmtDollar(revPS)}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-semibold text-emerald-400">${fmtDollar(revTotal)}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Revenue section ──
+  const revenueSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">Revenue — Seat Categories &amp; Additional</h3>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Category</th>
+        <th class="text-right pb-3">Seats / Show</th>
+        <th class="text-right pb-3">Price</th>
+        <th class="text-right pb-3">Revenue / Show</th>
+        <th class="text-right pb-3 pr-3">Total (${n} shows)</th>
+      </tr></thead>
+      <tbody>${catRows}</tbody>
+      <tfoot>
+        <tr class="border-t border-white/10">
+          <td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Ticket Revenue</td>
+          <td class="py-2.5 text-right text-sm font-bold text-emerald-400">${fmtDollar(c.ticket_rev_per_show)}</td>
+          <td class="py-2.5 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(c.total_ticket_rev)}</td>
+        </tr>
+        ${c.ticketing_fee>0?`<tr class="opacity-70"><td class="py-1.5 pl-3 text-sm text-red-400" colspan="3">Less: Ticketing Platform Fee (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}%)</td><td class="py-1.5 text-right text-sm text-red-400">${fmtDollar(c.ticketing_fee/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-red-400">(${fmtDollar(c.ticketing_fee)})</td></tr>`:''}
+        ${c.merch_rev>0?`<tr><td class="py-1.5 pl-3 text-sm text-slate-400" colspan="3">Merch (${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}% of $${fmtNum(p.additional_revenue?.merch_per_show||0)}/show)</td><td class="py-1.5 text-right text-sm text-emerald-400">${fmtDollar(c.merch_rev/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.merch_rev)}</td></tr>`:''}
+        ${c.fnb_rev>0?`<tr><td class="py-1.5 pl-3 text-sm text-slate-400" colspan="3">F&amp;B ($${p.additional_revenue?.fnb_per_head||0}/head × ${((p.additional_revenue?.fnb_buyer_pct||0)*100).toFixed(0)}%)</td><td class="py-1.5 text-right text-sm text-emerald-400">${fmtDollar(c.fnb_rev/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.fnb_rev)}</td></tr>`:''}
+        ${c.sponsor_rev>0?`<tr><td class="py-1.5 pl-3 text-sm text-slate-400" colspan="3">Sponsorship ($${fmtNum(p.additional_revenue?.sponsorship_per_show||0)}/show)</td><td class="py-1.5 text-right text-sm text-emerald-400">${fmtDollar(c.sponsor_rev/n)}</td><td class="py-1.5 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.sponsor_rev)}</td></tr>`:''}
+        <tr class="border-t border-white/10 bg-white/2">
+          <td class="py-3 pl-3 text-sm font-bold text-white" colspan="3">Total Gross Revenue</td>
+          <td class="py-3 text-right text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev/n)}</td>
+          <td class="py-3 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>`;
+
+  // ── Cost section ──
+  const costRows = [
+    { label: 'Artist MG', val: p.costs?.artist_mg||0, perShow: false, color: 'text-red-400' },
+    ...(c.ticketing_fee>0 ? [{ label: `Ticketing Platform Fee (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}% of ticket rev)`, val: c.ticketing_fee, perShow: false }] : []),
+    ...(p.costs?.venue_fee_per_show>0 ? [{ label: 'Venue Fee', val: p.costs.venue_fee_per_show, perShow: true }] : []),
+    ...(p.costs?.production_per_show>0 ? [{ label: 'Production', val: p.costs.production_per_show, perShow: true }] : []),
+    ...(p.costs?.hospitality_per_show>0 ? [{ label: 'Hospitality', val: p.costs.hospitality_per_show, perShow: true }] : []),
+    ...(p.costs?.insurance_per_show>0 ? [{ label: 'Insurance', val: p.costs.insurance_per_show, perShow: true }] : []),
+    ...(p.costs?.agency_fees>0 ? [{ label: 'Agency Fees', val: p.costs.agency_fees, perShow: false }] : []),
+    ...(p.costs?.blufin_fees>0 ? [{ label: 'BluFin Fees', val: p.costs.blufin_fees, perShow: false }] : []),
+  ].map(r => {
+    const total = r.perShow ? r.val * n : r.val;
+    return `<tr class="border-b border-white/5">
+      <td class="py-2.5 pl-3 text-sm text-slate-300">${r.label}</td>
+      <td class="py-2.5 text-right text-sm text-slate-400">${r.perShow ? fmtDollar(r.val) : '—'}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-semibold ${r.color||'text-white'}">${fmtDollar(total)}</td>
+    </tr>`;
+  }).join('');
+
+  const costSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">Cost Assumptions</h3>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Item</th>
+        <th class="text-right pb-3">Per Show</th>
+        <th class="text-right pb-3 pr-3">Total (${n} shows)</th>
+      </tr></thead>
+      <tbody>${costRows}</tbody>
+      <tfoot>
+        <tr class="border-t border-white/10">
+          <td class="py-3 pl-3 text-sm font-bold text-white">Total Costs</td>
+          <td></td>
+          <td class="py-3 text-right pr-3 text-sm font-bold text-red-400">${fmtDollar(c.total_costs)}</td>
+        </tr>
+        <tr class="bg-white/3">
+          <td class="py-3 pl-3 text-sm font-bold text-white">Net Profit</td>
+          <td></td>
+          <td class="py-3 text-right pr-3 text-sm font-bold ${rc}">${fmtDollar(c.net_profit)}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>`;
+
+  // ── P&L Summary ──
+  const plSection = `<div class="glass rounded-xl p-5">
+    <h3 class="font-semibold text-white text-sm mb-4">P&amp;L Summary</h3>
+    <div class="space-y-2">
+      <div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Gross Ticket Revenue</span><span class="text-sm font-semibold text-white">${fmtDollar(c.total_ticket_rev)}</span></div>
+      ${c.ticketing_fee>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Less: Ticketing Platform Fee</span><span class="text-sm text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
+      ${c.merch_rev>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Merch Revenue</span><span class="text-sm text-emerald-400">${fmtDollar(c.merch_rev)}</span></div>`:''}
+      ${c.fnb_rev>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">F&amp;B Revenue</span><span class="text-sm text-emerald-400">${fmtDollar(c.fnb_rev)}</span></div>`:''}
+      ${c.sponsor_rev>0?`<div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Sponsorship Revenue</span><span class="text-sm text-emerald-400">${fmtDollar(c.sponsor_rev)}</span></div>`:''}
+      <div class="flex justify-between py-2 border-b border-white/10"><span class="text-sm font-semibold text-white">Total Gross Revenue</span><span class="text-sm font-semibold text-emerald-400">${fmtDollar(c.total_gross_rev)}</span></div>
+      <div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Artist MG</span><span class="text-sm text-red-400">(${fmtDollar(p.costs?.artist_mg||0)})</span></div>
+      <div class="flex justify-between py-2 border-b border-white/5"><span class="text-sm text-slate-400">Operating Costs</span><span class="text-sm text-red-400">(${fmtDollar(c.total_op_costs + (p.costs?.agency_fees||0) + (p.costs?.blufin_fees||0))})</span></div>
+      <div class="flex justify-between py-3"><span class="text-base font-bold text-white">Net Profit</span><span class="text-base font-bold ${rc}">${fmtDollar(c.net_profit)}</span></div>
+      <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm text-slate-400">ROI (net profit / total costs)</span><span class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(2)}%</span></div>
+    </div>
+  </div>`;
+
+  // ── MG Payment Timeline ──
   const mgRows = (p.costs?.mg_schedule||[]).map(s => {
     const amt = (p.costs?.artist_mg||0) * (s.pct||0);
     let dateStr = '—';
@@ -2252,32 +2592,63 @@ function fdRenderDetail(p) {
       <td class="py-2.5 text-right pr-3 text-sm font-semibold text-red-400">${fmtDollar(amt)}</td>
     </tr>`;
   }).join('');
-  const dateLabel = p.concert_date ? new Date(p.concert_date+'T12:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) : '';
-  const invSection = (Number(p.investor?.equity)>0) ? `
-    <div class="glass rounded-xl p-5">
-      <h3 class="text-sm font-semibold text-white mb-4">Investor Returns — Distribution Waterfall</h3>
-      <div class="space-y-2.5">
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Equity Invested</span><span class="text-sm font-semibold text-white">${fmtDollar(p.investor.equity)}</span></div>
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Hurdle Rate (preferred return)</span><span class="text-sm text-white">${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}% → ${fmtDollar(c.hurdle_amount)}</span></div>
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Net Profit available for distribution</span><span class="text-sm font-semibold ${c.net_profit>=0?'text-emerald-400':'text-red-400'}">${fmtDollar(c.net_profit)}</span></div>
-        <div class="h-px bg-white/10 my-1"></div>
-        <div class="text-[9px] text-slate-500 uppercase tracking-wider">Waterfall Output</div>
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">→ Investor distribution</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(c.investor_dist)}</span></div>
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">→ BluFin distribution</span><span class="text-sm text-white">${fmtDollar(c.blufin_dist)}</span></div>
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total Investor Return (equity + dist.)</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(c.total_inv_return)}</span></div>
-        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3 mt-1"><span class="text-sm font-bold text-white">MOIC</span><span class="text-sm font-bold text-violet-400">${c.moic.toFixed(2)}x</span></div>
-        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Absolute Return</span><span class="text-sm font-bold text-violet-400">${(c.abs_return*100).toFixed(1)}%</span></div>
-      </div>
-    </div>` : '';
+  const mgSection = (p.costs?.mg_schedule||[]).length>0 ? `<div class="glass rounded-xl p-5">
+    <div class="flex items-center gap-6 mb-4">
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Total MG</div><div class="text-xl font-bold text-red-400 mt-1">${fmtDollar(p.costs?.artist_mg||0)}</div></div>
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Concert Date</div><div class="text-xl font-bold text-white mt-1">${dateLabel||'—'}</div></div>
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Ticketing Fee</div><div class="text-xl font-bold text-white mt-1">${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}%</div></div>
+    </div>
+    <h3 class="font-semibold text-white text-sm mb-3">Artist Fee — MG Payment Schedule</h3>
+    <table class="w-full">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-3 pl-3">Payment</th><th class="text-left pb-3">Est. Date</th><th class="text-right pb-3">Timing</th><th class="text-right pb-3">% of MG</th><th class="text-right pb-3 pr-3">Amount</th>
+      </tr></thead>
+      <tbody>${mgRows}</tbody>
+      <tfoot><tr class="border-t border-white/10">
+        <td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Total</td>
+        <td class="py-2.5 text-right text-sm font-bold text-white">100%</td>
+        <td class="py-2.5 text-right pr-3 text-sm font-bold text-red-400">${fmtDollar(p.costs?.artist_mg||0)}</td>
+      </tr></tfoot>
+    </table>
+  </div>` : '';
+
+  // ── Investor waterfall (full breakdown) ──
+  const invSection = (Number(p.investor?.equity)>0) ? `<div class="glass rounded-xl p-5">
+    <h3 class="text-sm font-semibold text-white mb-4">Investor Returns — Distribution Waterfall</h3>
+    <div class="grid grid-cols-3 gap-4 mb-5">
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Equity Invested</div><div class="text-xl font-bold text-white mt-1">${fmtDollar(p.investor.equity)}</div></div>
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Hurdle Rate</div><div class="text-xl font-bold text-white mt-1">${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}% (${fmtDollar(c.hurdle_amount)})</div></div>
+      <div><div class="text-[10px] text-slate-500 uppercase tracking-wider">Split Above Hurdle</div><div class="text-xl font-bold text-white mt-1">${((p.investor.above_hurdle_investor_pct??0.50)*100).toFixed(0)}% Investor / ${(100-((p.investor.above_hurdle_investor_pct??0.50)*100)).toFixed(0)}% BluFin</div></div>
+    </div>
+    <div class="space-y-2.5">
+      <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-2">Step 1 — Return of Capital</div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Capital returned to investor</span><span class="text-sm font-semibold text-white">${fmtDollar(p.investor.equity)}</span></div>
+      <div class="text-[9px] text-slate-500 uppercase tracking-wider mt-3 mb-2">Step 2 — Preferred Return (up to ${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}%)</div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Net profit available</span><span class="text-sm ${c.net_profit>=0?'text-emerald-400':'text-red-400'}">${fmtDollar(c.net_profit)}</span></div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Hurdle amount (${((p.investor.hurdle_rate??0.20)*100).toFixed(0)}% × equity)</span><span class="text-sm text-white">${fmtDollar(c.hurdle_amount)}</span></div>
+      ${c.net_profit > c.hurdle_amount ? `
+      <div class="text-[9px] text-slate-500 uppercase tracking-wider mt-3 mb-2">Step 3 — Above Hurdle Split</div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Amount above hurdle</span><span class="text-sm text-white">${fmtDollar(c.net_profit - c.hurdle_amount)}</span></div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Investor share (${((p.investor.above_hurdle_investor_pct??0.50)*100).toFixed(0)}%)</span><span class="text-sm text-emerald-400">${fmtDollar((c.net_profit - c.hurdle_amount) * (p.investor.above_hurdle_investor_pct??0.50))}</span></div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">BluFin share (${(100-((p.investor.above_hurdle_investor_pct??0.50)*100)).toFixed(0)}%)</span><span class="text-sm text-white">${fmtDollar(c.blufin_dist)}</span></div>` : ''}
+      <div class="h-px bg-white/10 my-2"></div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total investor distribution</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(c.investor_dist)}</span></div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">BluFin distribution</span><span class="text-sm text-white">${fmtDollar(c.blufin_dist)}</span></div>
+      <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total investor return (equity + dist.)</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(c.total_inv_return)}</span></div>
+      <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3 mt-1"><span class="text-sm font-bold text-white">MOIC</span><span class="text-sm font-bold text-violet-400">${c.moic.toFixed(2)}x</span></div>
+      <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Absolute Return</span><span class="text-sm font-bold text-violet-400">${(c.abs_return*100).toFixed(1)}%</span></div>
+    </div>
+  </div>` : '';
+
   return `<div class="p-6 space-y-5">
     <div class="flex items-start justify-between">
       <div>
         <h2 class="text-xl font-bold text-white">${p.artist||'Unnamed Artist'}</h2>
         <div class="flex items-center gap-2 mt-1 flex-wrap">
           <span class="${vbg} text-[10px] px-2 py-0.5 rounded font-medium uppercase">${p.venue_type}</span>
-          <span class="text-sm text-slate-400">${p.num_shows} show${p.num_shows>1?'s':''}</span>
+          <span class="text-sm text-slate-400">${n} show${n>1?'s':''}</span>
           <span class="text-sm text-slate-500">·</span><span class="text-sm text-slate-400">${p.city||'—'}</span>
-          ${dateLabel ? `<span class="text-sm text-slate-500">·</span><span class="text-sm text-slate-400">${dateLabel}</span>` : ''}
+          ${dateLabel?`<span class="text-sm text-slate-500">·</span><span class="text-sm text-slate-400">${dateLabel}</span>`:''}
         </div>
       </div>
       <div class="flex gap-2 flex-shrink-0">
@@ -2285,52 +2656,11 @@ function fdRenderDetail(p) {
         <button onclick="fdDeleteProfile('${p.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-1.5 rounded-lg transition-colors">Delete</button>
       </div>
     </div>
-    <div>${fdKPIStripHTML(c)}</div>
-    <div class="glass rounded-xl p-5">
-      <h3 class="text-sm font-semibold text-white mb-4">Revenue Breakdown</h3>
-      <table class="w-full">
-        <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-          <th class="text-left pb-3 pl-3">Category</th><th class="text-right pb-3">Seats</th><th class="text-right pb-3">Price</th><th class="text-right pb-3 pr-3">Revenue / Show</th>
-        </tr></thead>
-        <tbody>${catRows}</tbody>
-        <tfoot>
-          <tr class="border-t border-white/10"><td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Ticket Revenue / Show</td><td class="py-2.5 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(c.ticket_rev_per_show)}</td></tr>
-          ${c.merch_rev>0?`<tr><td class="py-1 pl-3 text-sm text-slate-400" colspan="3">Merch Revenue (${p.num_shows} shows × ${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}% split)</td><td class="py-1 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.merch_rev)}</td></tr>`:''}
-          ${c.fnb_rev>0?`<tr><td class="py-1 pl-3 text-sm text-slate-400" colspan="3">F&amp;B Revenue (${fmtNum(c.total_attendance)} attendance)</td><td class="py-1 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.fnb_rev)}</td></tr>`:''}
-          ${c.sponsor_rev>0?`<tr><td class="py-1 pl-3 text-sm text-slate-400" colspan="3">Sponsorship (${p.num_shows} shows)</td><td class="py-1 text-right pr-3 text-sm text-emerald-400">${fmtDollar(c.sponsor_rev)}</td></tr>`:''}
-          <tr class="border-t border-white/10"><td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Total Gross Revenue</td><td class="py-2.5 text-right pr-3 text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</td></tr>
-        </tfoot>
-      </table>
-    </div>
-    <div class="glass rounded-xl p-5">
-      <h3 class="text-sm font-semibold text-white mb-4">Cost Breakdown</h3>
-      <div class="space-y-2">
-        <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Artist MG</span><span class="text-sm font-semibold text-red-400">${fmtDollar(p.costs?.artist_mg||0)}</span></div>
-        ${c.ticketing_fee>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Ticketing Platform Fee (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}%)</span><span class="text-sm text-white">${fmtDollar(c.ticketing_fee)}</span></div>`:''}
-        ${(p.costs?.venue_fee_per_show||0)>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Venue Fee (${p.num_shows} shows)</span><span class="text-sm text-white">${fmtDollar((p.costs.venue_fee_per_show)*(p.num_shows||1))}</span></div>`:''}
-        ${(p.costs?.production_per_show||0)>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Production (${p.num_shows} shows)</span><span class="text-sm text-white">${fmtDollar((p.costs.production_per_show)*(p.num_shows||1))}</span></div>`:''}
-        ${(p.costs?.hospitality_per_show||0)>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Hospitality (${p.num_shows} shows)</span><span class="text-sm text-white">${fmtDollar((p.costs.hospitality_per_show)*(p.num_shows||1))}</span></div>`:''}
-        ${(p.costs?.insurance_per_show||0)>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Insurance (${p.num_shows} shows)</span><span class="text-sm text-white">${fmtDollar((p.costs.insurance_per_show)*(p.num_shows||1))}</span></div>`:''}
-        ${(p.costs?.agency_fees||0)>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Agency Fees</span><span class="text-sm text-white">${fmtDollar(p.costs.agency_fees)}</span></div>`:''}
-        ${(p.costs?.blufin_fees||0)>0?`<div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">BluFin Fees</span><span class="text-sm text-white">${fmtDollar(p.costs.blufin_fees)}</span></div>`:''}
-        <div class="flex justify-between py-2 font-bold border-t border-white/10 mt-1"><span class="text-sm text-white">Total Costs</span><span class="text-sm text-red-400">${fmtDollar(c.total_costs)}</span></div>
-        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Net Profit</span><span class="text-sm font-bold ${rc}">${fmtDollar(c.net_profit)}</span></div>
-      </div>
-    </div>
-    ${(p.costs?.mg_schedule||[]).length>0 ? `<div class="glass rounded-xl p-5">
-      <h3 class="text-sm font-semibold text-white mb-4">MG Payment Timeline</h3>
-      <table class="w-full">
-        <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-          <th class="text-left pb-3 pl-3">Payment</th><th class="text-left pb-3">Est. Date</th><th class="text-right pb-3">Timing</th><th class="text-right pb-3">% of MG</th><th class="text-right pb-3 pr-3">Amount</th>
-        </tr></thead>
-        <tbody>${mgRows}</tbody>
-        <tfoot><tr class="border-t border-white/10">
-          <td class="py-2.5 pl-3 text-sm font-bold text-white" colspan="3">Total</td>
-          <td class="py-2.5 text-right text-sm font-bold text-white">100%</td>
-          <td class="py-2.5 text-right pr-3 text-sm font-bold text-red-400">${fmtDollar(p.costs?.artist_mg||0)}</td>
-        </tr></tfoot>
-      </table>
-    </div>` : ''}
+    ${kpiGrid}
+    ${revenueSection}
+    ${costSection}
+    ${plSection}
+    ${mgSection}
     ${invSection}
   </div>`;
 }
