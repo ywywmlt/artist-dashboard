@@ -1573,21 +1573,22 @@ function selectArtist(spotifyId) {
           ${festivalPairings.map(fp => {
             const roleColor = fp.role === 'Co-Headliner' ? 'text-violet-400 bg-violet-500/15' : fp.role === 'Direct Support' ? 'text-cyan-400 bg-cyan-500/15' : 'text-amber-400 bg-amber-500/15';
             const genreList = (fp.mb && fp.mb.genres ? fp.mb.genres.slice(0,2).join(', ') : '') || '\u2014';
-            return \`
-          <div class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-0">
-            <div class="w-6 h-6 rounded-full bg-gradient-to-br \${hashColor(fp.artist.name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">\${fp.artist.name.charAt(0)}</div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-white truncate cursor-pointer hover:text-violet-300 transition-colors" onclick="selectArtist('\${fp.artist.spotify_id}')">\${fp.artist.name}</span>
-                <span class="text-[9px] px-1.5 py-0.5 rounded-full font-medium \${roleColor}">\${fp.role}</span>
-              </div>
-              <div class="text-[10px] text-slate-500">\${fmt(fp.artist.monthly_listeners)} listeners \u00b7 \${genreList}</div>
-            </div>
-            <div class="text-right flex-shrink-0">
-              <div class="text-[10px] text-slate-400">\${Math.round(fp.ratio * 100)}% relative pull</div>
-              <div class="text-[10px] text-slate-600">\${fp.genreOverlap} genre match</div>
-            </div>
-          </div>\`;
+            return (
+              '<div class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-0">' +
+              '<div class="w-6 h-6 rounded-full bg-gradient-to-br ' + hashColor(fp.artist.name) + ' flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">' + fp.artist.name.charAt(0) + '</div>' +
+              '<div class="flex-1 min-w-0">' +
+                '<div class="flex items-center gap-2">' +
+                  '<span class="text-xs font-semibold text-white truncate cursor-pointer hover:text-violet-300 transition-colors" onclick="selectArtist(\'' + fp.artist.spotify_id + '\')">' + fp.artist.name + '</span>' +
+                  '<span class="text-[9px] px-1.5 py-0.5 rounded-full font-medium ' + roleColor + '">' + fp.role + '</span>' +
+                '</div>' +
+                '<div class="text-[10px] text-slate-500">' + fmt(fp.artist.monthly_listeners) + ' listeners \u00b7 ' + genreList + '</div>' +
+              '</div>' +
+              '<div class="text-right flex-shrink-0">' +
+                '<div class="text-[10px] text-slate-400">' + Math.round(fp.ratio * 100) + '% relative pull</div>' +
+                '<div class="text-[10px] text-slate-600">' + fp.genreOverlap + ' genre match</div>' +
+              '</div>' +
+              '</div>'
+            );
           }).join('')}
         </div>
       </div>` : ''}
