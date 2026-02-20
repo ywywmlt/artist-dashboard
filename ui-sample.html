@@ -954,77 +954,169 @@ function computeShowHype(ml, dailyChange, pctOfPeak, venueCap, priceMin, priceMa
   return               { label: 'Low',       color: 'text-slate-400',   bg: 'bg-slate-500/15 border-slate-500/20' };
 }
 
-function computeArtistDemand(ml, peak, isTouring, dailyChange, recentEvents) {
+function computeArtistDemand(ml, peak, isTouring, dailyChange, recentEvents, venueEventsArr) {
+  // ── Tier classification ──────────────────────────────────────────────────
   let tier, tierLabel, capMin, capMax, capDisplay, tierColor;
-  if (ml >= 50000000) {
-    tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 80000; capDisplay = '35K\u201380K'; tierColor = 'text-violet-400 bg-violet-500/15 border-violet-500/20';
+  if (ml >= 80000000) {
+    tier = 'mega-stadium'; tierLabel = 'Mega Stadium'; capMin = 60000; capMax = 120000; capDisplay = '60K\u2013120K'; tierColor = 'text-fuchsia-400 bg-fuchsia-500/15 border-fuchsia-500/20';
+  } else if (ml >= 45000000) {
+    tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 70000; capDisplay = '35K\u201370K'; tierColor = 'text-violet-400 bg-violet-500/15 border-violet-500/20';
   } else if (ml >= 25000000) {
     tier = 'large-arena'; tierLabel = 'Large Arena'; capMin = 18000; capMax = 35000; capDisplay = '18K\u201335K'; tierColor = 'text-cyan-400 bg-cyan-500/15 border-cyan-500/20';
   } else if (ml >= 12000000) {
     tier = 'arena'; tierLabel = 'Arena'; capMin = 10000; capMax = 20000; capDisplay = '10K\u201320K'; tierColor = 'text-blue-400 bg-blue-500/15 border-blue-500/20';
   } else if (ml >= 5000000) {
-    tier = 'small-arena'; tierLabel = 'Small Arena'; capMin = 4000; capMax = 10000; capDisplay = '4K\u201310K'; tierColor = 'text-green-400 bg-green-500/15 border-green-500/20';
+    tier = 'small-arena'; tierLabel = 'Small Arena'; capMin = 4000; capMax = 12000; capDisplay = '4K\u201312K'; tierColor = 'text-green-400 bg-green-500/15 border-green-500/20';
   } else if (ml >= 2000000) {
-    tier = 'theater'; tierLabel = 'Theater'; capMin = 1500; capMax = 5000; capDisplay = '1.5K\u20135K'; tierColor = 'text-amber-400 bg-amber-500/15 border-amber-500/20';
+    tier = 'large-theater'; tierLabel = 'Large Theater'; capMin = 2000; capMax = 5000; capDisplay = '2K\u20135K'; tierColor = 'text-lime-400 bg-lime-500/15 border-lime-500/20';
+  } else if (ml >= 500000) {
+    tier = 'theater'; tierLabel = 'Theater'; capMin = 500; capMax = 2500; capDisplay = '500\u20132.5K'; tierColor = 'text-amber-400 bg-amber-500/15 border-amber-500/20';
   } else {
-    tier = 'club'; tierLabel = 'Club'; capMin = 200; capMax = 2000; capDisplay = '<2K'; tierColor = 'text-slate-400 bg-slate-500/15 border-slate-500/20';
+    tier = 'club'; tierLabel = 'Club / Ballroom'; capMin = 100; capMax = 1000; capDisplay = '<1K'; tierColor = 'text-slate-400 bg-slate-500/15 border-slate-500/20';
   }
+  // ── Optional: calibrate tier upward from Ticketmaster venue data ─────────
+  if (venueEventsArr && venueEventsArr.length >= 3) {
+    const stadiumCount = venueEventsArr.filter(e => {
+      const v = (e.venue || '').toLowerCase();
+      return v.includes('stadium') || v.includes('field') || v.includes('park') || v.includes('bowl') || v.includes('dome');
+    }).length;
+    const pctStadium = stadiumCount / venueEventsArr.length;
+    if (pctStadium >= 0.4 && tier === 'large-arena') {
+      tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 70000; capDisplay = '35K\u201370K'; tierColor = 'text-violet-400 bg-violet-500/15 border-violet-500/20';
+    } else if (pctStadium >= 0.4 && tier === 'arena') {
+      tier = 'large-arena'; tierLabel = 'Large Arena'; capMin = 18000; capMax = 35000; capDisplay = '18K\u201335K'; tierColor = 'text-cyan-400 bg-cyan-500/15 border-cyan-500/20';
+    }
+  }
+  // ── Base MG ranges (USD per show, pre-multiplier) ────────────────────────
+  let mgMin, mgMax;
+  if      (tier === 'mega-stadium')  { mgMin = 5000000; mgMax = 15000000; }
+  else if (tier === 'stadium')       { mgMin = 2000000; mgMax =  7000000; }
+  else if (tier === 'large-arena')   { mgMin =  800000; mgMax =  2500000; }
+  else if (tier === 'arena')         { mgMin =  350000; mgMax =   900000; }
+  else if (tier === 'small-arena')   { mgMin =  120000; mgMax =   400000; }
+  else if (tier === 'large-theater') { mgMin =   40000; mgMax =   150000; }
+  else if (tier === 'theater')       { mgMin =   15000; mgMax =    60000; }
+  else                               { mgMin =    2000; mgMax =    15000; }
+  // ── Heat multipliers ─────────────────────────────────────────────────────
+  const pctOfPeak    = peak ? Math.min(100, (ml / peak) * 100) : 60;
+  const heatMult     = pctOfPeak >= 90 ? 1.30 : pctOfPeak >= 75 ? 1.15 : pctOfPeak >= 50 ? 1.00 : 0.85;
+  const touringMult  = (recentEvents || 0) >= 30 ? 1.20 : (recentEvents || 0) >= 10 ? 1.10 : 1.00;
+  const momentMult   = dailyChange > 200000 ? 1.25 : dailyChange > 50000 ? 1.10 : dailyChange > 0 ? 1.00 : 0.90;
+  const mult         = heatMult * touringMult * momentMult;
+  mgMin = Math.round(mgMin * mult);
+  mgMax = Math.round(mgMax * mult);
+  function fmtMG(n) {
+    if (n >= 1000000) return '$' + parseFloat((n / 1000000).toFixed(1)) + 'M';
+    if (n >= 1000)    return '$' + Math.round(n / 1000) + 'K';
+    return '$' + n;
+  }
+  const mgDisplay = fmtMG(mgMin) + '\u2013' + fmtMG(mgMax);
+  const mgNote    = 'Per show \u00b7 \u00d7' + mult.toFixed(2) + ' heat adj.';
+  // ── Ticket pricing by tier ───────────────────────────────────────────────
   let ticketTiers;
-  if (tier === 'stadium') {
+  if (tier === 'mega-stadium') {
     ticketTiers = [
-      { name: 'GA Standing', range: '$80\u2013$130', note: 'General floor / lawn' },
-      { name: 'Lower Bowl', range: '$130\u2013$200', note: 'Seated lower deck' },
-      { name: 'Mid Deck', range: '$200\u2013$320', note: 'Premium mid-level' },
-      { name: 'VIP Pit', range: '$450\u2013$700', note: 'Front of stage access' },
-      { name: 'VVIP Package', range: '$800\u2013$2,000', note: 'Meet & greet + hospitality' },
+      { name: 'GA / Lawn',     range: '$90\u2013$160',    note: 'General floor or lawn' },
+      { name: 'Lower Bowl',    range: '$160\u2013$300',   note: 'Seated lower deck' },
+      { name: 'Mid Deck',      range: '$300\u2013$550',   note: 'Premium mid-level' },
+      { name: 'VIP Pit',       range: '$700\u2013$1,500', note: 'Front-of-stage access' },
+      { name: 'VVIP Package',  range: '$2K\u2013$6K',     note: 'Meet & greet + hospitality' },
+    ];
+  } else if (tier === 'stadium') {
+    ticketTiers = [
+      { name: 'GA / Lawn',     range: '$70\u2013$130',    note: 'General floor or lawn' },
+      { name: 'Lower Bowl',    range: '$130\u2013$220',   note: 'Seated lower deck' },
+      { name: 'Mid Deck',      range: '$220\u2013$380',   note: 'Premium mid-level' },
+      { name: 'VIP Pit',       range: '$500\u2013$1,000', note: 'Front-of-stage access' },
+      { name: 'VVIP Package',  range: '$1.2K\u2013$4K',   note: 'M&G + hospitality' },
     ];
   } else if (tier === 'large-arena') {
     ticketTiers = [
-      { name: 'GA Floor', range: '$100\u2013$170', note: 'Standing floor' },
-      { name: 'Lower Bowl', range: '$130\u2013$220', note: 'Seated lower level' },
-      { name: 'Upper Bowl', range: '$80\u2013$130', note: 'Upper tier seating' },
-      { name: 'VIP Floor', range: '$380\u2013$650', note: 'Premium floor + access' },
+      { name: 'GA Floor',      range: '$100\u2013$170',  note: 'Standing floor' },
+      { name: 'Lower Bowl',    range: '$130\u2013$230',  note: 'Seated lower level' },
+      { name: 'Upper Bowl',    range: '$80\u2013$130',   note: 'Upper tier seating' },
+      { name: 'VIP Floor',     range: '$380\u2013$700',  note: 'Premium floor + access' },
     ];
   } else if (tier === 'arena') {
     ticketTiers = [
-      { name: 'GA Floor', range: '$80\u2013$140', note: 'Standing floor' },
-      { name: 'Lower Bowl', range: '$100\u2013$170', note: 'Seated lower level' },
-      { name: 'Upper Bowl', range: '$60\u2013$100', note: 'Upper tier' },
-      { name: 'VIP Package', range: '$280\u2013$500', note: 'Premium experience' },
+      { name: 'GA Floor',      range: '$80\u2013$140',   note: 'Standing floor' },
+      { name: 'Lower Bowl',    range: '$100\u2013$170',  note: 'Seated lower level' },
+      { name: 'Upper Bowl',    range: '$60\u2013$100',   note: 'Upper tier' },
+      { name: 'VIP Package',   range: '$280\u2013$550',  note: 'Premium experience' },
     ];
   } else if (tier === 'small-arena') {
     ticketTiers = [
-      { name: 'General', range: '$60\u2013$110', note: 'Floor / lower bowl' },
-      { name: 'Premium', range: '$110\u2013$190', note: 'Priority seating' },
-      { name: 'VIP', range: '$200\u2013$400', note: 'VIP experience' },
+      { name: 'General',       range: '$55\u2013$100',   note: 'Floor / lower bowl' },
+      { name: 'Premium',       range: '$100\u2013$180',  note: 'Priority seating' },
+      { name: 'VIP',           range: '$200\u2013$420',  note: 'VIP experience' },
+    ];
+  } else if (tier === 'large-theater') {
+    ticketTiers = [
+      { name: 'General',       range: '$40\u2013$80',    note: 'Standard seating' },
+      { name: 'Premium',       range: '$80\u2013$150',   note: 'Priority section' },
+      { name: 'VIP',           range: '$150\u2013$350',  note: 'Front row + access' },
     ];
   } else if (tier === 'theater') {
     ticketTiers = [
-      { name: 'General', range: '$40\u2013$80', note: 'Standard seating' },
-      { name: 'Premium', range: '$80\u2013$150', note: 'Priority section' },
-      { name: 'VIP', range: '$150\u2013$300', note: 'Front row + access' },
+      { name: 'General',       range: '$25\u2013$55',    note: 'Standard seating' },
+      { name: 'VIP',           range: '$60\u2013$120',   note: 'Reserved / front' },
     ];
   } else {
     ticketTiers = [
-      { name: 'General Admission', range: '$20\u2013$60', note: 'Floor standing' },
-      { name: 'VIP', range: '$80\u2013$150', note: 'Reserved / table area' },
+      { name: 'General Admission', range: '$15\u2013$35', note: 'Floor standing' },
+      { name: 'VIP',               range: '$50\u2013$100', note: 'Reserved area' },
     ];
   }
-  let mgDisplay, mgNote;
-  if (tier === 'stadium')       { mgDisplay = '$2M\u2013$10M';    mgNote = 'Per show, all-in'; }
-  else if (tier === 'large-arena') { mgDisplay = '$800K\u2013$2.5M'; mgNote = 'Per show, all-in'; }
-  else if (tier === 'arena')    { mgDisplay = '$300K\u2013$900K'; mgNote = 'Per show, guarantee'; }
-  else if (tier === 'small-arena') { mgDisplay = '$100K\u2013$350K'; mgNote = 'Per show, guarantee'; }
-  else if (tier === 'theater')  { mgDisplay = '$50K\u2013$150K';  mgNote = 'Per show, guarantee'; }
-  else                          { mgDisplay = '$10K\u2013$50K';   mgNote = 'Per show'; }
-  const pctOfPeak = peak ? Math.min(100, (ml / peak) * 100) : 50;
-  const touringBonus = isTouring ? 15 : 0;
-  const eventBonus = Math.min(15, (recentEvents || 0) * 1.5);
+  // ── Demand score & momentum ───────────────────────────────────────────────
+  const touringBonus  = isTouring ? 15 : 0;
+  const eventBonus    = Math.min(15, (recentEvents || 0) * 1.5);
   const momentumScore = dailyChange > 100000 ? 20 : dailyChange > 10000 ? 12 : dailyChange > 0 ? 6 : dailyChange > -50000 ? 3 : 0;
-  const demandScore = Math.min(100, Math.round(pctOfPeak * 0.5 + touringBonus + eventBonus + momentumScore));
-  const momentum = dailyChange > 100000 ? 'Surging' : dailyChange > 10000 ? 'Growing' : dailyChange > -10000 ? 'Stable' : dailyChange > -100000 ? 'Softening' : 'Declining';
+  const demandScore   = Math.min(100, Math.round(pctOfPeak * 0.5 + touringBonus + eventBonus + momentumScore));
+  const momentum      = dailyChange > 100000 ? 'Surging' : dailyChange > 10000 ? 'Growing' : dailyChange > -10000 ? 'Stable' : dailyChange > -100000 ? 'Softening' : 'Declining';
   const momentumColor = dailyChange > 100000 ? 'text-green-400' : dailyChange > 10000 ? 'text-cyan-400' : dailyChange > -10000 ? 'text-amber-400' : 'text-red-400';
-  return { tier, tierLabel, capMin, capMax, capDisplay, tierColor, ticketTiers, mgDisplay, mgNote, demandScore, momentum, momentumColor, pctOfPeak };
+  return { tier, tierLabel, capMin, capMax, capDisplay, tierColor, ticketTiers, mgDisplay, mgNote, demandScore, momentum, momentumColor, pctOfPeak, mult };
+}
+
+function computeFestivalPairings(currentArtist, currentMb) {
+  const currentGenres  = ((currentMb && currentMb.genres) || []).map(g => g.toLowerCase());
+  const currentML      = currentArtist.monthly_listeners;
+  const currentCountry = currentMb && currentMb.country;
+  const scored = artists
+    .filter(a => a.spotify_id !== currentArtist.spotify_id)
+    .map(a => {
+      const mb = mbMap[a.spotify_id];
+      const t  = touringMap[a.spotify_id];
+      const genres = ((mb && mb.genres) || []).map(g => g.toLowerCase());
+      // Genre overlap (0\u201340 pts)
+      const overlap    = currentGenres.filter(g => genres.includes(g)).length;
+      const genreScore = Math.min(40, overlap * 15);
+      // Tier compatibility + role (0\u201330 pts)
+      const ratio = a.monthly_listeners / currentML;
+      let tierScore = 0, role = '';
+      if      (ratio >= 0.6 && ratio <= 1.67)     { tierScore = 30; role = 'Co-Headliner';  }
+      else if (ratio >= 0.25 && ratio < 0.6)      { tierScore = 22; role = 'Direct Support'; }
+      else if (ratio >= 0.08 && ratio < 0.25)     { tierScore = 12; role = 'Second Stage';   }
+      else { return null; }
+      // Country diversity (0\u201315 pts)
+      const diversityScore = (mb && mb.country && mb.country !== currentCountry) ? 15 : 0;
+      // Touring activity (0\u201310 pts)
+      const touringScore   = t && t.is_touring ? 10 : (t && t.recent_event_count > 5 ? 5 : 0);
+      // Momentum (0\u20135 pts)
+      const momentumScore  = a.daily_change > 0 ? 5 : 0;
+      const total = genreScore + tierScore + diversityScore + touringScore + momentumScore;
+      return { artist: a, mb, t, role, total, genreOverlap: overlap, ratio };
+    })
+    .filter(x => x !== null && x.total >= 20)
+    .sort((a, b) => b.total - a.total);
+  const roleCounts = { 'Co-Headliner': 0, 'Direct Support': 0, 'Second Stage': 0 };
+  const result = [];
+  for (const item of scored) {
+    if (roleCounts[item.role] >= 2) continue;
+    if (result.length >= 6) break;
+    roleCounts[item.role]++;
+    result.push(item);
+  }
+  return result;
 }
 
 function getMarketFocus(country, genres) {
@@ -1187,10 +1279,11 @@ function selectArtist(spotifyId) {
   const pctOfPeak = a.peak_listeners ? Math.round((ml / a.peak_listeners) * 100) : null;
   const up = a.daily_change >= 0;
   const name = a.name;
-  const demand = computeArtistDemand(ml, a.peak_listeners, t ? t.is_touring : false, a.daily_change, t ? t.recent_event_count : 0);
+  const showEvents = eventsMap[spotifyId] || [];
+  const demand = computeArtistDemand(ml, a.peak_listeners, t ? t.is_touring : false, a.daily_change, t ? t.recent_event_count : 0, showEvents);
   const markets = getMarketFocus(mb ? mb.country : null, mb ? mb.genres : []);
   const untapped = computeUntappedMarkets(ml, mb ? mb.country : null, mb ? mb.genres : [], t ? t.recent_event_count : 0);
-  const showEvents = eventsMap[spotifyId] || [];
+  const festivalPairings = computeFestivalPairings(a, mb);
   const artistNews = (window.newsAlerts || []).filter(n =>
     (n.matched_artists || []).includes(name) || (n.matched_spotify_ids || []).includes(spotifyId)
   ).slice(0, 5);
@@ -1401,76 +1494,103 @@ function selectArtist(spotifyId) {
 
     <!-- Market Demand Analysis -->
     <div class="glass rounded-xl p-5 accent-glow mb-6">
-      <div class="flex items-center justify-between mb-5">
+      <!-- Header row -->
+      <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
+          <div class="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0">
             <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
           </div>
           <div>
             <h3 class="font-semibold text-white text-sm">Market Demand Analysis</h3>
-            <p class="text-[11px] text-slate-500">Derived from ${fmt(ml)} monthly listeners \u00b7 ${pctOfPeak || 0}% of peak \u00b7 ${demand.momentum} momentum</p>
+            <p class="text-[11px] text-slate-500">${fmt(ml)} listeners \u00b7 ${Math.round(demand.pctOfPeak)}% of peak \u00b7 ${demand.momentum} \u00b7 \u00d7${demand.mult.toFixed(2)} heat</p>
           </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2">
+          <div class="w-12 h-12 rounded-xl border ${demand.tierColor} flex flex-col items-center justify-center">
+            <span class="text-[8px] font-bold ${demand.tierColor.split(' ')[0]} uppercase text-center px-0.5 leading-tight">${demand.tierLabel}</span>
+          </div>
           <div class="text-right">
-            <div class="text-[10px] text-slate-500 uppercase tracking-wider">Demand Score</div>
-            <div class="text-3xl font-bold ${demand.demandScore >= 75 ? 'text-green-400' : demand.demandScore >= 50 ? 'text-cyan-400' : demand.demandScore >= 30 ? 'text-amber-400' : 'text-red-400'}">${demand.demandScore}<span class="text-base text-slate-500">/100</span></div>
-          </div>
-          <div class="w-14 h-14 rounded-xl border ${demand.tierColor} flex flex-col items-center justify-center">
-            <span class="text-[9px] font-bold ${demand.tierColor.split(' ')[0]} uppercase leading-tight text-center px-1">${demand.tierLabel}</span>
+            <div class="text-[10px] text-slate-500">Demand Score</div>
+            <div class="text-2xl font-bold ${demand.demandScore >= 75 ? 'text-green-400' : demand.demandScore >= 50 ? 'text-cyan-400' : demand.demandScore >= 30 ? 'text-amber-400' : 'text-red-400'}">${demand.demandScore}<span class="text-xs text-slate-500">/100</span></div>
           </div>
         </div>
       </div>
 
-      <!-- 3 KPI cards -->
-      <div class="grid grid-cols-3 gap-4 mb-5">
-        <div class="bg-white/5 rounded-xl p-4">
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Recommended Venue</div>
-          <div class="text-lg font-bold text-white">${demand.tierLabel}</div>
-          <div class="text-[11px] text-slate-400 mt-1">Capacity: <span class="text-white font-medium">${demand.capDisplay}</span></div>
-          <div class="inline-flex items-center mt-2 px-2 py-0.5 rounded-full text-[10px] font-medium border ${demand.tierColor}">${demand.tierLabel}</div>
+      <!-- Key stats strip -->
+      <div class="grid grid-cols-4 gap-2 mb-4">
+        <div class="bg-white/5 rounded-lg p-3 text-center">
+          <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Venue Tier</div>
+          <div class="text-sm font-bold text-white">${demand.tierLabel}</div>
+          <div class="text-[10px] text-slate-500">${demand.capDisplay}</div>
         </div>
-        <div class="bg-white/5 rounded-xl p-4">
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Audience Momentum</div>
-          <div class="text-lg font-bold ${demand.momentumColor}">${demand.momentum}</div>
-          <div class="text-[11px] text-slate-400 mt-1">${up?'+':''}${fmt(a.daily_change)} / day</div>
-          <div class="text-[11px] text-slate-500 mt-0.5">30-day est: ${fmt(ml + a.daily_change * 30)}</div>
+        <div class="bg-white/5 rounded-lg p-3 text-center">
+          <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">MG / Show</div>
+          <div class="text-sm font-bold text-amber-400">${demand.mgDisplay}</div>
+          <div class="text-[10px] text-slate-500">Heat-adjusted</div>
         </div>
-        <div class="bg-white/5 rounded-xl p-4">
-          <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">MG Estimate</div>
-          <div class="text-lg font-bold text-amber-400">${demand.mgDisplay}</div>
-          <div class="text-[11px] text-slate-400 mt-1">${demand.mgNote}</div>
-          <div class="text-[10px] text-slate-600 mt-0.5">Based on listener tier</div>
+        <div class="bg-white/5 rounded-lg p-3 text-center">
+          <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Momentum</div>
+          <div class="text-sm font-bold ${demand.momentumColor}">${demand.momentum}</div>
+          <div class="text-[10px] text-slate-500">${up?'+':''}${fmt(a.daily_change)}/day</div>
+        </div>
+        <div class="bg-white/5 rounded-lg p-3 text-center">
+          <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Peak Health</div>
+          <div class="text-sm font-bold ${demand.pctOfPeak >= 80 ? 'text-green-400' : demand.pctOfPeak >= 60 ? 'text-amber-400' : 'text-red-400'}">${Math.round(demand.pctOfPeak)}%</div>
+          <div class="text-[10px] text-slate-500">of all-time peak</div>
         </div>
       </div>
 
-      <!-- Suggested Ticket Pricing -->
-      <div class="bg-white/5 rounded-xl p-4 mb-4">
-        <div class="text-xs text-slate-400 font-medium mb-3">Suggested Ticket Pricing \u2014 ${demand.tierLabel}</div>
-        <div class="grid grid-cols-${demand.ticketTiers.length <= 3 ? demand.ticketTiers.length : 3} gap-3">
+      <!-- Ticket pricing compact table -->
+      <div class="bg-white/5 rounded-lg p-3 mb-3">
+        <div class="text-[10px] text-slate-500 font-medium mb-2 uppercase tracking-wider">Suggested Pricing \u2014 ${demand.tierLabel}</div>
+        <div class="flex flex-wrap gap-x-4 gap-y-1">
           ${demand.ticketTiers.map(tt => `
-            <div class="bg-white/5 rounded-lg p-3 border border-white/5">
-              <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">${tt.name}</div>
-              <div class="text-base font-bold text-white">${tt.range}</div>
-              <div class="text-[10px] text-slate-500 mt-0.5">${tt.note}</div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-[10px] text-slate-500">${tt.name}:</span>
+              <span class="text-[11px] font-semibold text-white">${tt.range}</span>
             </div>`).join('')}
         </div>
       </div>
 
-      <!-- Market Focus -->
-      <div class="bg-white/5 rounded-xl p-4">
-        <div class="text-xs text-slate-400 font-medium mb-3">Market Focus ${mb && mb.country ? '\u00b7 Origin: ' + mb.country : ''}</div>
-        <div class="flex flex-wrap gap-2">
+      <!-- Market focus compact badges -->
+      <div class="bg-white/5 rounded-lg p-3 mb-3">
+        <div class="text-[10px] text-slate-500 font-medium mb-2 uppercase tracking-wider">Market Focus${mb && mb.country ? ' \u00b7 ' + mb.country : ''}</div>
+        <div class="flex flex-wrap gap-1.5">
           ${markets.map(m => `
-            <div class="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/5">
-              <div class="w-1.5 h-1.5 rounded-full ${m.color} mt-1.5 flex-shrink-0"></div>
-              <div>
-                <div class="text-sm text-white font-medium">${m.market} <span class="text-[10px] text-slate-500 font-normal ml-1">${m.tier}</span></div>
-                <div class="text-[10px] text-slate-500">${m.desc}</div>
-              </div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/8">
+              <div class="w-1.5 h-1.5 rounded-full ${m.color} flex-shrink-0"></div>
+              <span class="text-[11px] text-white font-medium">${m.market}</span>
+              <span class="text-[10px] text-slate-500">${m.tier}</span>
             </div>`).join('')}
         </div>
       </div>
+
+      <!-- Festival Run Pairings -->
+      ${festivalPairings.length > 0 ? `
+      <div class="bg-white/5 rounded-lg p-3">
+        <div class="text-[10px] text-slate-500 font-medium mb-2 uppercase tracking-wider">Festival Run Pairings</div>
+        <div class="space-y-1.5">
+          ${festivalPairings.map(fp => {
+            const roleColor = fp.role === 'Co-Headliner' ? 'text-violet-400 bg-violet-500/15' : fp.role === 'Direct Support' ? 'text-cyan-400 bg-cyan-500/15' : 'text-amber-400 bg-amber-500/15';
+            const genreList = (fp.mb && fp.mb.genres ? fp.mb.genres.slice(0,2).join(', ') : '') || '\u2014';
+            return \`
+          <div class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-0">
+            <div class="w-6 h-6 rounded-full bg-gradient-to-br \${hashColor(fp.artist.name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">\${fp.artist.name.charAt(0)}</div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-white truncate cursor-pointer hover:text-violet-300 transition-colors" onclick="selectArtist('\${fp.artist.spotify_id}')">\${fp.artist.name}</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded-full font-medium \${roleColor}">\${fp.role}</span>
+              </div>
+              <div class="text-[10px] text-slate-500">\${fmt(fp.artist.monthly_listeners)} listeners \u00b7 \${genreList}</div>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <div class="text-[10px] text-slate-400">\${Math.round(fp.ratio * 100)}% relative pull</div>
+              <div class="text-[10px] text-slate-600">\${fp.genreOverlap} genre match</div>
+            </div>
+          </div>\`;
+          }).join('')}
+        </div>
+      </div>` : ''}
     </div>
 
     <!-- Touring Intelligence -->
