@@ -1,0 +1,67 @@
+name: Weekly Data Scrape
+
+on:
+  schedule:
+    # Every Monday at 02:00 UTC  (Mon 11:00 KST / Sun 19:00 PT)
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    # Also triggerable manually from GitHub → Actions tab
+    inputs:
+      steps:
+        description: 'Pipeline steps to run (e.g. "--step 5" or "--from 3")'
+        required: false
+        default: ''
+
+jobs:
+  scrape:
+    name: Run scraping pipeline
+    runs-on: ubuntu-latest
+    timeout-minutes: 90       # pipeline is ~26 min; 90 gives comfortable headroom
+
+    permissions:
+      contents: write           # needed to push the data commit back
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run pipeline
+        env:
+          SETLISTFM_API_KEY:       ${{ secrets.SETLISTFM_API_KEY }}
+          MUSICBRAINZ_APP_NAME:    ArtistDashboard
+          MUSICBRAINZ_APP_VERSION: '0.1'
+          MUSICBRAINZ_CONTACT:     ${{ secrets.MUSICBRAINZ_CONTACT }}
+        run: |
+          python run_pipeline.py ${{ github.event.inputs.steps }} -v
+
+      - name: Commit & push updated data files
+        run: |
+          git config user.name  "Artist Dashboard Bot"
+          git config user.email "bot@artist-dashboard.noreply"
+
+          git add \
+            data/raw/kworb_seed.json \
+            data/raw/touring_data.json \
+            data/raw/musicbrainz_data.json \
+            data/raw/news_alerts.json
+
+          # Only commit if there are actual changes
+          if git diff --cached --quiet; then
+            echo "✓ No data changes — nothing to commit"
+          else
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "data: weekly scrape ${TIMESTAMP}"
+            git push
+            echo "✓ Data committed and pushed — Railway deploy triggered"
+          fi
