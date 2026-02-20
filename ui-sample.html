@@ -462,10 +462,16 @@
           </div>
           <span class="text-sm font-semibold text-white">Financial Model Builder</span>
         </div>
-        <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-          Add New Artist Profile
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="fd-dup-btn" onclick="fdDuplicate()" class="hidden items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Duplicate
+          </button>
+          <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            Add New Artist Profile
+          </button>
+        </div>
       </div>
       <!-- Two-column body -->
       <div class="flex flex-1 overflow-hidden">
@@ -3004,6 +3010,8 @@ function fdRender() {
   const sidebar = document.getElementById('fd-sidebar');
   const main    = document.getElementById('fd-main');
   if (!sidebar || !main) return;
+  const dupBtn = document.getElementById('fd-dup-btn');
+  if (dupBtn) { const show = !!fdState.activeId; dupBtn.classList.toggle('hidden', !show); dupBtn.classList.toggle('flex', show); }
   if (fdState.profiles.length === 0) {
     sidebar.innerHTML = '<div class="text-center py-8 text-slate-600 text-xs">No profiles yet</div>';
   } else {
@@ -3088,9 +3096,21 @@ function fdSelectProfile(id) {
 }
 
 function fdDeleteProfile(id) {
-  if (!confirm('Delete this profile?')) return;
+  if (!confirm('Delete this profile? This cannot be undone.')) return;
   fdState.profiles = fdState.profiles.filter(x => x.id !== id);
   fdSave(); fdState.activeId = null; fdState.mode = 'list'; fdState.draftProfile = null;
+  fdRender();
+}
+
+function fdDuplicate() {
+  const src = fdState.activeId ? fdState.profiles.find(x => x.id === fdState.activeId) : null;
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = fdGenId();
+  copy.createdAt = new Date().toISOString();
+  copy.artist = (copy.artist ? copy.artist + ' (Copy)' : 'Copy');
+  fdState.mode = 'edit'; fdState.activeId = null;
+  fdState.draftProfile = copy;
   fdRender();
 }
 
@@ -3562,10 +3582,18 @@ function fdRenderLive(p) {
     </div>
 
     <!-- Model Completeness -->
-    <div class="glass rounded-xl p-4 pb-8">
+    <div class="glass rounded-xl p-4">
       <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">Model Completeness</h3>
       <div id="fd-completeness">${fdCompletenessHTML(p)}</div>
     </div>
+
+    ${!isNew ? `
+    <div class="flex justify-end pb-4">
+      <button onclick="fdDeleteProfile('${p.id}')" class="flex items-center gap-2 text-xs font-medium text-red-400 hover:text-red-300 px-4 py-2 rounded-lg transition-colors border border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        Delete This Profile
+      </button>
+    </div>` : ''}
 
   </div>`;
 }
