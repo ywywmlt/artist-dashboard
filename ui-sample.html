@@ -33,11 +33,48 @@
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
   .trend-up { color: #4ade80; }
   .trend-down { color: #f87171; }
+  #login-gate { position:fixed; inset:0; background:#0a0a0f; z-index:9999; display:flex; align-items:center; justify-content:center; }
+  #login-gate.hidden { display:none; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
+  .shake { animation: shake 0.4s ease; }
 </style>
 </head>
 <body class="min-h-screen">
 
-<div class="flex h-screen overflow-hidden">
+<!-- Login Gate -->
+<div id="login-gate">
+  <div class="w-full max-w-sm px-4">
+    <div class="text-center mb-8">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-500/30">
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
+      </div>
+      <h1 class="text-2xl font-bold text-white mb-1">Artist Intel</h1>
+      <p class="text-sm text-slate-500">Sign in to access your dashboard</p>
+    </div>
+    <div id="login-form-wrap" class="glass rounded-2xl p-6" style="border-color:rgba(255,255,255,0.08);">
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wider">Username</label>
+          <input id="login-user" type="text" autocomplete="username" placeholder="Enter username"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wider">Password</label>
+          <input id="login-pass" type="password" autocomplete="current-password" placeholder="Enter password"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            onkeydown="if(event.key==='Enter')doLogin()">
+        </div>
+        <p id="login-err" class="text-xs text-red-400 hidden">Incorrect username or password.</p>
+        <button onclick="doLogin()" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-lg shadow-violet-500/20 mt-1">
+          Sign In
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="flex h-screen overflow-hidden" id="app-shell" style="display:none!important">
 
   <!-- Sidebar -->
   <aside class="w-64 flex-shrink-0 border-r border-white/5 flex flex-col" style="background: rgba(255,255,255,0.02);">
@@ -100,11 +137,14 @@
     </nav>
     <div class="p-4 border-t border-white/5">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white">A</div>
-        <div>
-          <div class="text-sm font-medium text-white">Allen</div>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white">G</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-white">gatekeep</div>
           <div class="text-[10px] text-slate-500">Admin</div>
         </div>
+        <button onclick="doLogout()" title="Sign out" class="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </button>
       </div>
     </div>
   </aside>
@@ -3178,9 +3218,49 @@ Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
 Chart.defaults.font.family = 'Inter';
 Chart.defaults.font.size = 11;
 
+// ─── Auth ───
+const _U = 'gatekeep', _P = 'admin', _KEY = 'aidash_auth';
+
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  if (u === _U && p === _P) {
+    sessionStorage.setItem(_KEY, '1');
+    document.getElementById('login-gate').classList.add('hidden');
+    document.getElementById('app-shell').style.removeProperty('display');
+    document.getElementById('login-err').classList.add('hidden');
+  } else {
+    const wrap = document.getElementById('login-form-wrap');
+    document.getElementById('login-err').classList.remove('hidden');
+    document.getElementById('login-pass').value = '';
+    wrap.classList.remove('shake');
+    void wrap.offsetWidth; // force reflow to restart animation
+    wrap.classList.add('shake');
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem(_KEY);
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-err').classList.add('hidden');
+  document.getElementById('app-shell').style.setProperty('display', 'none', 'important');
+  document.getElementById('login-gate').classList.remove('hidden');
+  setTimeout(() => document.getElementById('login-user').focus(), 50);
+}
+
+// Check session on load
+if (sessionStorage.getItem(_KEY) === '1') {
+  document.getElementById('login-gate').classList.add('hidden');
+  document.getElementById('app-shell').style.removeProperty('display');
+} else {
+  setTimeout(() => document.getElementById('login-user').focus(), 50);
+}
+
 // ─── Init ───
 loadData();
 </script>
 
+</div><!-- /app-shell -->
 </body>
 </html>
