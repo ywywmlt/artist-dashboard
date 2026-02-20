@@ -3109,7 +3109,9 @@ function fdDuplicate() {
   copy.id = fdGenId();
   copy.createdAt = new Date().toISOString();
   copy.artist = (copy.artist ? copy.artist + ' (Copy)' : 'Copy');
-  fdState.mode = 'edit'; fdState.activeId = null;
+  fdState.profiles.push(copy);
+  fdSave();
+  fdState.mode = 'edit'; fdState.activeId = copy.id;
   fdState.draftProfile = copy;
   fdRender();
 }
