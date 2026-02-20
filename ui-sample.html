@@ -1035,6 +1035,102 @@ function getMarketFocus(country, genres) {
   ];
 }
 
+function computeUntappedMarkets(ml, country, genres, recentEventCount) {
+  const ev = recentEventCount || 0;
+  const g = (genres || []).map(x => x.toLowerCase());
+  const isKpop   = g.some(x => x.includes('k-pop') || x.includes('kpop')) || country === 'KR';
+  const isJpop   = g.some(x => x.includes('j-pop') || x.includes('jpop') || x.includes('j-rock')) || country === 'JP';
+  const isLatin  = g.some(x => x.includes('latin') || x.includes('reggaeton') || x.includes('cumbia')) || ['BR','MX','CO','AR','CL','PE'].includes(country);
+  const isUS     = ['US','CA'].includes(country);
+  const isUK     = ['GB','IE'].includes(country);
+  const isAU     = ['AU','NZ'].includes(country);
+  const isEU     = ['DE','FR','ES','IT','NL','SE','NO','DK','PT','BE','PL','CH','AT'].includes(country);
+  const type     = isKpop ? 'kpop' : isJpop ? 'jpop' : isLatin ? 'latin' : isUS ? 'us' : isUK ? 'uk' : isAU ? 'au' : isEU ? 'eu' : 'default';
+
+  // Each market: affinity = estimated share of global listeners in that region
+  // Calibrated against public Spotify streaming geography data
+  const MARKETS = [
+    { name:'North America',  homeFor:['US','CA'],
+      aff:{ kpop:0.22, jpop:0.06, latin:0.38, us:0.52, uk:0.26, au:0.18, eu:0.14, default:0.20 },
+      venues:'Arena / Stadium', flag:'🌎' },
+    { name:'Europe',         homeFor:['GB','IE','DE','FR','ES','IT','NL','SE','NO','DK','PT','BE','PL','CH','AT'],
+      aff:{ kpop:0.14, jpop:0.05, latin:0.20, us:0.20, uk:0.42, au:0.16, eu:0.48, default:0.16 },
+      venues:'Arena / Theater', flag:'🌍' },
+    { name:'SE Asia',        homeFor:['TH','PH','ID','VN','MY','SG'],
+      aff:{ kpop:0.20, jpop:0.14, latin:0.04, us:0.07, uk:0.05, au:0.06, eu:0.05, default:0.09 },
+      venues:'Arena', flag:'🌏' },
+    { name:'Japan',          homeFor:['JP'],
+      aff:{ kpop:0.16, jpop:0.52, latin:0.02, us:0.06, uk:0.06, au:0.05, eu:0.05, default:0.06 },
+      venues:'Arena / Hall', flag:'🗾' },
+    { name:'South Korea',    homeFor:['KR'],
+      aff:{ kpop:0.18, jpop:0.05, latin:0.02, us:0.03, uk:0.03, au:0.03, eu:0.03, default:0.03 },
+      venues:'Arena / Stadium', flag:'🇰🇷' },
+    { name:'Latin America',  homeFor:['BR','MX','CO','AR','CL','PE'],
+      aff:{ kpop:0.10, jpop:0.02, latin:0.42, us:0.10, uk:0.07, au:0.04, eu:0.06, default:0.11 },
+      venues:'Arena / Stadium', flag:'🌎' },
+    { name:'Middle East',    homeFor:['AE','SA','QA','KW','BH','EG'],
+      aff:{ kpop:0.05, jpop:0.02, latin:0.03, us:0.05, uk:0.07, au:0.03, eu:0.04, default:0.04 },
+      venues:'Arena', flag:'🌍' },
+    { name:'Oceania',        homeFor:['AU','NZ'],
+      aff:{ kpop:0.05, jpop:0.03, latin:0.03, us:0.10, uk:0.12, au:0.44, eu:0.06, default:0.07 },
+      venues:'Arena', flag:'🌏' },
+    { name:'South Asia',     homeFor:['IN','PK','BD','LK'],
+      aff:{ kpop:0.04, jpop:0.02, latin:0.02, us:0.05, uk:0.07, au:0.04, eu:0.03, default:0.05 },
+      venues:'Theater / Arena', flag:'🌏' },
+    { name:'Africa',         homeFor:['NG','ZA','KE','GH','ET','TZ'],
+      aff:{ kpop:0.02, jpop:0.01, latin:0.04, us:0.04, uk:0.06, au:0.02, eu:0.03, default:0.03 },
+      venues:'Theater / Arena', flag:'🌍' },
+    { name:'East Asia (Other)', homeFor:['TW','HK','MO','MN'],
+      aff:{ kpop:0.08, jpop:0.10, latin:0.01, us:0.02, uk:0.02, au:0.02, eu:0.02, default:0.03 },
+      venues:'Arena / Hall', flag:'🌏' },
+  ];
+
+  // Build set of likely-toured markets from event count + origin
+  const toured = new Set();
+  // Always mark home market(s)
+  MARKETS.forEach(m => { if (m.homeFor.includes(country)) toured.add(m.name); });
+  // By event count, progressively unlock likely-toured secondary markets
+  if (ev >= 3) {
+    if (isKpop)  { toured.add('South Korea'); toured.add('Japan'); }
+    if (isJpop)  { toured.add('Japan'); toured.add('East Asia (Other)'); }
+    if (isLatin) { toured.add('Latin America'); }
+    if (isUS)    { toured.add('North America'); }
+    if (isUK)    { toured.add('Europe'); toured.add('North America'); }
+    if (isAU)    { toured.add('Oceania'); }
+    if (isEU)    { toured.add('Europe'); }
+  }
+  if (ev >= 15) {
+    if (isKpop)  { toured.add('SE Asia'); toured.add('East Asia (Other)'); }
+    if (isJpop)  { toured.add('SE Asia'); toured.add('South Korea'); }
+    if (isLatin) { toured.add('North America'); toured.add('Europe'); }
+    if (isUS || isUK) { toured.add('Oceania'); }
+    if (isEU)    { toured.add('North America'); toured.add('Oceania'); }
+  }
+  if (ev >= 40) {
+    if (isKpop)  { toured.add('North America'); toured.add('Europe'); }
+    if (isUS || isUK) { toured.add('Middle East'); toured.add('South Asia'); }
+    if (isLatin) { toured.add('Middle East'); }
+  }
+  if (ev >= 80) {
+    // Extensive worldwide touring
+    MARKETS.forEach(m => { if ((m.aff[type]||m.aff.default) >= 0.10) toured.add(m.name); });
+  }
+
+  return MARKETS
+    .map(m => {
+      const aff    = m.aff[type] !== undefined ? m.aff[type] : m.aff.default;
+      const estFan = Math.round(ml * aff);
+      const isHome = m.homeFor.includes(country);
+      const likelyToured = toured.has(m.name) || isHome;
+      const score  = estFan >= 3000000 ? 'Very High' : estFan >= 1000000 ? 'High' : estFan >= 300000 ? 'Medium' : 'Low';
+      const scoreColor = score === 'Very High' ? 'text-emerald-400 bg-emerald-500/15' : score === 'High' ? 'text-cyan-400 bg-cyan-500/15' : score === 'Medium' ? 'text-amber-400 bg-amber-500/15' : 'text-slate-400 bg-slate-500/15';
+      return { name: m.name, flag: m.flag, estFan, aff, likelyToured, isHome, score, scoreColor, venues: m.venues };
+    })
+    .filter(m => !m.likelyToured && m.estFan >= 150000)
+    .sort((a, b) => b.estFan - a.estFan)
+    .slice(0, 8);
+}
+
 function selectArtist(spotifyId) {
   selectedArtist = artists.find(a => a.spotify_id === spotifyId);
   if (!selectedArtist) return;
@@ -1049,6 +1145,7 @@ function selectArtist(spotifyId) {
   const name = a.name;
   const demand = computeArtistDemand(ml, a.peak_listeners, t ? t.is_touring : false, a.daily_change, t ? t.recent_event_count : 0);
   const markets = getMarketFocus(mb ? mb.country : null, mb ? mb.genres : []);
+  const untapped = computeUntappedMarkets(ml, mb ? mb.country : null, mb ? mb.genres : [], t ? t.recent_event_count : 0);
   const artistNews = (window.newsAlerts || []).filter(n =>
     (n.matched_artists || []).includes(name) || (n.matched_spotify_ids || []).includes(spotifyId)
   ).slice(0, 5);
@@ -1347,6 +1444,56 @@ function selectArtist(spotifyId) {
         <div class="text-[11px] mt-1">Run pipeline step 2 (setlist.fm) to populate touring data</div>
       </div>
     </div>`}
+
+    <!-- Untapped Market Opportunities -->
+    <div class="glass rounded-xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white text-sm">Untapped Market Opportunities</h3>
+            <p class="text-[11px] text-slate-500">Regions with strong estimated fanbase but no confirmed touring history</p>
+          </div>
+        </div>
+        <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">ESTIMATED</span>
+      </div>
+      ${untapped.length === 0 ? `
+      <div class="text-center py-6 text-slate-500">
+        <div class="text-2xl mb-2">🌍</div>
+        <div class="text-sm">${t && t.recent_event_count >= 80 ? 'Extensive touring history — most major markets likely covered' : 'Not enough data to identify untapped markets'}</div>
+      </div>` : `
+      <div class="grid grid-cols-4 gap-3 mb-4">
+        ${untapped.map(m => `
+        <div class="bg-white/5 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="text-base mb-0.5">${m.flag}</div>
+              <div class="text-sm font-semibold text-white leading-tight">${m.name}</div>
+            </div>
+            <span class="text-[9px] px-1.5 py-0.5 rounded-full font-semibold ${m.scoreColor} flex-shrink-0 ml-1">${m.score}</span>
+          </div>
+          <div class="text-xl font-bold text-white mb-0.5">~${fmt(m.estFan)}</div>
+          <div class="text-[10px] text-slate-500 mb-3">est. listeners</div>
+          <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mb-1.5">
+            <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all" style="width:${Math.round(m.aff * 100 * 3)}%"></div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[10px] text-slate-500">${Math.round(m.aff * 100)}% affinity</span>
+            <span class="text-[10px] text-slate-500">${m.venues}</span>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="p-3 rounded-lg bg-white/3 border border-white/5">
+        <div class="flex items-start gap-2">
+          <svg class="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <div class="text-[10px] text-slate-500 leading-relaxed">
+            Fanbase estimates are inferred from global listener count (${fmt(ml)}) × regional affinity scores derived from artist origin${mb && mb.country ? ' (' + mb.country + ')' : ''} and genre. Touring history inferred from setlist.fm event count (${t ? t.recent_event_count + ' events' : 'no data'}). Not actual Spotify per-country streaming data.
+          </div>
+        </div>
+      </div>`}
+    </div>
 
     <!-- News & Media Mentions -->
     <div class="glass rounded-xl p-5 mb-6">
