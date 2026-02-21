@@ -1273,14 +1273,8 @@ function computeUntappedMarkets(ml, country, genres, recentEventCount) {
     .slice(0, 8);
 }
 
-function selectArtist(spotifyId) {
-  selectedArtist = artists.find(a => a.spotify_id === spotifyId);
-  if (!selectedArtist) return;
-  const t = touringMap[spotifyId] || null;
-  const mb = mbMap[spotifyId] || null;
-  showPage('artist');
-
-  const a = selectedArtist;
+// ─── Shared artist profile HTML builder (used by dashboard & financial model) ───
+function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendChart', peerTableId = 'peer-table' } = {}) {
   const ml = a.monthly_listeners;
   const pctOfPeak = a.peak_listeners ? Math.round((ml / a.peak_listeners) * 100) : null;
   const up = a.daily_change >= 0;
@@ -1293,8 +1287,7 @@ function selectArtist(spotifyId) {
   const artistNews = (window.newsAlerts || []).filter(n =>
     (n.matched_artists || []).includes(name) || (n.matched_spotify_ids || []).includes(spotifyId)
   ).slice(0, 5);
-
-  document.getElementById('artist-profile-content').innerHTML = `
+  return `
     <!-- Header -->
     <div class="glass rounded-xl p-6 accent-glow mb-6">
       <div class="flex items-start gap-6">
@@ -1357,7 +1350,7 @@ function selectArtist(spotifyId) {
           <span class="text-2xl font-bold text-white">${pctOfPeak || 0}%</span>
           <span class="text-sm text-slate-500 ml-2">of all-time peak</span>
         </div>
-        <div class="chart-container" style="height:110px"><canvas id="listenerTrendChart"></canvas></div>
+        <div class="chart-container" style="height:110px"><canvas id="${chartId}"></canvas></div>
         <div class="text-[10px] text-slate-600 text-center mt-1">Estimated 13-month listener trend</div>
         <div class="mt-3 grid grid-cols-2 gap-2">
           <div class="p-2.5 rounded-lg bg-white/5">
@@ -1783,17 +1776,22 @@ function selectArtist(spotifyId) {
         <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
           <th class="text-left pb-3 pl-3">#</th><th class="text-left pb-3">Artist</th><th class="text-right pb-3">Monthly Listeners</th><th class="text-right pb-3">Daily Change</th><th class="text-right pb-3">Peak</th><th class="text-center pb-3">Touring</th><th class="text-right pb-3 pr-3">% of Peak</th>
         </tr></thead>
-        <tbody id="peer-table"></tbody>
+        <tbody id="${peerTableId}"></tbody>
       </table>
     </div>
-  `;
 
-  // Peer comparison table
+  `;
+}
+
+function populatePeerTable(spotifyId, tableId) {
+  const el = document.getElementById(tableId);
+  if (!el) return;
   const idx = artists.findIndex(x => x.spotify_id === spotifyId);
+  if (idx < 0) return;
   const start = Math.max(0, idx - 5);
   const end = Math.min(artists.length, idx + 6);
   const peers = artists.slice(start, end);
-  document.getElementById('peer-table').innerHTML = peers.map(pa => {
+  document.getElementById(tableId).innerHTML = peers.map(pa => {
     const isSelf = pa.spotify_id === spotifyId;
     const pt = touringMap[pa.spotify_id];
     const pct = pa.peak_listeners ? Math.round((pa.monthly_listeners / pa.peak_listeners) * 100) : null;
@@ -1809,7 +1807,31 @@ function selectArtist(spotifyId) {
         <td class="py-2.5 text-right pr-3">${pct !== null ? `<div class="flex items-center justify-end gap-1.5"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '\u2014'}</td>
       </tr>`;
   }).join('');
+}
 
+function selectArtist(spotifyId) {
+  selectedArtist = artists.find(a => a.spotify_id === spotifyId);
+  if (!selectedArtist) return;
+  const t = touringMap[spotifyId] || null;
+  const mb = mbMap[spotifyId] || null;
+  showPage('artist');
+
+  const a = selectedArtist;
+  const ml = a.monthly_listeners;
+  const pctOfPeak = a.peak_listeners ? Math.round((ml / a.peak_listeners) * 100) : null;
+  const up = a.daily_change >= 0;
+  const name = a.name;
+  const showEvents = eventsMap[spotifyId] || [];
+  const demand = computeArtistDemand(ml, a.peak_listeners, t ? t.is_touring : false, a.daily_change, t ? t.recent_event_count : 0, showEvents);
+  const markets = getMarketFocus(mb ? mb.country : null, mb ? mb.genres : []);
+  const untapped = computeUntappedMarkets(ml, mb ? mb.country : null, mb ? mb.genres : [], t ? t.recent_event_count : 0);
+  const festivalPairings = computeFestivalPairings(a, mb);
+  const artistNews = (window.newsAlerts || []).filter(n =>
+    (n.matched_artists || []).includes(name) || (n.matched_spotify_ids || []).includes(spotifyId)
+  ).slice(0, 5);
+
+  document.getElementById('artist-profile-content').innerHTML = buildArtistProfileHTML(a, t, mb, spotifyId);
+  populatePeerTable(spotifyId, 'peer-table');
   renderArtistCharts(a, t);
 }
 
@@ -3093,6 +3115,11 @@ function fdMigrateProfile(p) {
   }
 }
 
+function fdSetMain(p) {
+  document.getElementById('fd-main').innerHTML = fdRenderLive(p);
+  setTimeout(() => fdPostRenderArtistProfile(p), 0);
+}
+
 function fdRender() {
   const sidebar = document.getElementById('fd-sidebar');
   const main    = document.getElementById('fd-main');
@@ -3131,6 +3158,7 @@ function fdRender() {
   }
   if (fdState.mode === 'edit' && fdState.draftProfile) {
     main.innerHTML = fdRenderLive(fdState.draftProfile);
+    setTimeout(() => fdPostRenderArtistProfile(fdState.draftProfile), 0);
   } else {
     main.innerHTML = fdEmptyState();
   }
@@ -3644,7 +3672,7 @@ function fdPatchVenueType(val) {
   }
   // Keep global fallback in sync
   fdState.draftProfile.seat_categories = preset.categories.map(c => ({...c}));
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 function fdPatchTicketingCo(val) {
@@ -3657,7 +3685,7 @@ function fdPatchTicketingCo(val) {
     advance_pct: preset.advance_pct,
     advance_days_before: preset.advance_days_before
   };
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 function fdPatchScen(id, field, value) {
@@ -3684,6 +3712,7 @@ function fdUpdateLive() {
   upd('fd-cf-section',   fdCashFlowHTML(p, c));
   upd('fd-completeness',    fdCompletenessHTML(p));
   upd('fd-artist-profile',  fdArtistProfileHTML(p));
+  setTimeout(() => fdPostRenderArtistProfile(p), 0);
   // Per-city: update seat category totals and summary footer
   for (const cc of (c.cityCalcs || [])) {
     const tcId = cc.tc.id;
@@ -3837,95 +3866,63 @@ function fdCompletenessHTML(p) {
   ).join('');
 }
 
+let fdListenerChartInstance = null;
+
 function fdArtistProfileHTML(p) {
   const name = (p.artist || '').trim();
-  if (!name) return `<div class="text-center py-4 text-slate-500 text-xs">Enter an artist name in Section 1 to link their Spotify data.</div>`;
+  if (!name) return `<div class="text-center py-8 text-slate-500 text-xs">Enter an artist name in Section 1 to link their full profile data.</div>`;
   const a = artists.find(x => x.name.toLowerCase() === name.toLowerCase());
-  if (!a) return `<div class="flex items-center gap-2 py-2">
+  if (!a) return `<div class="flex items-center gap-2 py-3">
     <svg class="w-3.5 h-3.5 text-amber-400/60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
     <span class="text-xs text-slate-500">"${name}" not found in dataset — enter exact spelling to link live data</span>
   </div>`;
   const t  = touringMap[a.spotify_id] || null;
   const mb = mbMap[a.spotify_id]     || null;
-  const up = a.daily_change >= 0;
-  const pctOfPeak = a.peak_listeners ? Math.round((a.monthly_listeners / a.peak_listeners) * 100) : null;
-  const barColor = (pctOfPeak||0) >= 90 ? 'bg-gradient-to-r from-green-500 to-emerald-400'
-                 : (pctOfPeak||0) >= 70 ? 'bg-gradient-to-r from-cyan-500 to-blue-400'
-                 : (pctOfPeak||0) >= 50 ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
-                 :                        'bg-gradient-to-r from-red-500 to-orange-400';
-  const genreTags = (mb && mb.genres && mb.genres.length)
-    ? mb.genres.slice(0,5).map(g => `<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-300">${g}</span>`).join('')
-    : '';
-  const socialLinks = mb ? [
-    { key:'instagram', label:'IG', grad:'from-purple-500 to-pink-500',   url: h => 'https://instagram.com/'+h },
-    { key:'youtube',   label:'YT', grad:'from-red-600 to-red-500',       url: h => 'https://youtube.com/@'+h },
-    { key:'tiktok',    label:'TK', grad:'from-slate-600 to-slate-800',   url: h => 'https://tiktok.com/@'+h },
-    { key:'twitter',   label:'X',  grad:'from-slate-500 to-slate-700',   url: h => 'https://x.com/'+h }
-  ].filter(s => mb[s.key]).map(s =>
-    `<a href="${s.url(mb[s.key])}" target="_blank" class="w-6 h-6 rounded-full bg-gradient-to-br ${s.grad} flex items-center justify-center text-[9px] font-bold text-white hover:opacity-80 transition-opacity">${s.label}</a>`
-  ).join('') : '';
-  const avatarBig = mb && mb.image_url
-    ? `<img src="${mb.image_url}" alt="${a.name}" class="w-16 h-16 rounded-xl object-cover flex-shrink-0" onerror="this.outerHTML='<div class=\\'w-16 h-16 rounded-xl bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-lg font-bold text-white flex-shrink-0\\'>${initials(a.name)}</div>'">`
-    : `<div class="w-16 h-16 rounded-xl bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-lg font-bold text-white flex-shrink-0">${initials(a.name)}</div>`;
-  return `
-    <div class="flex items-start gap-4">
-      ${avatarBig}
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1 flex-wrap">
-          <span class="text-sm font-bold text-white">${a.name}</span>
-          <span class="text-[9px] text-slate-500">Rank #${a.rank}</span>
-          ${t ? (t.is_touring
-            ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 font-medium">● Touring</span>'
-            : '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium">Not Touring</span>')
-            : ''}
-          ${socialLinks ? `<div class="flex gap-1 ml-auto">${socialLinks}</div>` : ''}
-        </div>
-        <div class="flex items-center gap-1.5 flex-wrap mb-2">
-          ${mb && mb.country ? `<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400">${mb.country}</span>` : ''}
-          ${genreTags}
-        </div>
-        <div class="grid grid-cols-4 gap-1.5">
-          <div class="bg-white/5 rounded-lg p-2">
-            <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">Monthly</div>
-            <div class="text-xs font-bold text-white">${fmt(a.monthly_listeners)}</div>
-            <div class="text-[9px] ${up ? 'text-green-400' : 'text-red-400'}">${up?'+':''}${fmt(a.daily_change)}/day</div>
-          </div>
-          <div class="bg-white/5 rounded-lg p-2">
-            <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">Peak</div>
-            <div class="text-xs font-bold text-white">${fmt(a.peak_listeners)}</div>
-            <div class="text-[9px] text-slate-400">${pctOfPeak !== null ? pctOfPeak+'% of peak' : '—'}</div>
-          </div>
-          <div class="bg-white/5 rounded-lg p-2">
-            <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">Recent Shows</div>
-            <div class="text-xs font-bold text-white">${t ? t.recent_event_count : '—'}</div>
-            <div class="text-[9px] text-slate-400">${t && t.last_event_date ? t.last_event_date : t ? 'setlist.fm' : 'No data'}</div>
-          </div>
-          <div class="bg-white/5 rounded-lg p-2">
-            <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-0.5">Upcoming</div>
-            <div class="text-xs font-bold text-white">${t && t.upcoming_event_count ? t.upcoming_event_count : '—'}</div>
-            <div class="text-[9px] text-slate-400">${t && t.next_event_date ? t.next_event_date : '—'}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="mt-2 mb-1">
-      <div class="flex items-center justify-between text-[9px] text-slate-500 mb-1">
-        <span>${fmt(a.monthly_listeners)} listeners</span>
-        <span>${pctOfPeak !== null ? pctOfPeak+'% of peak' : ''}</span>
-      </div>
-      <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-        <div class="h-full rounded-full ${barColor}" style="width:${pctOfPeak||0}%"></div>
-      </div>
-    </div>
-    <div class="pt-2 border-t border-white/5 flex items-center justify-between mt-1">
-      <a href="https://open.spotify.com/artist/${a.spotify_id}" target="_blank" class="text-[9px] text-emerald-400/60 hover:text-emerald-400 transition-colors flex items-center gap-1">
-        <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-        Open on Spotify
-      </a>
-      <button onclick="selectArtist('${a.spotify_id}')" class="text-[9px] text-violet-400/60 hover:text-violet-400 transition-colors">
-        View Full Profile ↗
-      </button>
-    </div>`;
+  return buildArtistProfileHTML(a, t, mb, a.spotify_id,
+    { chartId: 'fd-listener-trend-chart', peerTableId: 'fd-peer-table' });
+}
+
+function fdPostRenderArtistProfile(p) {
+  const name = (p.artist || '').trim();
+  if (!name) return;
+  const a = artists.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (!a) return;
+  const t = touringMap[a.spotify_id] || null;
+  // Peer comparison table
+  populatePeerTable(a.spotify_id, 'fd-peer-table');
+  // Listener trend chart
+  if (fdListenerChartInstance) { fdListenerChartInstance.destroy(); fdListenerChartInstance = null; }
+  const canvas = document.getElementById('fd-listener-trend-chart');
+  if (!canvas || !window.Chart) return;
+  const ml = a.monthly_listeners;
+  const monthlyDelta = (a.daily_change || 0) * 30;
+  const seed0 = a.spotify_id.charCodeAt(0) + (a.spotify_id.charCodeAt(2) || 0);
+  const trendData = [];
+  for (let i = 13; i >= 0; i--) {
+    const noise = Math.sin(i * 7.3 + seed0) * ml * 0.025;
+    trendData.push(Math.max(0, Math.round(ml - monthlyDelta * i + noise)));
+  }
+  const isUp = a.daily_change >= 0;
+  fdListenerChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: ['13mo','12mo','11mo','10mo','9mo','8mo','7mo','6mo','5mo','4mo','3mo','2mo','1mo','Now'],
+      datasets: [{
+        data: trendData,
+        borderColor: isUp ? '#34d399' : '#f87171',
+        backgroundColor: isUp ? 'rgba(52,211,153,0.07)' : 'rgba(248,113,113,0.07)',
+        borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) + ' listeners' } } },
+      scales: {
+        y: { display: false, beginAtZero: false },
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#475569', maxRotation: 0, autoSkip: true, maxTicksLimit: 5 } }
+      }
+    }
+  });
 }
 
 function fdRenderLive(p) {
@@ -4275,13 +4272,7 @@ function fdRenderLive(p) {
     </div>
 
     <!-- Artist Profile (linked from dataset) -->
-    <div class="glass rounded-xl p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Artist Profile</h3>
-        <span class="text-[9px] text-slate-500">from Spotify / setlist.fm dataset</span>
-      </div>
-      <div id="fd-artist-profile">${fdArtistProfileHTML(p)}</div>
-    </div>
+    <div id="fd-artist-profile">${fdArtistProfileHTML(p)}</div>
 
     ${!isNew ? `
     <div class="flex justify-end pb-4">
@@ -4349,7 +4340,7 @@ function fdAddCity() {
     venue_fee: firstCity?.venue_fee||0, production: firstCity?.production||0,
     hospitality: firstCity?.hospitality||0, insurance: firstCity?.insurance||0
   });
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 function fdRemoveCity(tcId) {
@@ -4358,7 +4349,7 @@ function fdRemoveCity(tcId) {
     alert('A tour must have at least one city.'); return;
   }
   fdState.draftProfile.tour_cities = fdState.draftProfile.tour_cities.filter(c => c.id !== tcId);
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 function fdPatchCityCategory(tcId, idx, field, value) {
@@ -4371,14 +4362,14 @@ function fdAddCityCategory(tcId) {
   if (!tc) return;
   if (!tc.seat_categories) tc.seat_categories = [];
   tc.seat_categories.push({ name: '', price: 0, count: 0 });
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 function fdRemoveCityCategory(tcId, idx) {
   const tc = fdState.draftProfile?.tour_cities?.find(c => c.id === tcId);
   if (!tc || !tc.seat_categories) return;
   tc.seat_categories.splice(idx, 1);
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 const _fdVenueCache = {};  // tcId → array of suggestion objects (avoids escaping issues)
@@ -4424,41 +4415,41 @@ function fdSelectCityVenue(tcId, idx) {
   tc.production  = est.production;
   tc.hospitality = est.hospitality;
   tc.insurance   = est.insurance;
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 // ─── Seat category helpers ─────────────────────────────────────────────────────
 function fdAddCategory() {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.seat_categories.push({ name: '', price: 0, count: 0 });
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 function fdRemoveCategory(i) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.seat_categories.splice(i, 1);
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 function fdAddMGSchedule() {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.costs.mg_schedule.push({ label: '', pct: 0, months_before: 0 });
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 function fdRemoveMGSchedule(i) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.costs.mg_schedule.splice(i, 1);
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 function fdAddScenario() {
   if (!fdState.draftProfile) return;
   const id = 'scen_' + fdGenId();
   const letter = String.fromCharCode(65 + fdState.draftProfile.investor_scenarios.length);
   fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 });
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 function fdRemoveScenario(id) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.investor_scenarios = fdState.draftProfile.investor_scenarios.filter(s => s.id !== id);
-  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+  fdSetMain(fdState.draftProfile);
 }
 
 
