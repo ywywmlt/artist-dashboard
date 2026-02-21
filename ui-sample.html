@@ -2653,7 +2653,21 @@ function fdGenId() { return Date.now() + '_' + Math.random().toString(36).slice(
 
 function computeProfile(p) {
   const cats = p.seat_categories || [];
-  const n = Number(p.num_shows) || 1;
+  // Multi-city: aggregate shows and op costs from tour_cities if present
+  const cities = (p.tour_cities && p.tour_cities.length > 0)
+    ? p.tour_cities
+    : [{ num_shows: p.num_shows || 1, venue_fee: p.costs?.venue_fee_per_show || 0,
+         production: p.costs?.production_per_show || 0, hospitality: p.costs?.hospitality_per_show || 0,
+         insurance: p.costs?.insurance_per_show || 0 }];
+  const n = cities.reduce((s, tc) => s + (Number(tc.num_shows) || 1), 0);
+  const total_op_costs = cities.reduce((s, tc) => {
+    const shows = Number(tc.num_shows) || 1;
+    const cpp = (Number(tc.venue_fee)||0) + (Number(tc.production)||0)
+              + (Number(tc.hospitality)||0) + (Number(tc.insurance)||0);
+    return s + cpp * shows;
+  }, 0);
+  const op_per_show = n > 0 ? total_op_costs / n : 0;
+
   const ticket_rev_per_show = cats.reduce((s, c) => s + (Number(c.price)||0) * (Number(c.count)||0), 0);
   const total_ticket_rev = ticket_rev_per_show * n;
   const total_seats_per_show = cats.reduce((s, c) => s + (Number(c.count)||0), 0);
@@ -2670,9 +2684,6 @@ function computeProfile(p) {
   const co = p.costs || {};
   const ticketing_fee_pct = Number(co.ticketing_fee_pct) || 0;
   const ticketing_fee     = total_ticket_rev * ticketing_fee_pct;
-  const op_per_show = (Number(co.venue_fee_per_show)||0) + (Number(co.production_per_show)||0)
-                    + (Number(co.hospitality_per_show)||0) + (Number(co.insurance_per_show)||0);
-  const total_op_costs = op_per_show * n;
   const total_costs = (Number(co.artist_mg)||0) + ticketing_fee + total_op_costs
                     + (Number(co.agency_fees)||0) + (Number(co.blufin_fees)||0);
   const net_profit = total_gross_rev - total_costs;
@@ -2682,7 +2693,8 @@ function computeProfile(p) {
     ticket_rev_per_show, total_ticket_rev, ticketing_fee,
     merch_rev, fnb_rev, sponsor_rev, total_gross_rev,
     total_op_costs, op_per_show, total_costs, net_profit, roi,
-    total_seats: total_seats_per_show, total_attendance, n
+    total_seats: total_seats_per_show, total_attendance, n,
+    num_cities: cities.length
   };
 }
 
@@ -2708,8 +2720,9 @@ function computeScenario(c, scen) {
 }
 
 function computeCashFlow(p, c) {
-  if (!p.concert_date) return null;
-  const concertDate = new Date(p.concert_date + 'T12:00:00');
+  const rawDate = p.concert_date || (p.tour_cities && p.tour_cities.find(tc => tc.concert_date)?.concert_date) || null;
+  if (!rawDate) return null;
+  const concertDate = new Date(rawDate + 'T12:00:00');
   const events = {};
   const addEvt = (date, label, amount) => {
     const d = new Date(date);
@@ -2763,9 +2776,9 @@ function fdComputeCompleteness(p) {
   const hasScens = (p.investor_scenarios||[]).some(s => Number(s.equity) > 0);
   return {
     'Artist Name':         p.artist?.trim() ? 'complete' : 'missing',
-    'Concert Date':        p.concert_date ? 'complete' : 'missing',
-    'City / Market':       p.city?.trim() ? 'complete' : 'missing',
-    'Venue Capacity':      (Number(p.venue_capacity) > 0) ? 'complete' : 'missing',
+    'Concert Date':        (p.concert_date || (p.tour_cities||[]).some(tc=>tc.concert_date)) ? 'complete' : 'missing',
+    'City / Market':       (p.city?.trim() || (p.tour_cities||[]).some(tc=>tc.city_name?.trim())) ? 'complete' : 'missing',
+    'Venue Capacity':      ((Number(p.venue_capacity) > 0) || (p.tour_cities||[]).some(tc=>Number(tc.capacity)>0)) ? 'complete' : 'missing',
     'Seat Categories':     cats.length > 0 && cats.some(c => c.price > 0 && c.count > 0)
                              ? 'complete' : cats.length > 0 ? 'partial — prices or counts are zero' : 'missing',
     'Artist MG':           (Number(co.artist_mg) > 0) ? 'complete' : 'missing',
@@ -2774,7 +2787,8 @@ function fdComputeCompleteness(p) {
                              : 'partial — ' + (pctSum*100).toFixed(0) + '% allocated (needs 100%)',
     'Additional Revenue':  ((Number(p.additional_revenue?.merch_per_show)||0) > 0 || (Number(p.additional_revenue?.sponsorship_per_show)||0) > 0 || (Number(p.additional_revenue?.fnb_per_head)||0) > 0)
                              ? 'complete' : 'partial — no merch, F&B, or sponsorship entered',
-    'Operating Costs':     ((Number(co.venue_fee_per_show)||0) + (Number(co.production_per_show)||0)) > 0
+    'Operating Costs':     (p.tour_cities||[]).some(tc => (Number(tc.venue_fee)||0) + (Number(tc.production)||0) > 0) ||
+                           ((Number(co.venue_fee_per_show)||0) + (Number(co.production_per_show)||0)) > 0
                              ? 'complete' : 'partial — venue/production costs not entered',
     'Investor Scenarios':  hasScens ? 'complete' : 'partial — no equity entered',
   };
@@ -2991,6 +3005,21 @@ const FD_LABEL = 'block text-[10px] text-slate-500 uppercase tracking-wider mb-1
 function fdMigrateProfile(p) {
   if (!p.venue_capacity) p.venue_capacity = VENUE_PRESETS[p.venue_type || 'stadium']?.capacity || 40000;
   if (!p.ticketing_settlement) p.ticketing_settlement = { company: 'custom', days_after_show: 0, advance_pct: 0, advance_days_before: 0 };
+  // Migrate legacy flat city/shows/costs to tour_cities array
+  if (!p.tour_cities) {
+    p.tour_cities = [{
+      id: 'tc_legacy_' + (p.id || '0'),
+      city_name:    p.city || '',
+      venue_name:   '',
+      capacity:     p.venue_capacity || VENUE_PRESETS[p.venue_type || 'stadium']?.capacity || 40000,
+      num_shows:    p.num_shows || 1,
+      concert_date: p.concert_date || '',
+      venue_fee:    p.costs?.venue_fee_per_show || 0,
+      production:   p.costs?.production_per_show || 0,
+      hospitality:  p.costs?.hospitality_per_show || 0,
+      insurance:    p.costs?.insurance_per_show || 0
+    }];
+  }
   if (p.investor && !p.investor_scenarios) {
     p.investor_scenarios = [
       { id: 'scen_a', label: 'Scenario A', ...p.investor },
@@ -3020,13 +3049,17 @@ function fdRender() {
       const isActive = fdState.activeId === p.id;
       const roiColor = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
       const vbg = p.venue_type==='stadium' ? 'bg-violet-500/15 text-violet-300' : p.venue_type==='arena' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300';
+      const totalShows = (p.tour_cities && p.tour_cities.length) ? p.tour_cities.reduce((s,tc) => s+(Number(tc.num_shows)||1),0) : (p.num_shows||1);
+      const numCities = (p.tour_cities && p.tour_cities.length) || 1;
+      const firstCity = (p.tour_cities && p.tour_cities[0]?.city_name) || p.city || '—';
+      const cityLabel = numCities > 1 ? numCities + ' cities' : (firstCity || '—');
       return `<div onclick="fdSelectProfile('${p.id}')" class="rounded-xl p-3 cursor-pointer transition-all border ${isActive ? 'bg-violet-500/10 border-violet-500/30' : 'glass border-transparent hover:bg-white/5'}">
         <div class="text-sm font-semibold text-white truncate">${p.artist || 'Unnamed Artist'}</div>
         <div class="flex items-center gap-1.5 mt-1">
           <span class="${vbg} text-[9px] px-1.5 py-0.5 rounded font-medium uppercase">${p.venue_type||'stadium'}</span>
-          <span class="text-[10px] text-slate-500">${p.num_shows||1} show${(p.num_shows||1)>1?'s':''}</span>
+          <span class="text-[10px] text-slate-500">${totalShows} show${totalShows>1?'s':''}</span>
         </div>
-        <div class="text-[10px] text-slate-500 mt-0.5 truncate">${p.city||'—'}</div>
+        <div class="text-[10px] text-slate-500 mt-0.5 truncate">${cityLabel}</div>
         <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5">
           <span class="text-[10px] text-slate-500">Net Profit</span>
           <span class="text-xs font-bold ${roiColor}">${fmtDollar(c.net_profit)}</span>
@@ -3061,12 +3094,18 @@ function fdEmptyState() {
 
 function fdStartCreate() {
   const preset = VENUE_PRESETS.stadium;
+  const newId = fdGenId();
   fdState.mode = 'edit'; fdState.activeId = null;
   fdState.draftProfile = {
-    id: fdGenId(), createdAt: new Date().toISOString(),
-    artist: '', venue_type: 'stadium', city: '', num_shows: 1, concert_date: '',
-    venue_capacity: preset.capacity,
+    id: newId, createdAt: new Date().toISOString(),
+    artist: '', venue_type: 'stadium',
     seat_categories: preset.categories.map(c => ({...c})),
+    tour_cities: [{
+      id: 'tc_' + fdGenId(),
+      city_name: '', venue_name: '', capacity: preset.capacity,
+      num_shows: 1, concert_date: '',
+      venue_fee: 0, production: 0, hospitality: 0, insurance: 0
+    }],
     additional_revenue: { merch_per_show: 0, merch_split_pct: 0.20, fnb_per_head: 0, fnb_buyer_pct: 0, sponsorship_per_show: 0 },
     costs: {
       artist_mg: 0, ticketing_fee_pct: 0.10,
@@ -3074,8 +3113,7 @@ function fdStartCreate() {
         { label: '1st Payment', pct: 0.20, months_before: 7 },
         { label: '2nd Payment', pct: 0.80, months_before: 2 }
       ],
-      venue_fee_per_show: 0, production_per_show: 0, hospitality_per_show: 0,
-      agency_fees: 0, blufin_fees: 0, insurance_per_show: 0
+      agency_fees: 0, blufin_fees: 0
     },
     ticketing_settlement: { company: 'ticketmaster', days_after_show: 5, advance_pct: 0, advance_days_before: 0 },
     investor_scenarios: [
@@ -3149,7 +3187,7 @@ async function fdExportExcel() {
   }
 
   const c   = computeProfile(p);
-  const n   = Number(p.num_shows) || 1;
+  const n   = c.n;
   const co  = p.costs || {};
   const ar  = p.additional_revenue || {};
   const cats = p.seat_categories || [];
@@ -3228,10 +3266,13 @@ async function fdExportExcel() {
   // SHOW DETAILS
   hdr(ws, r, 'SHOW DETAILS', C.dark); r++;
   const detStart = r;
+  const _exCity = (p.tour_cities&&p.tour_cities.length>1) ? p.tour_cities.length+' cities' : ((p.tour_cities&&p.tour_cities[0]?.city_name)||p.city||'');
+  const _exDate = p.concert_date || (p.tour_cities||[]).find(tc=>tc.concert_date)?.concert_date || null;
+  const _exCap  = (p.tour_cities&&p.tour_cities[0]?.capacity) || p.venue_capacity || 0;
   const detRows = [
     ['Artist Name',     p.artist||'',   'Venue Type',     (p.venue_type||'stadium')[0].toUpperCase()+(p.venue_type||'stadium').slice(1), null],
-    ['City / Market',   p.city||'',     'Concert Date',   p.concert_date ? new Date(p.concert_date+'T12:00:00') : '', 'yyyy-mm-dd'],
-    ['Number of Shows', n,              'Venue Capacity',  Number(p.venue_capacity)||0, '#,##0'],
+    ['City / Market',   _exCity,        'Concert Date',   _exDate ? new Date(_exDate+'T12:00:00') : '', 'yyyy-mm-dd'],
+    ['Number of Shows', n,              'Venue Capacity',  Number(_exCap)||0, '#,##0'],
   ];
   for (const [l1,v1,l2,v2,fmt2] of detRows) {
     sc(ws.getCell(r,1), {font:{color:{argb:C.gray}}}).value = l1;
@@ -3357,8 +3398,8 @@ async function fdExportExcel() {
       inp(ws.getCell(r,2),pct,{numFmt:'0%'});
       inp(ws.getCell(r,3),mb, {numFmt:'0'});
       fml(ws.getCell(r,4),MG_REF+'*B'+r, amt, {numFmt:'$#,##0'});
-      if (p.concert_date) {
-        const d=new Date(p.concert_date+'T12:00:00'); d.setMonth(d.getMonth()-mb);
+      if (_exDate) {
+        const d=new Date(_exDate+'T12:00:00'); d.setMonth(d.getMonth()-mb);
         sc(ws.getCell(r,5),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'mmm d, yyyy'}).value=d;
       }
       ws.getRow(r).height=17; r++;
@@ -3371,28 +3412,27 @@ async function fdExportExcel() {
   }
 
   // Operating costs
-  hdr(ws, r, 'Operating Costs (Per Show × # Shows)', C.navy); r++;
-  colHdrs(ws, r, ['Item','Per Show','# Shows','Total']); r++;
+  hdr(ws, r, 'Operating Costs by City / Stop', C.navy); r++;
+  colHdrs(ws, r, ['City / Venue','Shows','Cost/Show','Total']); r++;
 
-  const opData=[
-    ['Venue Fee / Show',       Number(co.venue_fee_per_show)||0],
-    ['Production / Show',      Number(co.production_per_show)||0],
-    ['Hospitality / Show',     Number(co.hospitality_per_show)||0],
-    ['Artist Insurance / Show',Number(co.insurance_per_show)||0],
-  ];
+  const _cities = (p.tour_cities && p.tour_cities.length > 0)
+    ? p.tour_cities
+    : [{ city_name: p.city||'', num_shows: n, venue_fee: co.venue_fee_per_show||0, production: co.production_per_show||0, hospitality: co.hospitality_per_show||0, insurance: co.insurance_per_show||0 }];
   const opRowNums=[];
-  for (const [lbl,val] of opData) {
-    sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value=lbl;
-    inp(ws.getCell(r,2),val,{numFmt:'$#,##0'});
-    fml(ws.getCell(r,3),SHOWS,n,{numFmt:'#,##0'});
-    fml(ws.getCell(r,4),'B'+r+'*C'+r,val*n,{numFmt:'$#,##0'});
+  for (const tc of _cities) {
+    const cpp = (Number(tc.venue_fee)||0)+(Number(tc.production)||0)+(Number(tc.hospitality)||0)+(Number(tc.insurance)||0);
+    const shows = Number(tc.num_shows)||1;
+    const cityLabel = (tc.city_name||(tc.venue_name?tc.venue_name:'—')) + (tc.venue_name&&tc.city_name?' ('+tc.venue_name+')':'');
+    sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value=cityLabel||'City Stop';
+    inp(ws.getCell(r,2),shows,{numFmt:'#,##0'});
+    inp(ws.getCell(r,3),cpp,{numFmt:'$#,##0'});
+    fml(ws.getCell(r,4),'B'+r+'*C'+r,cpp*shows,{numFmt:'$#,##0'});
     opRowNums.push(r); ws.getRow(r).height=17; r++;
   }
-  const opPerShow=opData.reduce((s,[,v])=>s+v,0), opAll=opPerShow*n;
+  const opAll = c.total_op_costs;
   sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='TOTAL OPERATING COSTS';
-  fml(ws.getCell(r,2),'SUM(B'+opRowNums[0]+':B'+opRowNums[opRowNums.length-1]+')',opPerShow,{fill:C.totR,font:{bold:true,color:{argb:C.red}},numFmt:'$#,##0',border:bTop(C.redLight)});
-  fml(ws.getCell(r,4),'SUM(D'+opRowNums[0]+':D'+opRowNums[opRowNums.length-1]+')',opAll,     {fill:C.totR,font:{bold:true,color:{argb:C.red}},numFmt:'$#,##0',border:bTop(C.redLight)});
-  const OP_PS='B'+r, OP_ALL='D'+r;
+  fml(ws.getCell(r,4),'SUM(D'+opRowNums[0]+':D'+opRowNums[opRowNums.length-1]+')',opAll,{fill:C.totR,font:{bold:true,color:{argb:C.red}},numFmt:'$#,##0',border:bTop(C.redLight)});
+  const OP_ALL='D'+r;
   ws.getRow(r).height=18; r++; r++;
 
   // One-time costs
@@ -3562,6 +3602,14 @@ function fdUpdateLive() {
   upd('fd-pl-summary',   fdPLSummaryHTML(p, c));
   upd('fd-cf-section',   fdCashFlowHTML(p, c));
   upd('fd-completeness', fdCompletenessHTML(p));
+  // Update per-city cost totals footers
+  for (const tc of (p.tour_cities || [])) {
+    const cpp = (Number(tc.venue_fee)||0)+(Number(tc.production)||0)+(Number(tc.hospitality)||0)+(Number(tc.insurance)||0);
+    const totalCityCost = cpp * (Number(tc.num_shows)||1);
+    upd('fd-city-footer-' + tc.id,
+      '<span>Cost/show: <span class="text-red-400 font-medium">' + fmtDollar(cpp) + '</span></span>' +
+      '<span>' + (tc.num_shows||1) + ' show' + ((tc.num_shows||1)>1?'s':'') + ' → Total: <span class="text-red-400 font-medium">' + fmtDollar(totalCityCost) + '</span></span>');
+  }
   for (const scen of (p.investor_scenarios || [])) {
     upd('fd-scen-' + scen.id + '-result', fdScenResultHTML(c, scen));
   }
@@ -3569,13 +3617,12 @@ function fdUpdateLive() {
 
 function fdKPIStripHTML(c, p) {
   const rc  = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
-  const cap = Number(p?.venue_capacity) || 0;
-  const occ = cap > 0 ? ((c.total_seats / cap) * 100).toFixed(0) + '%' : '—';
+  const numCities = c.num_cities || 1;
   const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
   const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(c, s).moic)) : 0;
   const mc = bestMoic >= 1 ? 'text-violet-400' : 'text-slate-400';
   return `<div class="grid grid-cols-5 gap-3">
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_seats)} seats · ${c.n} show${c.n>1?'s':''} · ${occ} occ.</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_seats)} seats/show · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ROI</div><div class="text-lg font-bold ${rc}">${(c.roi*100).toFixed(2)}%</div></div>
@@ -3584,7 +3631,6 @@ function fdKPIStripHTML(c, p) {
 }
 
 function fdCatTotalsHTML(p, c) {
-  const n = Number(p.num_shows)||1;
   return `<tr class="border-t border-white/10 font-bold">
     <td class="py-2 pl-2 text-sm text-white">Total</td>
     <td class="py-2 text-right text-sm text-white pr-1">${fmtNum(c.total_seats)}</td>
@@ -3614,7 +3660,6 @@ function fdCostSummaryHTML(c) {
 function fdPLSummaryHTML(p, c) {
   const rc = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
   const co = p.costs || {};
-  const n = Number(p.num_shows)||1;
   return `<div class="space-y-1">
     <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Gross Ticket Revenue</span><span class="text-sm font-semibold text-white">${fmtDollar(c.total_ticket_rev)}</span></div>
     ${c.ticketing_fee>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Less: Ticketing Platform Fee (${((co.ticketing_fee_pct||0)*100).toFixed(0)}%)</span><span class="text-xs text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
@@ -3624,7 +3669,7 @@ function fdPLSummaryHTML(p, c) {
     <div class="flex justify-between py-1.5 border-b border-white/10"><span class="text-sm font-semibold text-white">Total Gross Revenue</span><span class="text-sm font-semibold text-emerald-400">${fmtDollar(c.total_gross_rev)}</span></div>
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Artist MG</span><span class="text-xs text-red-400">(${fmtDollar(co.artist_mg||0)})</span></div>
     ${c.ticketing_fee>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Ticketing Platform Fee</span><span class="text-xs text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
-    ${c.total_op_costs>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Operating Costs × ${n} shows</span><span class="text-xs text-red-400">(${fmtDollar(c.total_op_costs)})</span></div>`:''}
+    ${c.total_op_costs>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Operating Costs (${c.n} shows × ${c.num_cities} ${c.num_cities>1?'cities':'city'})</span><span class="text-xs text-red-400">(${fmtDollar(c.total_op_costs)})</span></div>`:''}
     ${(co.agency_fees||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Agency Fees</span><span class="text-xs text-red-400">(${fmtDollar(co.agency_fees)})</span></div>`:''}
     ${(co.blufin_fees||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  BluFin Fees</span><span class="text-xs text-red-400">(${fmtDollar(co.blufin_fees)})</span></div>`:''}
     <div class="flex justify-between py-2.5 border-t border-white/10 mt-1"><span class="text-base font-bold text-white">Net Profit</span><span class="text-base font-bold ${rc}">${fmtDollar(c.net_profit)}</span></div>
@@ -3695,9 +3740,7 @@ function fdCompletenessHTML(p) {
 
 function fdRenderLive(p) {
   const c = computeProfile(p);
-  const n = Number(p.num_shows)||1;
-  const cap = Number(p.venue_capacity)||0;
-  const occ = cap > 0 ? ((c.total_seats/cap)*100).toFixed(0)+'%' : '—';
+  const n = c.n;
   const isNew = !fdState.profiles.find(x => x.id === p.id);
 
   const catRows = (p.seat_categories||[]).map((cat,i) => {
@@ -3713,11 +3756,12 @@ function fdRenderLive(p) {
     </tr>`;
   }).join('');
 
+  const _firstShowDate = p.concert_date || (p.tour_cities||[]).find(tc => tc.concert_date)?.concert_date || null;
   const schedRows = (p.costs?.mg_schedule||[]).map((s,i) => {
     const amt = (p.costs?.artist_mg||0) * (s.pct||0);
     let dateStr = '—';
-    if (p.concert_date && s.months_before > 0) {
-      const d = new Date(p.concert_date+'T12:00:00'); d.setMonth(d.getMonth()-s.months_before);
+    if (_firstShowDate && s.months_before > 0) {
+      const d = new Date(_firstShowDate+'T12:00:00'); d.setMonth(d.getMonth()-s.months_before);
       dateStr = d.toLocaleDateString('en-US',{year:'numeric',month:'short'});
     }
     return `<tr class="border-b border-white/5">
@@ -3753,13 +3797,11 @@ function fdRenderLive(p) {
         <input type="text" class="w-full bg-transparent border-b border-white/10 text-xl font-bold text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 pb-1 mb-2" placeholder="Artist Name" value="${(p.artist||'').replace(/"/g,'&quot;')}" oninput="fdPatch('artist',this.value)">
         <div class="flex flex-wrap items-center gap-2">
           <select class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" onchange="fdPatchVenueType(this.value)">
-            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium</option>
-            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena</option>
-            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater</option>
+            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (seat preset)</option>
+            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (seat preset)</option>
+            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (seat preset)</option>
           </select>
-          <input type="text" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-40" placeholder="City, Country" value="${(p.city||'').replace(/"/g,'&quot;')}" oninput="fdPatch('city',this.value)">
-          <div class="flex items-center gap-1"><span class="text-[10px] text-slate-500">Shows:</span><input type="number" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50 w-14" min="1" value="${p.num_shows||1}" oninput="fdPatch('num_shows',Number(this.value));fdUpdateLive()"></div>
-          <input type="date" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" value="${p.concert_date||''}" onchange="fdPatch('concert_date',this.value)">
+          <span class="text-[10px] text-slate-500">${c.num_cities} cit${c.num_cities>1?'ies':'y'} · ${n} total show${n!==1?'s':''}</span>
         </div>
       </div>
       <div class="flex gap-2 flex-shrink-0">
@@ -3776,34 +3818,78 @@ function fdRenderLive(p) {
     <!-- KPI Strip -->
     <div id="fd-kpi-strip">${fdKPIStripHTML(c, p)}</div>
 
-    <!-- 1. Venue & Capacity -->
+    <!-- 1. Tour Cities -->
     <div class="glass rounded-xl p-4">
-      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">1 — Venue &amp; Capacity</h3>
-      <div class="grid grid-cols-4 gap-4">
-        <div>
-          <label class="${FD_LABEL}">Venue Type</label>
-          <select class="${FD_INPUT}" onchange="fdPatchVenueType(this.value)">
-            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (preset ~40K)</option>
-            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (preset ~18K)</option>
-            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (preset ~3K)</option>
-          </select>
-          <div class="text-[9px] text-slate-600 mt-1">Changes reset seat categories to preset</div>
-        </div>
-        <div>
-          <label class="${FD_LABEL}">Venue Capacity (editable)</label>
-          <input type="number" class="${FD_INPUT}" min="0" value="${p.venue_capacity||0}" oninput="fdPatch('venue_capacity',Number(this.value));fdUpdateLive()">
-          <div class="text-[9px] text-slate-600 mt-1">Total seats in venue</div>
-        </div>
-        <div>
-          <label class="${FD_LABEL}">Occupancy Rate</label>
-          <div class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 text-center font-bold">${occ}</div>
-          <div class="text-[9px] text-slate-600 mt-1">Category seats ÷ venue capacity</div>
-        </div>
-        <div>
-          <label class="${FD_LABEL}">Total Attendance</label>
-          <div class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-semibold text-center">${fmtNum(c.total_attendance)}</div>
-          <div class="text-[9px] text-slate-600 mt-1">${fmtNum(c.total_seats)}/show × ${n} show${n>1?'s':''}</div>
-        </div>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">1 — Tour Cities &amp; Venues</h3>
+        <button onclick="fdAddCity()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add City</button>
+      </div>
+      <div class="text-[9px] text-slate-500 mb-3">Type a city name to search venues from 100 major markets. Selecting a venue auto-fills capacity &amp; estimated costs.</div>
+      <div id="fd-tour-cities-list" class="space-y-3">
+        ${(p.tour_cities||[]).map((tc, tci) => {
+          const cpp = (Number(tc.venue_fee)||0)+(Number(tc.production)||0)+(Number(tc.hospitality)||0)+(Number(tc.insurance)||0);
+          const totalCityCost = cpp * (Number(tc.num_shows)||1);
+          const occ = Number(tc.capacity) > 0 ? ((c.total_seats / tc.capacity)*100).toFixed(0)+'%' : '—';
+          return '<div class="bg-white/3 rounded-xl p-3 border border-white/5">' +
+            '<div class="flex items-center gap-2 mb-2">' +
+              '<div class="relative flex-1">' +
+                '<input type="text" class="' + FD_INPUT + ' text-xs pr-8" placeholder="City, Country (type to search...)" ' +
+                  'value="' + (tc.city_name||'').replace(/"/g,'&quot;') + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'city_name\',this.value);fdCitySuggest(\'' + tc.id + '\',this.value)" ' +
+                  'onblur="setTimeout(()=>fdHideCitySuggest(\'' + tc.id + '\'),200)" ' +
+                  'autocomplete="off">' +
+                '<div id="fd-cs-' + tc.id + '" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-white/10 rounded-lg mt-1 shadow-2xl max-h-48 overflow-y-auto text-left"></div>' +
+              '</div>' +
+              '<div class="flex-1">' +
+                '<input type="text" class="' + FD_INPUT + ' text-xs" placeholder="Venue name (auto-filled)" ' +
+                  'value="' + (tc.venue_name||'').replace(/"/g,'&quot;') + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'venue_name\',this.value)">' +
+              '</div>' +
+              ((p.tour_cities||[]).length > 1 ? '<button onclick="fdRemoveCity(\'' + tc.id + '\')" class="text-slate-600 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' : '<div class="w-5 flex-shrink-0"></div>') +
+            '</div>' +
+            '<div class="grid grid-cols-4 gap-2 mb-2">' +
+              '<div><label class="text-[9px] text-slate-500 block mb-1">CAPACITY</label>' +
+                '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.capacity||0) + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'capacity\',Number(this.value));fdUpdateLive()">' +
+                '<div class="text-[8px] text-slate-600 mt-0.5">Occ: ' + occ + '</div>' +
+              '</div>' +
+              '<div><label class="text-[9px] text-slate-500 block mb-1">SHOWS</label>' +
+                '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="1" value="' + (tc.num_shows||1) + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'num_shows\',Number(this.value));fdUpdateLive()">' +
+              '</div>' +
+              '<div class="col-span-2"><label class="text-[9px] text-slate-500 block mb-1">CONCERT DATE (first show)</label>' +
+                '<input type="date" class="' + FD_INPUT + ' text-xs py-1" value="' + (tc.concert_date||'') + '" ' +
+                  'onchange="fdPatchCity(\'' + tc.id + '\',\'concert_date\',this.value)">' +
+              '</div>' +
+            '</div>' +
+            '<div class="grid grid-cols-4 gap-2">' +
+              '<div><label class="text-[9px] text-slate-500 block mb-1">VENUE FEE/SHOW ($)</label>' +
+                '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.venue_fee||0) + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'venue_fee\',Number(this.value));fdUpdateLive()">' +
+              '</div>' +
+              '<div><label class="text-[9px] text-slate-500 block mb-1">PRODUCTION/SHOW ($)</label>' +
+                '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.production||0) + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'production\',Number(this.value));fdUpdateLive()">' +
+              '</div>' +
+              '<div><label class="text-[9px] text-slate-500 block mb-1">HOSPITALITY/SHOW ($)</label>' +
+                '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.hospitality||0) + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'hospitality\',Number(this.value));fdUpdateLive()">' +
+              '</div>' +
+              '<div><label class="text-[9px] text-slate-500 block mb-1">INSURANCE/SHOW ($)</label>' +
+                '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.insurance||0) + '" ' +
+                  'oninput="fdPatchCity(\'' + tc.id + '\',\'insurance\',Number(this.value));fdUpdateLive()">' +
+              '</div>' +
+            '</div>' +
+            '<div id="fd-city-footer-' + tc.id + '" class="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-500">' +
+              '<span>Cost/show: <span class="text-red-400 font-medium">' + fmtDollar(cpp) + '</span></span>' +
+              '<span>' + (tc.num_shows||1) + ' show' + ((tc.num_shows||1)>1?'s':'') + ' → Total: <span class="text-red-400 font-medium">' + fmtDollar(totalCityCost) + '</span></span>' +
+            '</div>' +
+          '</div>';
+        }).join('')}
+      </div>
+      <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+        <span class="text-slate-500">${c.num_cities} cit${c.num_cities>1?'ies':'y'} · ${n} total show${n!==1?'s':''}</span>
+        <span class="text-slate-500">Total op. costs: <span class="text-red-400 font-semibold">${fmtDollar(c.total_op_costs)}</span></span>
       </div>
     </div>
 
@@ -3815,7 +3901,7 @@ function fdRenderLive(p) {
       </div>
       <table class="w-full">
         <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider border-b border-white/5">
-          <th class="text-left pb-2 pl-2">Category Name</th><th class="text-left pb-2 px-1">Seat Count</th><th class="text-left pb-2 px-1">Price (USD)</th><th class="text-right pb-2 pr-1">Rev / Show</th><th class="text-right pb-2 pr-2">Total (${n} shows)</th><th class="pb-2 w-8"></th>
+          <th class="text-left pb-2 pl-2">Category Name</th><th class="text-left pb-2 px-1">Seat Count</th><th class="text-left pb-2 px-1">Price (USD)</th><th class="text-right pb-2 pr-1">Rev / Show</th><th class="text-right pb-2 pr-2">Total (${n} show${n!==1?'s':''})</th><th class="pb-2 w-8"></th>
         </tr></thead>
         <tbody>${catRows}</tbody>
         <tfoot id="fd-cat-totals">${fdCatTotalsHTML(p,c)}</tfoot>
@@ -3876,8 +3962,9 @@ function fdRenderLive(p) {
             `<option value="${k}" ${ts.company===k?'selected':''}>${v.label}</option>`
           ).join('');
           const settleSummary = (() => {
-            if (!p.concert_date) return 'Enter a concert date to see settlement dates.';
-            const cd = new Date(p.concert_date + 'T12:00:00');
+            const _settleDate = p.concert_date || (p.tour_cities||[]).find(tc=>tc.concert_date)?.concert_date;
+            if (!_settleDate) return 'Enter a concert date in Tour Cities to see settlement dates.';
+            const cd = new Date(_settleDate + 'T12:00:00');
             const lines = [];
             if ((Number(ts.advance_pct)||0) > 0) {
               const ad = new Date(cd); ad.setDate(ad.getDate() - (Number(ts.advance_days_before)||0));
@@ -3927,14 +4014,11 @@ function fdRenderLive(p) {
       </table>
     </div>
 
-    <!-- 5. Operating Costs -->
+    <!-- 5. One-Time Costs -->
     <div class="glass rounded-xl p-4">
-      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">5 — Operating Costs</h3>
-      <div class="grid grid-cols-3 gap-4">
-        <div><label class="${FD_LABEL}">Venue Fee / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.venue_fee_per_show||0}" oninput="fdPatch('costs.venue_fee_per_show',Number(this.value));fdUpdateLive()"></div>
-        <div><label class="${FD_LABEL}">Production / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.production_per_show||0}" oninput="fdPatch('costs.production_per_show',Number(this.value));fdUpdateLive()"></div>
-        <div><label class="${FD_LABEL}">Hospitality / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.hospitality_per_show||0}" oninput="fdPatch('costs.hospitality_per_show',Number(this.value));fdUpdateLive()"></div>
-        <div><label class="${FD_LABEL}">Insurance / Show ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.insurance_per_show||0}" oninput="fdPatch('costs.insurance_per_show',Number(this.value));fdUpdateLive()"></div>
+      <h3 class="text-xs font-semibold text-white mb-1 uppercase tracking-wider">5 — One-Time &amp; Global Costs</h3>
+      <div class="text-[9px] text-slate-500 mb-3">Per-show venue, production, hospitality, and insurance costs are set per city in Section 1.</div>
+      <div class="grid grid-cols-2 gap-4">
         <div><label class="${FD_LABEL}">Agency Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.agency_fees||0}" oninput="fdPatch('costs.agency_fees',Number(this.value));fdUpdateLive()"></div>
         <div><label class="${FD_LABEL}">BluFin Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.blufin_fees||0}" oninput="fdPatch('costs.blufin_fees',Number(this.value));fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">project cost, before waterfall</div></div>
       </div>
@@ -3980,6 +4064,114 @@ function fdRenderLive(p) {
   </div>`;
 }
 
+// ─── Multi-city helpers ────────────────────────────────────────────────────────
+function fdEstimateVenueCosts(venueType, cityTier) {
+  const base = {
+    stadium: { venue_fee: 250000, production: 500000, hospitality: 50000, insurance: 25000 },
+    arena:   { venue_fee: 80000,  production: 180000, hospitality: 25000, insurance: 12000 },
+    theater: { venue_fee: 20000,  production: 50000,  hospitality: 10000, insurance: 5000 },
+    club:    { venue_fee: 5000,   production: 15000,  hospitality: 5000,  insurance: 3000 }
+  }[venueType] || { venue_fee: 60000, production: 120000, hospitality: 15000, insurance: 8000 };
+  const mult = cityTier === 1 ? 1.3 : cityTier === 3 ? 0.75 : 1.0;
+  return {
+    venue_fee:   Math.round(base.venue_fee   * mult / 1000) * 1000,
+    production:  Math.round(base.production  * mult / 1000) * 1000,
+    hospitality: Math.round(base.hospitality * mult / 1000) * 1000,
+    insurance:   Math.round(base.insurance   * mult / 1000) * 1000
+  };
+}
+
+function fdGetVenueSuggestions(query) {
+  if (!venueData || !venueData.cities || !query.trim()) return [];
+  const q = query.toLowerCase().trim();
+  const matches = venueData.cities.filter(c =>
+    c.city.toLowerCase().includes(q) || (c.country||'').toLowerCase().includes(q)
+  ).slice(0, 3);
+  const results = [];
+  for (const city of matches) {
+    for (const v of (city.venues || [])) {
+      results.push({ city_name: city.city + ', ' + city.country, venue_name: v.name,
+        capacity: v.capacity || 0, venue_type: v.type, venue_tier: v.venue_tier,
+        city_tier: city.city_tier });
+    }
+  }
+  return results.sort((a,b) => (a.venue_tier||'Z').localeCompare(b.venue_tier||'Z')).slice(0, 8);
+}
+
+function fdPatchCity(tcId, field, value) {
+  if (!fdState.draftProfile) return;
+  const tc = (fdState.draftProfile.tour_cities||[]).find(c => c.id === tcId);
+  if (tc) tc[field] = value;
+}
+
+function fdAddCity() {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.tour_cities) fdState.draftProfile.tour_cities = [];
+  const preset = VENUE_PRESETS[fdState.draftProfile.venue_type || 'stadium'];
+  fdState.draftProfile.tour_cities.push({
+    id: 'tc_' + fdGenId(), city_name: '', venue_name: '',
+    capacity: preset?.capacity || 40000, num_shows: 1, concert_date: '',
+    venue_fee: 0, production: 0, hospitality: 0, insurance: 0
+  });
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+}
+
+function fdRemoveCity(tcId) {
+  if (!fdState.draftProfile || !fdState.draftProfile.tour_cities) return;
+  if (fdState.draftProfile.tour_cities.length <= 1) {
+    alert('A tour must have at least one city.'); return;
+  }
+  fdState.draftProfile.tour_cities = fdState.draftProfile.tour_cities.filter(c => c.id !== tcId);
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+}
+
+const _fdVenueCache = {};  // tcId → array of suggestion objects (avoids escaping issues)
+
+function fdCitySuggest(tcId, query) {
+  const box = document.getElementById('fd-cs-' + tcId);
+  if (!box) return;
+  const results = fdGetVenueSuggestions(query);
+  _fdVenueCache[tcId] = results;
+  if (!results.length || !query.trim()) { box.classList.add('hidden'); return; }
+  const typeColor = { stadium:'text-violet-300', arena:'text-cyan-300', theater:'text-amber-300', club:'text-slate-300' };
+  box.innerHTML = results.map((r, idx) =>
+    '<button type="button" onmousedown="fdSelectCityVenue(\'' + tcId + '\',' + idx + ')" class="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0">' +
+      '<div class="text-[11px] font-medium text-white truncate">' + r.venue_name + '</div>' +
+      '<div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">' +
+        '<span>' + r.city_name + '</span>' +
+        '<span class="text-slate-600">·</span>' +
+        '<span class="' + (typeColor[r.venue_type]||'text-slate-400') + '">' + (r.venue_type||'venue') + '</span>' +
+        '<span class="text-slate-600">·</span>' +
+        '<span>' + (r.capacity ? fmtNum(r.capacity) + ' cap' : '') + '</span>' +
+      '</div>' +
+    '</button>'
+  ).join('');
+  box.classList.remove('hidden');
+}
+
+function fdHideCitySuggest(tcId) {
+  const box = document.getElementById('fd-cs-' + tcId);
+  if (box) box.classList.add('hidden');
+}
+
+function fdSelectCityVenue(tcId, idx) {
+  if (!fdState.draftProfile) return;
+  const r = (_fdVenueCache[tcId] || [])[idx];
+  if (!r) return;
+  const tc = (fdState.draftProfile.tour_cities||[]).find(c => c.id === tcId);
+  if (!tc) return;
+  tc.city_name  = r.city_name;
+  tc.venue_name = r.venue_name;
+  tc.capacity   = r.capacity || tc.capacity;
+  const est = fdEstimateVenueCosts(r.venue_type, r.city_tier);
+  tc.venue_fee   = est.venue_fee;
+  tc.production  = est.production;
+  tc.hospitality = est.hospitality;
+  tc.insurance   = est.insurance;
+  document.getElementById('fd-main').innerHTML = fdRenderLive(fdState.draftProfile);
+}
+
+// ─── Seat category helpers ─────────────────────────────────────────────────────
 function fdAddCategory() {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.seat_categories.push({ name: '', price: 0, count: 0 });
