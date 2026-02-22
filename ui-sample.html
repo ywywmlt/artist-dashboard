@@ -27,7 +27,7 @@
   .tab-btn.active { color: #a78bfa; border-color: #a78bfa; }
   .page { display: none; }
   .page.active { display: block; }
-  #page-finbuilder.active { display: flex; }
+  #page-finbuilder.active { display: flex; flex-direction: column; }
   .artist-row:hover { background: rgba(139,92,246,0.08); }
   .pulse-dot { animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
@@ -453,7 +453,7 @@
     </div>
 
     <!-- FINANCIAL MODEL BUILDER PAGE -->
-    <div id="page-finbuilder" class="page" style="height:calc(100vh - 57px);display:flex;flex-direction:column;overflow:hidden;">
+    <div id="page-finbuilder" class="page" style="height:calc(100vh - 57px);overflow:hidden;">
       <!-- Top bar -->
       <div class="flex items-center justify-between px-5 py-3 border-b border-white/5 flex-shrink-0" style="background:rgba(255,255,255,0.02);">
         <div class="flex items-center gap-3">
@@ -498,6 +498,7 @@ let currentFinData = null;
 let fdState = { profiles: [], activeId: null, mode: 'list', draftProfile: null };
 let finDetailLoaded = false;
 let finDetailData = null;
+let finBuilderLoaded = false;
 
 // ─── Helpers ───
 function fmt(n) {
@@ -545,10 +546,13 @@ function showPage(page) {
   document.getElementById('nav-' + page)?.classList.add('active');
   const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder' };
   document.getElementById('page-title').textContent = titles[page] || page;
+  // Reset scroll position for clean page transitions (FMB scrolls via its own fd-main/fd-sidebar)
+  const mainEl = document.querySelector('main');
+  if (mainEl) mainEl.scrollTop = 0;
   if (page === 'calendar' && !calendarLoaded) loadCalendarData();
   if (page === 'financials' && !financialsLoaded) initFinancials();
   if (page === 'findetail' && !finDetailLoaded) initFinDetail();
-  if (page === 'finbuilder') initFinBuilder();
+  if (page === 'finbuilder' && !finBuilderLoaded) initFinBuilder();
 }
 
 // ─── Data Loading ───
@@ -3071,7 +3075,7 @@ function renderFinDetail(d) {
 
 // ─── Financial Model Builder ─────────────────────────────────────────────────
 
-function initFinBuilder() { fdLoad(); fdRender(); }
+function initFinBuilder() { finBuilderLoaded = true; fdLoad(); fdRender(); }
 
 const FD_INPUT = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50';
 const FD_LABEL = 'block text-[10px] text-slate-500 uppercase tracking-wider mb-1';
