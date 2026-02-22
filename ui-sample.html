@@ -388,6 +388,12 @@
             Fetch All Events
           </button>
         </div>
+        <!-- Artist filter badge (shown when navigated from artist profile) -->
+        <div id="cal-artist-badge" class="hidden flex items-center gap-2 text-[11px]">
+          <span class="text-slate-500">Filtered to:</span>
+          <span class="text-cyan-300 font-medium" id="cal-artist-badge-name"></span>
+          <button onclick="clearCalendarArtistFilter()" class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-500 hover:text-slate-300 border border-white/10 transition-colors">✕ Clear filter</button>
+        </div>
         <!-- Progress bar (hidden until refresh starts) -->
         <div id="cal-progress-wrap" class="hidden">
           <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -497,6 +503,10 @@ let fdState = { profiles: [], activeId: null, mode: 'list', draftProfile: null }
 let finDetailLoaded = false;
 let finDetailData = null;
 let finBuilderLoaded = false;
+let watchlist = {};        // { spotify_id: 'Target'|'In Discussion'|'Passed'|'Completed' }
+let contacts  = {};        // { spotify_id: { booking_agent, agency, email, manager, label, notes } }
+let calendarArtistFilter = null;  // { spotify_id, name } or null
+let wlFilter  = null;      // active watchlist filter tag, or null = all
 
 // ─── Helpers ───
 function fmt(n) {
@@ -534,6 +544,102 @@ function relDate(dateStr) {
 function tierBadge(tier) {
   const cls = tier === 1 ? 'bg-violet-500/15 text-violet-300' : tier === 2 ? 'bg-cyan-500/15 text-cyan-300' : 'bg-slate-500/15 text-slate-400';
   return `<span class="${cls} text-[10px] px-2 py-0.5 rounded-full font-medium">Tier ${tier}</span>`;
+}
+
+// ─── Watchlist ───
+function watchlistLoad() {
+  try { watchlist = JSON.parse(localStorage.getItem('artist-dashboard-watchlist') || '{}'); } catch(e) { watchlist = {}; }
+}
+function watchlistSave() {
+  localStorage.setItem('artist-dashboard-watchlist', JSON.stringify(watchlist));
+}
+const WL_TAGS = [
+  { label: 'Target',        base: 'text-sky-400 border-sky-500/40',        active: 'bg-sky-500/20 border-sky-500 text-sky-300' },
+  { label: 'In Discussion', base: 'text-amber-400 border-amber-500/40',    active: 'bg-amber-500/20 border-amber-500 text-amber-300' },
+  { label: 'Passed',        base: 'text-red-400 border-red-500/40',        active: 'bg-red-500/20 border-red-500 text-red-300' },
+  { label: 'Completed',     base: 'text-emerald-400 border-emerald-500/40', active: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
+];
+function watchlistTagChip(tag) {
+  if (!tag) return '';
+  const cfg = WL_TAGS.find(t => t.label === tag);
+  if (!cfg) return '';
+  return `<span class="text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${cfg.active}">${tag}</span>`;
+}
+function watchlistSet(sid, tag) {
+  if (tag) watchlist[sid] = tag; else delete watchlist[sid];
+  watchlistSave();
+  renderWatchlistButtons(sid);
+  const grid = document.getElementById('artist-grid');
+  if (grid) renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
+}
+function renderWatchlistButtons(sid) {
+  const el = document.getElementById('wl-btns-' + sid);
+  if (!el) return;
+  const cur = watchlist[sid];
+  el.innerHTML = WL_TAGS.map(t => {
+    const isCur = cur === t.label;
+    return `<button onclick="watchlistSet('${sid}','${isCur ? '' : t.label}')" class="text-[10px] px-2.5 py-1 rounded-full border font-medium transition-all ${isCur ? t.active : 'bg-transparent ' + t.base} hover:opacity-80">${t.label}</button>`;
+  }).join('') + (cur ? `<button onclick="watchlistSet('${sid}','')" class="text-[10px] px-1.5 py-0.5 text-slate-600 hover:text-slate-400 transition-colors">✕</button>` : '');
+}
+function setWlFilter(tag) {
+  wlFilter = tag;
+  ['all', 'Target', 'In Discussion', 'Passed', 'Completed'].forEach(t => {
+    const btn = document.getElementById('wlf-' + t);
+    if (!btn) return;
+    const isActive = (t === 'all' && !tag) || t === tag;
+    btn.setAttribute('data-active', isActive ? '1' : '0');
+    btn.className = 'text-[11px] px-3 py-1 rounded-full border font-medium transition-all ' + (isActive ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-slate-500 hover:text-slate-300');
+  });
+  renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
+}
+
+// ─── Contacts ───
+function contactsLoad() {
+  try { contacts = JSON.parse(localStorage.getItem('artist-dashboard-contacts') || '{}'); } catch(e) { contacts = {}; }
+}
+function contactsSave() {
+  localStorage.setItem('artist-dashboard-contacts', JSON.stringify(contacts));
+}
+function saveContact(sid, field, val) {
+  if (!contacts[sid]) contacts[sid] = {};
+  contacts[sid][field] = val;
+  contactsSave();
+  const ind = document.getElementById('contact-dot-' + sid);
+  if (ind) {
+    const hasData = Object.values(contacts[sid]).some(v => v && String(v).trim());
+    ind.classList.toggle('hidden', !hasData);
+  }
+}
+function hasContacts(sid) {
+  return contacts[sid] && Object.values(contacts[sid]).some(v => v && String(v).trim());
+}
+
+// ─── Calendar Artist Filter ───
+function viewArtistInCalendar(spotifyId, name) {
+  calendarArtistFilter = { spotify_id: spotifyId, name };
+  showPage('calendar');
+  if (!calendarLoaded) {
+    loadCalendarData();
+  } else {
+    renderCalendar();
+  }
+  updateCalArtistBadge();
+}
+function clearCalendarArtistFilter() {
+  calendarArtistFilter = null;
+  updateCalArtistBadge();
+  renderCalendar();
+}
+function updateCalArtistBadge() {
+  const badge = document.getElementById('cal-artist-badge');
+  const nameEl = document.getElementById('cal-artist-badge-name');
+  if (!badge) return;
+  if (calendarArtistFilter) {
+    badge.classList.remove('hidden');
+    if (nameEl) nameEl.textContent = calendarArtistFilter.name;
+  } else {
+    badge.classList.add('hidden');
+  }
 }
 
 // ─── Navigation ───
@@ -595,6 +701,8 @@ async function loadData() {
   const alertCount = artists.filter(a => a.daily_change < -200000).length;
   document.getElementById('alert-count').textContent = alertCount;
 
+  watchlistLoad();
+  contactsLoad();
   renderDashboard();
   renderVenuesPage();
   // If artist page is already active (unlikely but safe), populate the grid now
@@ -1356,6 +1464,11 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
               <div class="text-[11px] ${demand.momentumColor}">${demand.momentum}</div>
             </div>
           </div>
+          <!-- Deal Status (Watchlist) -->
+          <div class="border-t border-white/5 mt-4 pt-3 flex items-center gap-3 flex-wrap">
+            <span class="text-[10px] text-slate-500 uppercase tracking-wider">Deal Status:</span>
+            <div id="wl-btns-${spotifyId}" class="flex items-center gap-1.5 flex-wrap"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1462,6 +1575,10 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
         </div>
         <div class="flex items-center gap-2">
           ${showEvents.length > 0 ? '<span class="text-[9px] text-green-400 font-medium bg-green-500/10 px-1.5 py-0.5 rounded border border-green-500/20">LIVE DATA</span>' : '<span class="text-[9px] text-slate-500 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded">NOT FOUND</span>'}
+          <button onclick="viewArtistInCalendar('${spotifyId}','${name.replace(/'/g,"\\'")}');event.stopPropagation()" class="flex items-center gap-1 text-[10px] px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            View in Calendar
+          </button>
         </div>
       </div>
       ${showEvents.length > 0 ? `
@@ -1806,6 +1923,43 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
       </div>`}
     </div>
 
+    <!-- Booking & Contacts -->
+    <div class="glass rounded-xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <h3 class="font-semibold text-white text-sm">Booking &amp; Contacts</h3>
+            <p class="text-[11px] text-slate-500">Internal notes — saved to your browser locally</p>
+          </div>
+        </div>
+        <span class="text-[9px] text-cyan-400 font-medium bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20">LOCAL</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        ${[
+          ['booking_agent', 'Booking Agent', 'e.g. CAA, WME'],
+          ['agency',        'Agency',        'e.g. CAA'],
+          ['email',         'Contact Email', 'booking@example.com'],
+          ['manager',       'Manager',       'Manager name'],
+          ['label',         'Record Label',  'Label name'],
+        ].map(([field, label, ph]) => `
+          <div>
+            <label class="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">${label}</label>
+            <input type="text" placeholder="${ph}" value="${(contacts[spotifyId] && contacts[spotifyId][field]) ? contacts[spotifyId][field].replace(/"/g,'&quot;') : ''}"
+              class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors"
+              oninput="saveContact('${spotifyId}','${field}',this.value)">
+          </div>`).join('')}
+        <div class="col-span-2">
+          <label class="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Notes</label>
+          <textarea placeholder="Internal deal notes, history, terms…" rows="3"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors resize-none"
+            oninput="saveContact('${spotifyId}','notes',this.value)">${(contacts[spotifyId] && contacts[spotifyId].notes) ? contacts[spotifyId].notes : ''}</textarea>
+        </div>
+      </div>
+    </div>
+
     <!-- Peer Comparison -->
     <div class="glass rounded-xl p-5">
       <h3 class="font-semibold text-white text-sm mb-4">Peer Comparison (by rank)</h3>
@@ -1874,17 +2028,24 @@ function selectArtist(spotifyId) {
     buildArtistProfileHTML(a, t, mb, spotifyId);
   populatePeerTable(spotifyId, 'peer-table');
   renderArtistCharts(a, t);
+  renderWatchlistButtons(spotifyId);
 }
 
 function showArtistList() {
   showPage('artist');
+  wlFilter = null;
   const content = document.getElementById('artist-profile-content');
   if (!artists.length) {
     content.innerHTML = '<div class="text-center py-20 text-slate-500 text-sm">Loading artist data…</div>';
     return;
   }
+  const filterTabs = ['all', 'Target', 'In Discussion', 'Passed', 'Completed'].map(t => {
+    const isAll = t === 'all';
+    return `<button id="wlf-${t}" onclick="setWlFilter(${isAll ? 'null' : "'"+t+"'"})" ` +
+      `class="text-[11px] px-3 py-1 rounded-full border font-medium transition-all ${isAll ? 'bg-white/10 border-white/20 text-white' : 'bg-transparent border-white/10 text-slate-500 hover:text-slate-300'}">${isAll ? 'All' : t}</button>`;
+  }).join('');
   content.innerHTML =
-    '<div class="flex items-center justify-between gap-4 mb-5">' +
+    '<div class="flex items-center justify-between gap-4 mb-3">' +
       '<div class="relative flex-1 max-w-sm">' +
         '<svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
         '<input type="text" id="artist-list-search" placeholder="Search artists…" ' +
@@ -1892,6 +2053,10 @@ function showArtistList() {
           'oninput="renderArtistGrid(this.value)">' +
       '</div>' +
       '<span id="artist-grid-count" class="text-xs text-slate-500 flex-shrink-0">' + artists.length.toLocaleString() + ' artists</span>' +
+    '</div>' +
+    '<div class="flex items-center gap-1.5 mb-4">' +
+      '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Watchlist:</span>' +
+      filterTabs +
     '</div>' +
     '<div id="artist-grid" class="grid grid-cols-5 gap-3"></div>';
   renderArtistGrid('');
@@ -1902,14 +2067,21 @@ function renderArtistGrid(query) {
   const countEl = document.getElementById('artist-grid-count');
   if (!grid) return;
   const q = (query || '').toLowerCase().trim();
-  const filtered = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : artists;
+  let filtered = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : artists;
+  if (wlFilter) filtered = filtered.filter(a => watchlist[a.spotify_id] === wlFilter);
   if (countEl) countEl.textContent = filtered.length.toLocaleString() + ' artists';
+  if (filtered.length === 0 && wlFilter) {
+    grid.innerHTML = '<div class="col-span-5 text-center py-16 text-slate-500 text-sm">No artists tagged as <span class="text-white font-medium">' + wlFilter + '</span>. Tag artists from their profile page.</div>';
+    return;
+  }
   grid.innerHTML = filtered.map(a => {
     const t  = touringMap[a.spotify_id];
     const mb = mbMap[a.spotify_id];
     const up = a.daily_change >= 0;
     const genre = mb?.genres?.[0] || '';
     const country = mb?.country || '';
+    const tag = watchlist[a.spotify_id];
+    const hasCon = hasContacts(a.spotify_id);
     const touringBadge = t
       ? (t.is_touring
           ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">Active</span>'
@@ -1926,7 +2098,10 @@ function renderArtistGrid(query) {
             '<span class="absolute -bottom-1 -right-1 text-[8px] bg-slate-900 border border-white/10 text-slate-500 rounded px-1 leading-4">#' + a.rank + '</span>' +
           '</div>' +
           '<div class="min-w-0 flex-1">' +
-            '<div class="text-xs font-semibold text-white truncate group-hover:text-violet-300 transition-colors leading-tight">' + a.name + '</div>' +
+            '<div class="flex items-start justify-between gap-1">' +
+              '<div class="text-xs font-semibold text-white truncate group-hover:text-violet-300 transition-colors leading-tight">' + a.name + '</div>' +
+              (hasCon ? '<span id="contact-dot-' + a.spotify_id + '" class="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0 mt-0.5" title="Has contacts"></span>' : '<span id="contact-dot-' + a.spotify_id + '" class="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0 mt-0.5 hidden" title="Has contacts"></span>') +
+            '</div>' +
             (country ? '<div class="text-[9px] text-slate-600 mt-0.5">' + country + '</div>' : '') +
           '</div>' +
         '</div>' +
@@ -1937,6 +2112,7 @@ function renderArtistGrid(query) {
         '<div class="flex items-center gap-1.5 flex-wrap">' +
           touringBadge +
           genreTag +
+          (tag ? watchlistTagChip(tag) : '') +
         '</div>' +
       '</div>'
     );
@@ -2361,6 +2537,13 @@ function renderCalendar() {
   const sort = document.getElementById('cal-sort')?.value || 'date';
 
   let data = [...calendarEvents];
+
+  // Per-artist filter (set from artist profile "View in Calendar" button)
+  if (calendarArtistFilter) {
+    const sid = calendarArtistFilter.spotify_id;
+    data = data.filter(e => (e.spotifyId || e.spotify_id) === sid);
+    updateCalArtistBadge();
+  }
 
   if (search) {
     data = data.filter(e =>
@@ -2805,13 +2988,17 @@ function computeProfile(p) {
     const occ             = capacity > 0 ? seats_per_show / capacity : 0;
     const cpp             = (Number(tc.venue_fee)||0)+(Number(tc.production)||0)
                           + (Number(tc.hospitality)||0)+(Number(tc.insurance)||0);
+    const rev_at_100      = cats.reduce((s, c) => s + (Number(c.price)||0)*(Number(c.count)||0), 0);
+    // Break-even fill: local op costs per show ÷ ticket revenue per show at 100% fill
+    const break_even_fill = rev_at_100 > 0 ? Math.min(1, cpp / rev_at_100) : null;
     return {
       tc, cats, shows, capacity, seats_per_show, occ, fill_rate,
-      rev_per_show,
+      rev_per_show, rev_at_100,
       total_ticket_rev:  rev_per_show * shows,
       total_attendance:  seats_per_show * shows,
       cpp,
-      total_op_cost:     cpp * shows
+      total_op_cost:     cpp * shows,
+      break_even_fill
     };
   });
 
@@ -4364,6 +4551,21 @@ function fdRenderLive(p) {
                 const fr = fillRate;
                 const pct = Math.round(fr * 100);
                 const col = pct < 80 ? 'text-amber-400' : pct < 100 ? 'text-cyan-300' : 'text-emerald-400';
+                // Break-even marker: cc.break_even_fill is local op cost / rev_at_100
+                const bef = cc.break_even_fill;
+                const befPct = bef !== null ? Math.max(40, Math.min(100, Math.round(bef * 100))) : null;
+                // Position as % of slider track (slider range 40–100 = span of 60)
+                const befPos = befPct !== null ? ((befPct - 40) / 60 * 100).toFixed(1) : null;
+                const befLabel = befPct !== null ? befPct + '% break-even' : '';
+                const isBelowRange = bef !== null && bef * 100 < 40;
+                const markerHtml = befPos !== null
+                  ? '<div class="relative h-4 mt-1">' +
+                      '<div class="absolute top-0 bottom-0 flex flex-col items-center" style="left:' + befPos + '%">' +
+                        '<div class="w-px h-2.5 bg-amber-400/70"></div>' +
+                      '</div>' +
+                      '<div class="absolute text-[8px] text-amber-400 whitespace-nowrap -translate-x-1/2" style="left:' + Math.min(befPos, 85) + '%;top:2px">' + befLabel + '</div>' +
+                    '</div>'
+                  : (isBelowRange ? '<div class="text-[9px] text-emerald-400 mt-1">✓ Break-even below 40% fill — all good</div>' : '<div class="h-2"></div>');
                 return '<div class="border-t border-white/5 pt-2 mb-3">' +
                   '<div class="flex items-center justify-between mb-2">' +
                     '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Capacity Fill Rate</span>' +
@@ -4374,6 +4576,7 @@ function fdRenderLive(p) {
                       'var pct=Math.round(this.value),el=document.getElementById(\'fd-city-fillrate-pct-' + tc.id + '\');\n' +
                       'if(el){el.textContent=pct+\'% Sell-Through\';el.className=\'text-[11px] font-semibold \'+(pct<80?\'text-amber-400\':pct<100?\'text-cyan-300\':\'text-emerald-400\');}\n' +
                       'fdUpdateLive()">' +
+                  markerHtml +
                   '<div class="flex justify-between text-[9px] text-slate-600 mt-1">' +
                     '<span>40%</span><span>60%</span><span>80%</span><span>100% Sold Out</span>' +
                   '</div>' +
