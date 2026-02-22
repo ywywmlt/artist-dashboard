@@ -780,23 +780,41 @@ function renderDashboard() {
     `).join('');
   }
 
-  // Dashboard Upcoming Shows (FPO)
-  const fpoVenues = ['Madison Square Garden, New York','The O2 Arena, London','Tokyo Dome, Tokyo','Accor Arena, Paris','Scotiabank Arena, Toronto'];
-  const fpoDates = ['Feb 14, 2026','Feb 18, 2026','Feb 22, 2026','Mar 1, 2026','Mar 5, 2026'];
-  const showArtists = artists.slice(0, 5);
-  document.getElementById('dashboard-upcoming').innerHTML = showArtists.map((a, i) => `
-    <div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="selectArtist('${a.spotify_id}')">
-      <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">${initials(a.name)}</div>
-      <div class="flex-1 min-w-0">
-        <div class="text-sm font-medium text-white truncate">${a.name}</div>
-        <div class="text-[10px] text-slate-500">${fpoVenues[i]}</div>
-      </div>
-      <div class="text-right flex-shrink-0">
-        <div class="text-xs text-slate-300">${fpoDates[i]}</div>
-        <div class="text-[10px] text-green-400">On Sale</div>
-      </div>
-    </div>
-  `).join('');
+  // Dashboard Upcoming Shows — real Ticketmaster data
+  (function() {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const upcoming = [];
+    for (const [sid, evts] of Object.entries(eventsMap)) {
+      for (const e of evts) {
+        if ((e.date || '') >= todayStr) upcoming.push({ ...e, _sid: sid });
+      }
+    }
+    upcoming.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const toShow = upcoming.slice(0, 8);
+    const el = document.getElementById('dashboard-upcoming');
+    if (!toShow.length) {
+      el.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">No upcoming events — fetch data in Tour Calendar</div>';
+      return;
+    }
+    el.innerHTML = toShow.map(e => {
+      const a = artists.find(x => x.spotify_id === e._sid);
+      const name = a ? a.name : (e.artistName || 'Unknown Artist');
+      const venue = [e.venueName, e.city, e.country].filter(Boolean).join(', ');
+      const dateLabel = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+      const priceLabel = e.priceMin ? `<div class="text-[10px] text-emerald-400">From $${e.priceMin}</div>` : `<div class="text-[10px] text-slate-500">On Sale</div>`;
+      return `<div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="${a ? `selectArtist('${e._sid}')` : ''}">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">${initials(name)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-white truncate">${name}</div>
+          <div class="text-[10px] text-slate-500 truncate">${venue}</div>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <div class="text-xs text-slate-300">${dateLabel}</div>
+          ${priceLabel}
+        </div>
+      </div>`;
+    }).join('');
+  })();
 
   renderArtistTable();
 }
@@ -1306,10 +1324,16 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
             <span class="text-sm text-slate-500">Rank #${a.rank}</span>
           </div>
           <div class="flex items-center gap-4 text-sm text-slate-400 mb-2">
-            ${mb && mb.country ? `<span class="text-xs px-2 py-0.5 rounded bg-white/5 text-slate-300">${mb.country}</span>` : ''}
+            ${mb && mb.country
+              ? `<span class="text-xs px-2 py-0.5 rounded bg-white/5 text-slate-300">${mb.country}</span>`
+              : `<span class="text-xs px-2 py-0.5 rounded bg-white/5 text-slate-600 italic">Country unknown</span>`}
             <span class="text-xs text-slate-600">Spotify: <code class="text-slate-500">${a.spotify_id}</code></span>
           </div>
-          ${mb && mb.genres && mb.genres.length ? `<div class="flex flex-wrap gap-1.5 mb-3">${mb.genres.slice(0,6).map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 font-medium">${g}</span>`).join('')}</div>` : ''}
+          <div class="flex flex-wrap gap-1.5 mb-3">
+            ${mb && mb.genres && mb.genres.length
+              ? mb.genres.slice(0,6).map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 font-medium">${g}</span>`).join('')
+              : `<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-600 italic">Genre data not in MusicBrainz</span>`}
+          </div>
           <div class="grid grid-cols-4 gap-4">
             <div class="bg-white/5 rounded-lg p-3">
               <div class="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Monthly Listeners</div>
@@ -1386,7 +1410,7 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
               { key: 'tiktok',    name: 'TikTok',    grad: 'from-slate-700 to-slate-900', letter: 'T', url: h => 'https://tiktok.com/@' + h },
               { key: 'twitter',   name: 'X (Twitter)',grad: 'from-slate-600 to-slate-800', letter: 'X', url: h => 'https://x.com/' + h }
             ];
-            if (!mb) return '<div class="text-sm text-slate-500 text-center py-4">No MusicBrainz data loaded</div>';
+            if (!mb) return `<div class="text-[11px] text-slate-500 text-center py-3 italic">Social handles not in MusicBrainz for this artist.<br>Spotify audience data available below.</div>`;
             const found = socials.filter(s => mb[s.key]);
             const missing = socials.filter(s => !mb[s.key]);
             let html = found.map(s => `
@@ -1399,19 +1423,28 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
               </a>`).join('');
             if (missing.length > 0 && found.length > 0) {
               html += '<div class="text-[10px] text-slate-600 uppercase tracking-wider mt-2 mb-1 px-1">Not in MusicBrainz</div>';
-              html += missing.map(s => `<div class="flex items-center gap-3 p-2 rounded-lg opacity-30"><div class="w-6 h-6 rounded-md bg-gradient-to-br ${s.grad} flex items-center justify-center text-[9px] text-white font-bold">${s.letter}</div><div class="text-[11px] text-slate-500">${s.name} \u2014 not listed</div></div>`).join('');
+              html += missing.map(s => `<div class="flex items-center gap-3 p-2 rounded-lg opacity-30"><div class="w-6 h-6 rounded-md bg-gradient-to-br ${s.grad} flex items-center justify-center text-[9px] text-white font-bold">${s.letter}</div><div class="text-[11px] text-slate-500">${s.name} — not listed</div></div>`).join('');
             }
-            if (found.length === 0) html = '<div class="text-sm text-slate-500 text-center py-3">No handles found in MusicBrainz</div>';
+            if (found.length === 0) html = `<div class="text-[11px] text-slate-500 text-center py-2 italic">No social handles found in MusicBrainz.<br>Add handles via <code class="text-slate-600">data/manual/social_overrides.csv</code> and re-run Step 4.</div>`;
             return html;
           })()}
         </div>
-        <a href="https://open.spotify.com/artist/${a.spotify_id}" target="_blank" rel="noopener" class="flex items-center justify-between p-3 rounded-lg bg-green-500/8 hover:bg-green-500/15 transition-colors group mt-3 border border-green-500/10">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xs text-white font-bold">S</div>
-            <div><div class="text-sm font-medium text-white">Spotify</div><div class="text-[11px] text-slate-400">Open artist page</div></div>
-          </div>
-          <svg class="w-4 h-4 text-green-600 group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
-        </a>
+        <div class="border-t border-white/5 mt-3 pt-3">
+          <div class="text-[9px] text-slate-600 uppercase tracking-wider mb-2 px-1">Spotify Audience</div>
+          <a href="https://open.spotify.com/artist/${a.spotify_id}" target="_blank" rel="noopener" class="flex items-center justify-between p-3 rounded-lg bg-green-500/8 hover:bg-green-500/15 transition-colors group border border-green-500/10">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-xs text-white font-bold">S</div>
+              <div>
+                <div class="text-sm font-medium text-white">Spotify</div>
+                <div class="text-[11px] text-emerald-400 font-semibold">${fmt(a.monthly_listeners)} monthly listeners</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] text-slate-500">${a.daily_change >= 0 ? '+' : ''}${fmt(a.daily_change)} today</div>
+              <svg class="w-4 h-4 text-green-600 group-hover:text-green-400 transition-colors ml-auto mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            </div>
+          </a>
+        </div>
       </div>
     </div>
 
@@ -3729,6 +3762,148 @@ async function fdExportExcel() {
   URL.revokeObjectURL(url);
 }
 
+function fdExportPDF() {
+  const p = fdState.draftProfile;
+  if (!p) return;
+  const c = computeProfile(p);
+  const artist = p.artist || 'Artist';
+  const venueType = (p.venue_type || 'stadium').charAt(0).toUpperCase() + (p.venue_type || 'stadium').slice(1);
+  const cities = (p.tour_cities || []).map(tc => tc.city_name || 'TBD').join(' · ') || 'TBD';
+  const totalShows = c.n || 0;
+  const currency = v => v == null ? '—' : '$' + Math.round(v).toLocaleString();
+  const pct = v => (v * 100).toFixed(1) + '%';
+
+  const cityRows = (c.cityCalcs || []).map(cc => {
+    const fillPct = Math.round((cc.fill_rate || 1) * 100);
+    return `<tr>
+      <td>${cc.tc.city_name || 'TBD'}</td>
+      <td class="num">${cc.shows}</td>
+      <td class="num">${cc.capacity.toLocaleString()}</td>
+      <td class="num">${fillPct}%</td>
+      <td class="num">${Math.round(cc.seats_per_show).toLocaleString()}</td>
+      <td class="num">${currency(cc.rev_per_show)}</td>
+      <td class="num">${currency(cc.total_ticket_rev)}</td>
+    </tr>`;
+  }).join('');
+
+  const catSummary = (() => {
+    const allCats = {};
+    for (const cc of (c.cityCalcs || [])) {
+      for (const cat of (cc.tc.seat_categories || [])) {
+        if (!allCats[cat.name]) allCats[cat.name] = { price: cat.price, count: 0 };
+        allCats[cat.name].count += (cat.count || 0) * cc.shows;
+      }
+    }
+    return Object.entries(allCats).map(([n, d]) =>
+      `<tr><td>${n}</td><td class="num">$${d.price.toLocaleString()}</td><td class="num">${d.count.toLocaleString()}</td><td class="num">${currency(d.price * d.count)}</td></tr>`
+    ).join('');
+  })();
+
+  const mgRows = (p.costs?.mg_schedule || []).map(m =>
+    `<tr><td>${m.label || '—'}</td><td class="num">${pct(m.pct || 0)}</td><td class="num">${m.months_before > 0 ? m.months_before + ' mo before show' : 'At show'}</td><td class="num">${currency((p.costs.artist_mg || 0) * (m.pct || 0))}</td></tr>`
+  ).join('');
+
+  const scenRows = (p.investor_scenarios || []).filter(s => s.equity > 0).map(s => {
+    const sc = computeScenario(c, s);
+    return `<tr>
+      <td>${s.label || 'Scenario'}</td>
+      <td class="num">${currency(s.equity)}</td>
+      <td class="num">${pct(s.hurdle_rate || 0)}</td>
+      <td class="num">${currency(sc.hurdle_amount)}</td>
+      <td class="num">${currency(sc.investor_dist)}</td>
+      <td class="num">${sc.moic > 0 ? sc.moic.toFixed(2) + 'x' : '—'}</td>
+      <td class="num">${sc.abs_return > 0 ? pct(sc.abs_return) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>${artist} — Financial Model</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Arial, sans-serif; font-size: 11px; color: #111; background: white; padding: 32px; }
+  h1 { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 2px; }
+  .sub { font-size: 11px; color: #666; margin-bottom: 24px; }
+  .kpi-row { display: flex; gap: 12px; margin-bottom: 24px; }
+  .kpi { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+  .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin-bottom: 4px; }
+  .kpi-value { font-size: 18px; font-weight: 700; }
+  .kpi-value.green { color: #059669; }
+  .kpi-value.red { color: #dc2626; }
+  .kpi-value.blue { color: #2563eb; }
+  .kpi-value.purple { color: #7c3aed; }
+  section { margin-bottom: 24px; }
+  h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; padding: 5px 8px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+  td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  .footer { margin-top: 40px; font-size: 9px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; justify-content: space-between; }
+  @media print { body { padding: 20px; } }
+</style></head><body>
+<h1>${artist} — Financial Model</h1>
+<div class="sub">${venueType} · ${cities} · ${totalShows} show${totalShows !== 1 ? 's' : ''} · Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+
+<div class="kpi-row">
+  <div class="kpi"><div class="kpi-label">Total Gross Revenue</div><div class="kpi-value green">${currency(c.total_gross_rev)}</div></div>
+  <div class="kpi"><div class="kpi-label">Total Costs</div><div class="kpi-value red">${currency(c.total_costs)}</div></div>
+  <div class="kpi"><div class="kpi-label">Net Profit</div><div class="kpi-value ${c.net_profit >= 0 ? 'green' : 'red'}">${currency(c.net_profit)}</div></div>
+  <div class="kpi"><div class="kpi-label">ROI</div><div class="kpi-value ${c.roi >= 0 ? 'blue' : 'red'}">${pct(c.roi)}</div></div>
+  <div class="kpi"><div class="kpi-label">Total Attendance</div><div class="kpi-value purple">${Math.round(c.total_attendance).toLocaleString()}</div></div>
+</div>
+
+<section>
+  <h2>Revenue by City</h2>
+  <table><thead><tr>
+    <th>City</th><th>Shows</th><th>Capacity</th><th>Fill Rate</th><th>Effective Seats</th><th>Ticket Rev / Show</th><th>Total Ticket Rev</th>
+  </tr></thead><tbody>${cityRows}</tbody></table>
+</section>
+
+${catSummary ? `<section>
+  <h2>Seat Categories (Aggregate)</h2>
+  <table><thead><tr><th>Category</th><th>Price</th><th>Total Seats</th><th>Gross Revenue</th></tr></thead><tbody>${catSummary}</tbody></table>
+</section>` : ''}
+
+<section>
+  <h2>P&amp;L Summary</h2>
+  <table><tbody>
+    <tr><td>Ticket Revenue</td><td class="num">${currency(c.total_ticket_rev)}</td></tr>
+    <tr><td>Merch Revenue</td><td class="num">${currency(c.merch_rev)}</td></tr>
+    <tr><td>F&amp;B Revenue</td><td class="num">${currency(c.fnb_rev)}</td></tr>
+    <tr><td>Sponsorship Revenue</td><td class="num">${currency(c.sponsor_rev)}</td></tr>
+    <tr><td><strong>Total Gross Revenue</strong></td><td class="num"><strong>${currency(c.total_gross_rev)}</strong></td></tr>
+    <tr><td>Artist MG</td><td class="num">(${currency(p.costs?.artist_mg || 0)})</td></tr>
+    <tr><td>Ticketing Fees</td><td class="num">(${currency(c.ticketing_fees)})</td></tr>
+    <tr><td>Operating Costs</td><td class="num">(${currency(c.total_op_costs)})</td></tr>
+    <tr><td>Agency &amp; Other Fees</td><td class="num">(${currency((p.costs?.agency_fees || 0) + (p.costs?.blufin_fees || 0))})</td></tr>
+    <tr><td><strong>Net Profit</strong></td><td class="num"><strong>${currency(c.net_profit)}</strong></td></tr>
+    <tr><td>ROI</td><td class="num">${pct(c.roi)}</td></tr>
+  </tbody></table>
+</section>
+
+${mgRows ? `<section>
+  <h2>Artist MG — Payment Schedule (Total: ${currency(p.costs?.artist_mg)})</h2>
+  <table><thead><tr><th>Label</th><th>%</th><th>Timing</th><th>Amount</th></tr></thead><tbody>${mgRows}</tbody></table>
+</section>` : ''}
+
+${scenRows ? `<section>
+  <h2>Investor Scenarios</h2>
+  <table><thead><tr><th>Scenario</th><th>Equity</th><th>Hurdle</th><th>Hurdle Amt</th><th>Investor Dist.</th><th>MOIC</th><th>Abs Return</th></tr></thead><tbody>${scenRows}</tbody></table>
+</section>` : ''}
+
+<div class="footer">
+  <span>CONFIDENTIAL — Internal Use Only</span>
+  <span>Artist Dashboard · BluFin Entertainment</span>
+</div>
+</body></html>`;
+
+  const win = window.open('', '_blank', 'width=900,height=700');
+  if (!win) { alert('Allow pop-ups to export PDF.'); return; }
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
 function fdPatch(path, value) {
   if (!fdState.draftProfile) return;
   const parts = path.split('.');
@@ -4091,6 +4266,10 @@ function fdRenderLive(p) {
         <button onclick="fdExportExcel()" class="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           Export Excel
+        </button>
+        <button onclick="fdExportPDF()" class="flex items-center gap-1.5 bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/30 text-sky-400 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+          Export PDF
         </button>
         <button onclick="fdCancelForm()" class="bg-white/5 hover:bg-white/10 text-slate-400 text-xs px-3 py-2 rounded-lg transition-colors">Cancel</button>
       </div>
