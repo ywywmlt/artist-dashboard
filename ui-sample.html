@@ -118,7 +118,7 @@
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
         Fin. Model Builder
       </a>
-      <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+      <a href="#" onclick="showPage('reports')" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all" id="nav-reports">
         <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
         Reports
       </a>
@@ -456,6 +456,11 @@
       </div>
     </div>
 
+    <!-- REPORTS PAGE -->
+    <div id="page-reports" class="page p-6 space-y-6">
+      <div id="reports-content"></div>
+    </div>
+
     <!-- FINANCIAL MODEL BUILDER PAGE -->
     <div id="page-finbuilder" class="page" style="height:calc(100vh - 57px);overflow:hidden;">
       <!-- Top bar -->
@@ -507,6 +512,15 @@ let watchlist = {};        // { spotify_id: 'Target'|'In Discussion'|'Passed'|'C
 let contacts  = {};        // { spotify_id: { booking_agent, agency, email, manager, label, notes } }
 let calendarArtistFilter = null;  // { spotify_id, name } or null
 let wlFilter  = null;      // active watchlist filter tag, or null = all
+let compareIds = new Set(); // up to 4 spotify_ids
+
+let artistMeta = {};
+const ARTIST_META_KEY = 'artist-dashboard-artist-meta';
+let marketHistory = {};
+const MARKET_HISTORY_KEY = 'artist-dashboard-market-history';
+let competitorShows = [];
+const COMPETITOR_KEY = 'artist-dashboard-competitor-shows';
+let triggeredAlerts = [];  // in-memory, reset on each data load
 
 // ─── Helpers ───
 function fmt(n) {
@@ -559,6 +573,19 @@ const WL_TAGS = [
   { label: 'Passed',        base: 'text-red-400 border-red-500/40',        active: 'bg-red-500/20 border-red-500 text-red-300' },
   { label: 'Completed',     base: 'text-emerald-400 border-emerald-500/40', active: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
 ];
+const DEAL_STAGES = [
+  { label: 'Interest',               active: 'bg-slate-500/20 border-slate-400 text-slate-300' },
+  { label: 'Offer Sent',             active: 'bg-sky-500/20 border-sky-500 text-sky-300' },
+  { label: 'Binder Sent',            active: 'bg-blue-500/20 border-blue-500 text-blue-300' },
+  { label: 'Offer Accepted',         active: 'bg-violet-500/20 border-violet-500 text-violet-300' },
+  { label: 'Show in Pre-production', active: 'bg-amber-500/20 border-amber-500 text-amber-300' },
+  { label: 'Tickets Live',           active: 'bg-cyan-500/20 border-cyan-500 text-cyan-300' },
+  { label: 'Completed',              active: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
+];
+let compareMode = false;
+let bulkMode = false;
+let bulkSelected = new Set();
+
 function watchlistTagChip(tag) {
   if (!tag) return '';
   const cfg = WL_TAGS.find(t => t.label === tag);
@@ -614,6 +641,81 @@ function hasContacts(sid) {
   return contacts[sid] && Object.values(contacts[sid]).some(v => v && String(v).trim());
 }
 
+// ─── Artist Meta (Heat Score, Alerts, Momentum) ───
+function amLoad() {
+  try { artistMeta = JSON.parse(localStorage.getItem(ARTIST_META_KEY) || '{}'); } catch(e) { artistMeta = {}; }
+}
+function amSave() { localStorage.setItem(ARTIST_META_KEY, JSON.stringify(artistMeta)); }
+function amPatch(sid, field, val) {
+  if (!artistMeta[sid]) artistMeta[sid] = {};
+  artistMeta[sid][field] = val;
+  amSave();
+}
+function checkThresholds() {
+  const results = [];
+  for (const sid of Object.keys(watchlist)) {
+    const meta = artistMeta[sid];
+    if (!meta?.listeners_alert) continue;
+    const a = artists.find(x => x.spotify_id === sid);
+    if (!a) continue;
+    const threshold = Number(meta.listeners_alert);
+    const dir = meta.alert_direction || 'above';
+    if (dir === 'above' && a.monthly_listeners >= threshold)
+      results.push({ sid, name: a.name, msg: `${a.name} crossed ${fmt(threshold)} listeners (now ${fmt(a.monthly_listeners)})` });
+    else if (dir === 'below' && a.monthly_listeners <= threshold)
+      results.push({ sid, name: a.name, msg: `${a.name} dropped below ${fmt(threshold)} listeners (now ${fmt(a.monthly_listeners)})` });
+  }
+  return results;
+}
+
+// ─── Market History ───
+function mhLoad() {
+  try { marketHistory = JSON.parse(localStorage.getItem(MARKET_HISTORY_KEY) || '{}'); } catch(e) { marketHistory = {}; }
+}
+function mhSave() { localStorage.setItem(MARKET_HISTORY_KEY, JSON.stringify(marketHistory)); }
+function mhAdd(sid) {
+  const city  = document.getElementById('mh-city-'+sid)?.value.trim();
+  if (!city) return;
+  if (!marketHistory[sid]) marketHistory[sid] = [];
+  marketHistory[sid].unshift({
+    id: 'mh_' + Date.now(),
+    city,
+    venue: document.getElementById('mh-venue-'+sid)?.value.trim() || '',
+    date:  document.getElementById('mh-date-'+sid)?.value || '',
+    fill_pct: +document.getElementById('mh-fill-'+sid)?.value || null,
+    notes: document.getElementById('mh-notes-'+sid)?.value.trim() || ''
+  });
+  mhSave();
+  document.getElementById('mh-section-'+sid).outerHTML = mhSectionHTML(sid);
+}
+function mhDelete(sid, id) {
+  if (marketHistory[sid]) marketHistory[sid] = marketHistory[sid].filter(e => e.id !== id);
+  mhSave();
+  document.getElementById('mh-section-'+sid).outerHTML = mhSectionHTML(sid);
+}
+
+// ─── Competitor Shows ───
+function csLoad() {
+  try { competitorShows = JSON.parse(localStorage.getItem(COMPETITOR_KEY) || '[]'); } catch(e) { competitorShows = []; }
+}
+function csSave() { localStorage.setItem(COMPETITOR_KEY, JSON.stringify(competitorShows)); }
+function csAdd() {
+  const artist = document.getElementById('cs-artist')?.value.trim();
+  const city   = document.getElementById('cs-city')?.value.trim();
+  if (!artist || !city) return;
+  competitorShows.unshift({
+    id: 'cs_' + Date.now(), artist, city,
+    venue: document.getElementById('cs-venue')?.value.trim() || '',
+    date:  document.getElementById('cs-date')?.value || '',
+    notes: document.getElementById('cs-notes')?.value.trim() || ''
+  });
+  csSave(); renderReports();
+}
+function csDelete(id) {
+  competitorShows = competitorShows.filter(e => e.id !== id);
+  csSave(); renderReports();
+}
+
 // ─── Calendar Artist Filter ───
 function viewArtistInCalendar(spotifyId, name) {
   calendarArtistFilter = { spotify_id: spotifyId, name };
@@ -648,7 +750,7 @@ function showPage(page) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('nav-' + page)?.classList.add('active');
-  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder' };
+  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder', reports: 'Reports' };
   document.getElementById('page-title').textContent = titles[page] || page;
   // Reset scroll position for clean page transitions (FMB scrolls via its own fd-main/fd-sidebar)
   const mainEl = document.querySelector('main');
@@ -657,6 +759,7 @@ function showPage(page) {
   if (page === 'financials' && !financialsLoaded) initFinancials();
   if (page === 'findetail' && !finDetailLoaded) initFinDetail();
   if (page === 'finbuilder' && !finBuilderLoaded) initFinBuilder();
+  if (page === 'reports') renderReports();
 }
 
 // ─── Data Loading ───
@@ -703,6 +806,8 @@ async function loadData() {
 
   watchlistLoad();
   contactsLoad();
+  amLoad(); mhLoad(); csLoad();
+  triggeredAlerts = checkThresholds();
   renderDashboard();
   renderVenuesPage();
   // If artist page is already active (unlikely but safe), populate the grid now
@@ -886,6 +991,19 @@ function renderDashboard() {
         </div>
       </div>
     `).join('');
+  }
+
+  // Prepend triggered threshold alerts
+  if (triggeredAlerts.length > 0) {
+    const alertEl = document.getElementById('dashboard-alerts');
+    if (alertEl) alertEl.insertAdjacentHTML('afterbegin', triggeredAlerts.map(a => `
+      <div class="flex items-center gap-3 p-2.5 rounded-lg bg-amber-500/8 border border-amber-500/15 mb-1 cursor-pointer" onclick="selectArtist('${a.sid}')">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center text-sm flex-shrink-0">⚡</div>
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-medium text-amber-300 truncate">${a.msg}</div>
+          <div class="text-[10px] text-slate-500">Listener threshold alert · click to view</div>
+        </div>
+      </div>`).join(''));
   }
 
   // Dashboard Upcoming Shows — real Ticketmaster data
@@ -1971,6 +2089,9 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
       </table>
     </div>
 
+    ${amSectionHTML(spotifyId)}
+    ${mhSectionHTML(spotifyId)}
+
   `;
 }
 
@@ -2057,9 +2178,152 @@ function showArtistList() {
     '<div class="flex items-center gap-1.5 mb-4">' +
       '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Watchlist:</span>' +
       filterTabs +
+      '<div class="ml-auto flex items-center gap-2">' +
+        '<button id="compare-toggle-btn" onclick="toggleCompareMode()" class="text-xs px-3 py-1.5 rounded-lg border transition-all ' + (compareMode ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10') + '">\u21c4 Compare</button>' +
+        '<button onclick="toggleBulkMode()" class="text-xs px-3 py-1.5 rounded-lg border transition-all ' + (bulkMode ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10') + '">' + (bulkMode ? '\u2715 Cancel' : 'Select') + '</button>' +
+      '</div>' +
     '</div>' +
-    '<div id="artist-grid" class="grid grid-cols-5 gap-3"></div>';
+    '<div id="compare-panel" class="mb-4"></div>' +
+    '<div id="artist-grid" class="grid grid-cols-5 gap-3"></div>' +
+    '<div id="bulk-action-bar" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-5 py-3 flex items-center gap-3 shadow-2xl border border-white/10">' +
+      '<span id="bulk-count" class="text-sm font-medium text-white">0 artists selected</span>' +
+      '<div class="flex items-center gap-1.5">' +
+        '<span class="text-xs text-slate-500">Tag as:</span>' +
+        WL_TAGS.map(t => '<button onclick="bulkTagAs(\'' + t.label + '\')" class="text-[10px] px-2.5 py-1 rounded-full border font-medium transition-all ' + t.active + '">' + t.label + '</button>').join('') +
+        '<button onclick="bulkTagAs(\'\')" class="text-[10px] px-2.5 py-1 rounded-full border border-white/10 text-slate-500 hover:text-white">Remove</button>' +
+      '</div>' +
+      '<button onclick="bulkExportCSV()" class="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/25 transition-colors">Export CSV</button>' +
+      '<button onclick="bulkSelected=new Set();updateBulkBar();renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')" class="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 text-xs hover:bg-white/10 transition-colors flex-shrink-0">Clear</button>' +
+    '</div>';
   renderArtistGrid('');
+}
+
+function amSectionHTML(sid) {
+  const meta = artistMeta[sid] || {};
+  const hs = meta.heat_score != null ? Number(meta.heat_score) : null;
+  const hsColor = hs == null ? '' : hs >= 7 ? 'text-green-400' : hs >= 4 ? 'text-amber-400' : 'text-red-400';
+  const hsLabel = hs == null ? '' : hs >= 7 ? 'Hot' : hs >= 4 ? 'Warm' : 'Cold';
+  const dir = meta.alert_direction || 'above';
+  const playlistChecked = meta.playlist_flag ? 'checked' : '';
+  return `<div id="am-section-${sid}" class="glass rounded-xl p-5 mb-4">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+          <span class="text-sm">\uD83D\uDD25</span>
+        </div>
+        <div>
+          <h3 class="font-semibold text-white text-sm">Intelligence Signals</h3>
+          <p class="text-[11px] text-slate-500">Internal signals \u2014 saved to your browser locally</p>
+        </div>
+      </div>
+      <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">LOCAL</span>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-white/5 rounded-lg p-3">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-[10px] text-slate-500 uppercase tracking-wider">Heat Score (1\u201310)</label>
+          ${hs != null ? `<span class="text-[9px] font-semibold ${hsColor}">${hsLabel}</span>` : ''}
+        </div>
+        <input type="number" min="1" max="10" placeholder="1\u201310" value="${hs != null ? hs : ''}"
+          class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors"
+          oninput="amPatch('${sid}','heat_score',this.value?Number(this.value):null)">
+        <input type="text" placeholder="Context / reason\u2026" value="${meta.heat_note ? meta.heat_note.replace(/"/g,'&quot;') : ''}"
+          class="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors"
+          oninput="amPatch('${sid}','heat_note',this.value)">
+      </div>
+      <div class="bg-white/5 rounded-lg p-3">
+        <label class="text-[10px] text-slate-500 uppercase tracking-wider block mb-2">Listener Threshold Alert</label>
+        <div class="flex gap-2">
+          <select class="bg-white/5 border border-white/10 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-amber-500/50 transition-colors flex-shrink-0"
+            onchange="amPatch('${sid}','alert_direction',this.value)">
+            <option value="above" ${dir === 'above' ? 'selected' : ''}>Above</option>
+            <option value="below" ${dir === 'below' ? 'selected' : ''}>Below</option>
+          </select>
+          <input type="number" placeholder="e.g. 5000000" value="${meta.listeners_alert || ''}"
+            class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors"
+            oninput="amPatch('${sid}','listeners_alert',this.value)">
+        </div>
+        <p class="text-[10px] text-slate-600 mt-1.5">Triggers an alert on next data load if condition met</p>
+      </div>
+      <div class="col-span-2 bg-white/5 rounded-lg p-3">
+        <label class="text-[10px] text-slate-500 uppercase tracking-wider block mb-2">Streaming Momentum</label>
+        <div class="flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" ${playlistChecked}
+              class="w-3.5 h-3.5 rounded accent-amber-400"
+              onchange="amPatch('${sid}','playlist_flag',this.checked)">
+            <span class="text-xs text-slate-300">On major editorial playlist</span>
+          </label>
+          <input type="text" placeholder="Playlist name (e.g. Today's Top Hits)" value="${meta.playlist_name ? meta.playlist_name.replace(/"/g,'&quot;') : ''}"
+            class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-amber-500/50 transition-colors"
+            oninput="amPatch('${sid}','playlist_name',this.value)">
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function mhSectionHTML(sid) {
+  const entries = marketHistory[sid] || [];
+  const today = new Date().toISOString().slice(0,10);
+  const fillColor = pct => {
+    if (pct == null) return 'text-slate-500';
+    if (pct >= 90) return 'text-green-400';
+    if (pct >= 75) return 'text-cyan-400';
+    if (pct >= 60) return 'text-amber-400';
+    return 'text-red-400';
+  };
+  const rows = entries.map(e => {
+    const isPast = e.date && e.date < today;
+    const rowCls = isPast ? 'opacity-50' : '';
+    const fc = fillColor(e.fill_pct);
+    return `<tr class="${rowCls} border-b border-white/5 hover:bg-white/2 transition-colors">
+      <td class="py-2 pl-3 text-xs text-white">${e.city}</td>
+      <td class="py-2 text-xs text-slate-400">${e.venue || '\u2014'}</td>
+      <td class="py-2 text-xs text-slate-400">${e.date || '\u2014'}</td>
+      <td class="py-2 text-xs ${fc} font-medium text-right">${e.fill_pct != null ? e.fill_pct + '%' : '\u2014'}</td>
+      <td class="py-2 text-xs text-slate-500 max-w-[120px] truncate">${e.notes || ''}</td>
+      <td class="py-2 pr-3 text-right">
+        <button onclick="mhDelete('${sid}','${e.id}')" class="text-[10px] text-slate-600 hover:text-red-400 transition-colors">\u2715</button>
+      </td>
+    </tr>`;
+  }).join('');
+  const emptyRow = !entries.length ? `<tr><td colspan="6" class="py-6 text-center text-xs text-slate-600">No market history yet \u2014 add the first entry below</td></tr>` : '';
+  return `<div id="mh-section-${sid}" class="glass rounded-xl p-5 mb-4">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-blue-500/15 flex items-center justify-center">
+          <span class="text-sm">\uD83D\uDCCD</span>
+        </div>
+        <div>
+          <h3 class="font-semibold text-white text-sm">Market History</h3>
+          <p class="text-[11px] text-slate-500">Past market plays \u2014 saved to your browser locally</p>
+        </div>
+      </div>
+      <span class="text-[9px] text-blue-400 font-medium bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">LOCAL</span>
+    </div>
+    <table class="w-full mb-3">
+      <thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+        <th class="text-left pb-2 pl-3">City</th>
+        <th class="text-left pb-2">Venue</th>
+        <th class="text-left pb-2">Date</th>
+        <th class="text-right pb-2">Fill %</th>
+        <th class="text-left pb-2">Notes</th>
+        <th class="pb-2 pr-3"></th>
+      </tr></thead>
+      <tbody>${rows}${emptyRow}</tbody>
+    </table>
+    <div class="border-t border-white/5 pt-3">
+      <div class="grid grid-cols-5 gap-2 mb-2">
+        <input id="mh-city-${sid}" type="text" placeholder="City *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors">
+        <input id="mh-venue-${sid}" type="text" placeholder="Venue" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors">
+        <input id="mh-date-${sid}" type="date" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-blue-500/50 transition-colors">
+        <input id="mh-fill-${sid}" type="number" min="0" max="100" placeholder="Fill %" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors">
+        <button onclick="mhAdd('${sid}')" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg px-3 py-2 transition-colors">Add</button>
+      </div>
+      <input id="mh-notes-${sid}" type="text" placeholder="Notes\u2026" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 transition-colors">
+    </div>
+  </div>`;
 }
 
 function renderArtistGrid(query) {
@@ -2082,6 +2346,28 @@ function renderArtistGrid(query) {
     const country = mb?.country || '';
     const tag = watchlist[a.spotify_id];
     const hasCon = hasContacts(a.spotify_id);
+    const meta = artistMeta[a.spotify_id] || {};
+    const hs = meta.heat_score != null ? Number(meta.heat_score) : null;
+    const heatBadge = hs != null
+      ? '<span class="text-[9px] px-1.5 py-0.5 rounded font-bold ' +
+        (hs >= 7 ? 'bg-green-500/20 text-green-400' : hs >= 4 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400') +
+        '" title="Heat ' + hs + '/10">🔥' + hs + '</span>'
+      : '';
+    const isSelected = bulkMode && bulkSelected.has(a.spotify_id);
+    const isCmpSelected = compareMode && compareIds.has(a.spotify_id);
+    const cardCls = compareMode
+      ? ('glass rounded-xl p-3.5 cursor-pointer border transition-all relative ' + (isCmpSelected ? 'border-cyan-500 ring-2 ring-cyan-500 bg-cyan-500/5' : 'border-white/5 hover:border-white/20'))
+      : bulkMode
+        ? ('glass rounded-xl p-3.5 cursor-pointer border transition-all relative ' + (isSelected ? 'border-violet-500 ring-2 ring-violet-500 bg-violet-500/5' : 'border-white/5 hover:border-white/20'))
+        : 'glass rounded-xl p-3.5 cursor-pointer hover:bg-white/8 border border-white/5 hover:border-violet-500/20 transition-all group';
+    const onClickAttr = compareMode ? 'toggleCompareSelect(\'' + a.spotify_id + '\')' : (bulkMode ? 'toggleBulkSelect(\'' + a.spotify_id + '\')' : 'selectArtist(\'' + a.spotify_id + '\')');
+    const checkboxOverlay = compareMode
+      ? '<div class="absolute top-2 left-2 w-4 h-4 rounded border flex items-center justify-center ' + (isCmpSelected ? 'bg-cyan-500 border-cyan-500' : 'border-white/30 bg-black/20') + '">'
+        + (isCmpSelected ? '<svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : '') + '</div>'
+      : bulkMode
+        ? '<div class="absolute top-2 left-2 w-4 h-4 rounded border flex items-center justify-center ' + (isSelected ? 'bg-violet-500 border-violet-500' : 'border-white/30 bg-black/20') + '">'
+          + (isSelected ? '<svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : '') + '</div>'
+        : '';
     const touringBadge = t
       ? (t.is_touring
           ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">Active</span>'
@@ -2091,7 +2377,8 @@ function renderArtistGrid(query) {
       ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-500 truncate max-w-[80px]">' + genre + '</span>'
       : '';
     return (
-      '<div class="glass rounded-xl p-3.5 cursor-pointer hover:bg-white/8 border border-white/5 hover:border-violet-500/20 transition-all group" onclick="selectArtist(\'' + a.spotify_id + '\')">' +
+      '<div class="' + cardCls + '" data-bulk-id="' + a.spotify_id + '" onclick="' + onClickAttr + '">' +
+        checkboxOverlay +
         '<div class="flex items-start gap-2.5 mb-2.5">' +
           '<div class="relative flex-shrink-0">' +
             '<div class="w-10 h-10 rounded-xl bg-gradient-to-br ' + hashColor(a.name) + ' flex items-center justify-center text-xs font-bold text-white">' + initials(a.name) + '</div>' +
@@ -2110,6 +2397,7 @@ function renderArtistGrid(query) {
           '<div class="text-[10px] ' + (up ? 'text-emerald-400' : 'text-red-400') + ' mt-0.5">' + (up ? '+' : '') + fmt(a.daily_change) + ' today</div>' +
         '</div>' +
         '<div class="flex items-center gap-1.5 flex-wrap">' +
+          heatBadge +
           touringBadge +
           genreTag +
           (tag ? watchlistTagChip(tag) : '') +
@@ -4975,6 +5263,362 @@ Chart.defaults.font.family = 'Inter';
 Chart.defaults.font.size = 11;
 
 // ─── Auth ───
+// ─── Artist Comparison ───
+function toggleCompareMode() {
+  compareMode = !compareMode;
+  if (bulkMode) toggleBulkMode();
+  compareIds.clear();
+  renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
+  renderComparePanel();
+  const btn = document.getElementById('compare-toggle-btn');
+  if (btn) btn.className = 'text-xs px-3 py-1.5 rounded-lg border transition-all ' + (compareMode ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10');
+}
+function toggleCompareSelect(sid) {
+  if (compareIds.has(sid)) compareIds.delete(sid);
+  else if (compareIds.size < 4) compareIds.add(sid);
+  renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
+  renderComparePanel();
+}
+function renderComparePanel() {
+  const el = document.getElementById('compare-panel');
+  if (!el) return;
+  if (!compareMode) { el.innerHTML = ''; return; }
+  if (compareIds.size < 2) {
+    el.innerHTML = '<div class="glass rounded-xl p-4 text-center text-sm text-slate-500">Select 2\u20134 artists to compare <span class="text-xs text-slate-600 ml-2">(' + compareIds.size + '/4 selected)</span></div>';
+    return;
+  }
+  el.innerHTML = buildCompareHTML([...compareIds]);
+}
+function buildCompareHTML(ids) {
+  const rows = [
+    { label: 'Monthly Listeners', key: 'ml', fmt: v => v != null ? fmt(v) : '\u2014', num: true },
+    { label: 'Peak Listeners',    key: 'peak', fmt: v => v != null ? fmt(v) : '\u2014', num: true },
+    { label: '% of Peak',         key: 'pctPeak', fmt: v => v != null ? (v * 100).toFixed(1) + '%' : '\u2014', num: true },
+    { label: 'Daily Change',      key: 'daily', fmt: v => v != null ? (v >= 0 ? '+' : '') + fmt(v) : '\u2014', num: true },
+    { label: 'Touring Status',    key: 'touring', fmt: v => v ? 'Active' : 'Inactive', num: false },
+    { label: 'Recent Shows',      key: 'recentShows', fmt: v => v != null ? v : '\u2014', num: true },
+    { label: 'Genre',             key: 'genre', fmt: v => v || '\u2014', num: false },
+    { label: 'Country',           key: 'country', fmt: v => v || '\u2014', num: false },
+    { label: 'Demand Score',      key: 'demandScore', fmt: v => v != null ? v.toFixed(0) : '\u2014', num: true },
+    { label: 'Venue Tier',        key: 'tierLabel', fmt: v => v || '\u2014', num: false },
+    { label: 'MG Range',          key: 'mgRange', fmt: v => v || '\u2014', num: false },
+    { label: 'Watchlist Tag',     key: 'wlTag', fmt: v => v ? watchlistTagChip(v) : '<span class="text-slate-600 text-xs">\u2014</span>', num: false, html: true },
+    { label: 'Heat Score',        key: 'heatScore', fmt: v => v != null ? v + '/10' : '\u2014', num: true },
+  ];
+  const data = ids.map(sid => {
+    const a  = artists.find(x => x.spotify_id === sid);
+    const t  = touringMap[sid] || {};
+    const mb = mbMap[sid] || {};
+    if (!a) return null;
+    const demand = computeArtistDemand(a.monthly_listeners, a.peak_listeners, t.is_touring, a.daily_change, t.recent_event_count, null);
+    return {
+      sid, name: a.name,
+      ml: a.monthly_listeners,
+      peak: a.peak_listeners,
+      pctPeak: (a.peak_listeners && a.monthly_listeners) ? a.monthly_listeners / a.peak_listeners : null,
+      daily: a.daily_change,
+      touring: t.is_touring,
+      recentShows: t.recent_event_count,
+      genre: mb.genres?.[0] || '',
+      country: mb.country || '',
+      demandScore: demand?.demandScore,
+      tierLabel: demand?.tierLabel,
+      mgRange: (demand?.mgMin != null && demand?.mgMax != null) ? fmtDollar(demand.mgMin) + ' \u2013 ' + fmtDollar(demand.mgMax) : '\u2014',
+      wlTag: watchlist[sid] || '',
+      heatScore: artistMeta[sid]?.heat_score != null ? Number(artistMeta[sid].heat_score) : null,
+    };
+  }).filter(Boolean);
+  if (!data.length) return '';
+  const colW = Math.floor(100 / (data.length + 1));
+  const headerCols = data.map(d =>
+    `<th class="px-3 py-2 text-center" style="width:${colW}%">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-br ${hashColor(d.name)} flex items-center justify-center text-[10px] font-bold text-white mx-auto mb-1">${initials(d.name)}</div>
+      <div class="text-xs font-semibold text-white truncate">${d.name}</div>
+    </th>`
+  ).join('');
+  const bodyRows = rows.map(r => {
+    let maxVal = null;
+    if (r.num) {
+      const vals = data.map(d => d[r.key]).filter(v => v != null && typeof v === 'number');
+      if (vals.length > 1) maxVal = Math.max(...vals);
+    }
+    const cells = data.map(d => {
+      const val = d[r.key];
+      const isMax = r.num && maxVal != null && val === maxVal;
+      const cellCls = isMax ? 'bg-emerald-500/8 text-emerald-300 font-semibold' : 'text-slate-300';
+      const rendered = r.html ? r.fmt(val) : `<span class="${cellCls}">${r.fmt(val)}</span>`;
+      return `<td class="px-3 py-2 text-center text-xs${isMax && !r.html ? ' bg-emerald-500/8 rounded' : ''}">${rendered}</td>`;
+    }).join('');
+    return `<tr class="border-b border-white/5 hover:bg-white/2 transition-colors">
+      <td class="px-3 py-2 text-[10px] text-slate-500 uppercase tracking-wider whitespace-nowrap">${r.label}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+  return `<div class="glass rounded-xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-semibold text-white">Artist Comparison</h3>
+      <button onclick="compareIds.clear();renderArtistGrid(document.getElementById('artist-list-search')?.value||'');renderComparePanel()" class="text-xs text-slate-500 hover:text-white transition-colors">Clear</button>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full">
+        <thead><tr class="border-b border-white/10">
+          <th class="px-3 py-2 text-left" style="width:${colW}%"></th>
+          ${headerCols}
+        </tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ─── Bulk Actions ───
+function toggleBulkMode() {
+  bulkMode = !bulkMode;
+  if (compareMode) { compareMode = false; compareIds.clear(); }
+  bulkSelected = new Set();
+  showArtistList();
+}
+function toggleBulkSelect(sid) {
+  if (bulkSelected.has(sid)) bulkSelected.delete(sid);
+  else bulkSelected.add(sid);
+  updateBulkBar();
+  renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
+}
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-action-bar');
+  if (!bar) return;
+  if (bulkSelected.size === 0) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  const countEl = bar.querySelector('#bulk-count');
+  if (countEl) countEl.textContent = bulkSelected.size + ' artist' + (bulkSelected.size !== 1 ? 's' : '') + ' selected';
+}
+function bulkTagAs(tag) {
+  bulkSelected.forEach(sid => watchlistSet(sid, tag));
+  fdToast((tag ? 'Tagged ' : 'Removed tag from ') + bulkSelected.size + ' artists', 2000);
+  renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
+}
+function bulkExportCSV() {
+  const rows = [['Name','Spotify ID','Booking Agent','Agency','Email','Manager','Label','Notes']];
+  bulkSelected.forEach(sid => {
+    const a = artists.find(x => x.spotify_id === sid);
+    const c = contacts[sid] || {};
+    rows.push([a?.name||'', sid, c.booking_agent||'', c.agency||'', c.email||'', c.manager||'', c.label||'', (c.notes||'').replace(/\n/g,' ')]);
+  });
+  const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g,'""') + '"').join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'artist-contacts.csv';
+  a.click();
+  fdToast('Exported ' + bulkSelected.size + ' contacts', 2000);
+}
+
+// ─── Reports page functions ───
+function rpOpenDeal(id) { showPage('finbuilder'); fdSelectProfile(id); }
+function rpNextPayment(computed) {
+  const now = new Date();
+  let earliest = null;
+  for (const {p, c} of computed) {
+    if (!(p.costs?.mg_schedule?.length)) continue;
+    const firstDateStr = (p.tour_cities||[]).find(tc => tc.concert_date)?.concert_date;
+    if (!firstDateStr) continue;
+    const showDate = new Date(firstDateStr + 'T12:00:00');
+    for (const pmt of p.costs.mg_schedule) {
+      const pct = Number(pmt.pct)||0;
+      if (!pct) continue;
+      const d = new Date(showDate);
+      d.setMonth(d.getMonth() - (Number(pmt.months_before)||0));
+      if (d >= now && (!earliest || d < earliest.date)) {
+        earliest = { date: d, amt: c.artist_mg_cost * pct,
+          label: (p.artist||'Deal') + ' \u00b7 ' + (pmt.label||'Payment') + ' \u00b7 ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) };
+      }
+    }
+  }
+  return earliest;
+}
+function rpKPIBar(computed) {
+  const withStage  = computed.filter(x => x.p.deal_stage);
+  const active     = computed.filter(x => x.p.deal_stage && x.p.deal_stage !== 'Completed');
+  const totalMG    = withStage.reduce((s, x) => s + x.c.artist_mg_cost, 0);
+  const totalNet   = computed.reduce((s, x) => s + x.c.net_profit, 0);
+  const avgROI     = computed.length ? computed.reduce((s, x) => s + x.c.roi, 0) / computed.length : 0;
+  const nextPmt    = rpNextPayment(computed);
+  const totalShows = computed.reduce((s, x) => s + x.c.n, 0);
+  const kpi = (label, value, sub, color) => `<div class="glass rounded-xl p-4 flex flex-col gap-1"><div class="text-[10px] text-slate-500 uppercase tracking-wider">${label}</div><div class="text-2xl font-bold ${color}">${value}</div><div class="text-[10px] text-slate-500">${sub}</div></div>`;
+  return `<div class="grid grid-cols-5 gap-4">
+    ${kpi('Active Deals', active.length, computed.length + ' total \u00b7 ' + totalShows + ' shows', 'text-white')}
+    ${kpi('MG Committed', fmtDollar(totalMG), withStage.length + ' staged deal' + (withStage.length !== 1 ? 's' : ''), 'text-red-400')}
+    ${kpi('Portfolio Net', fmtDollar(totalNet), 'across all models', totalNet >= 0 ? 'text-emerald-400' : 'text-red-400')}
+    ${kpi('Avg ROI', (avgROI * 100).toFixed(1) + '%', 'per model', avgROI >= 0 ? 'text-cyan-400' : 'text-red-400')}
+    ${nextPmt ? kpi('Next Payment Due', fmtDollar(nextPmt.amt), nextPmt.label, 'text-amber-400') : kpi('Next Payment Due', '\u2014', 'Add concert dates to see', 'text-slate-500')}
+  </div>`;
+}
+function rpDealCard(x) {
+  const {p, c} = x;
+  const isFest = p.festival_mode && (p.festival_artists||[]).length > 0;
+  const isPos  = c.net_profit >= 0;
+  const cities = (p.tour_cities||[]).filter(tc => tc.city_name).map(tc => tc.city_name);
+  const cityStr = cities.slice(0,2).join(', ') + (cities.length > 2 ? ' +' + (cities.length-2) : '');
+  return `<div onclick="rpOpenDeal('${p.id}')" class="cursor-pointer bg-white/3 hover:bg-white/6 border border-white/8 hover:border-violet-500/30 rounded-lg p-2.5 transition-all">
+    <div class="flex items-start justify-between gap-1 mb-1">
+      <div class="text-xs font-semibold text-white truncate leading-tight">${p.artist || 'Unnamed'}</div>
+      ${isFest ? '<span class="text-[8px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1 py-0.5 rounded flex-shrink-0">\uD83C\uDFAA Fest</span>' : ''}
+    </div>
+    ${cityStr ? `<div class="text-[9px] text-slate-500 mb-1.5 truncate">${cityStr}</div>` : '<div class="mb-1.5"></div>'}
+    <div class="flex justify-between items-center text-[10px]">
+      <span class="text-slate-400">MG <span class="text-red-400 font-medium">${fmtDollar(c.artist_mg_cost)}</span></span>
+      <span class="${isPos ? 'text-emerald-400' : 'text-red-400'} font-medium">${isPos ? '+' : ''}${fmtDollar(c.net_profit)}</span>
+    </div>
+    ${c.n > 0 ? `<div class="text-[9px] text-slate-600 mt-1">${c.n} show${c.n!==1?'s':''} \u00b7 ROI ${(c.roi*100).toFixed(0)}%</div>` : ''}
+  </div>`;
+}
+function rpPipelineBoard(computed) {
+  const byStage = {};
+  for (const ds of DEAL_STAGES) byStage[ds.label] = [];
+  const unassigned = [];
+  for (const x of computed) {
+    if (x.p.deal_stage && byStage[x.p.deal_stage]) byStage[x.p.deal_stage].push(x);
+    else unassigned.push(x);
+  }
+  const colsHTML = DEAL_STAGES.map(ds => {
+    const deals = byStage[ds.label];
+    const stageMG = deals.reduce((s, x) => s + x.c.artist_mg_cost, 0);
+    return `<div class="flex-1 min-w-[150px]"><div class="mb-2.5"><div class="flex items-center justify-between mb-1"><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full border ${ds.active}">${ds.label}</span><span class="text-[9px] text-slate-600">${deals.length||''}</span></div>${stageMG>0?`<div class="text-[9px] text-slate-600">${fmtDollar(stageMG)}</div>`:''}</div><div class="space-y-2">${deals.length?deals.map(x=>rpDealCard(x)).join(''):`<div class="border border-dashed border-white/6 rounded-lg py-5 text-center text-[9px] text-slate-700">\u2014</div>`}</div></div>`;
+  }).join('<div class="w-px bg-white/5 flex-shrink-0"></div>');
+  const unassignedHTML = unassigned.length ? `<div class="mt-5 pt-4 border-t border-white/5"><div class="text-[9px] text-slate-600 uppercase tracking-wider mb-2">No Stage Set (${unassigned.length})</div><div class="flex flex-wrap gap-2">${unassigned.map(x=>rpDealCard(x)).join('')}</div></div>` : '';
+  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Deal Pipeline</h3><button onclick="showPage('finbuilder')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ New Model \u2192</button></div><div class="flex gap-3 overflow-x-auto pb-2">${colsHTML}</div>${unassignedHTML}</div>`;
+}
+function rpPLComparison(computed) {
+  if (!computed.length) return '';
+  const sorted = [...computed].sort((a, b) => b.c.net_profit - a.c.net_profit);
+  const totGross = computed.reduce((s,x)=>s+x.c.total_gross_rev,0);
+  const totMG    = computed.reduce((s,x)=>s+x.c.artist_mg_cost,0);
+  const totCosts = computed.reduce((s,x)=>s+x.c.total_costs,0);
+  const totNet   = computed.reduce((s,x)=>s+x.c.net_profit,0);
+  const totShows = computed.reduce((s,x)=>s+x.c.n,0);
+  const rows = sorted.map(({p,c}) => {
+    const ds = p.deal_stage ? DEAL_STAGES.find(d=>d.label===p.deal_stage) : null;
+    const isPos = c.net_profit >= 0;
+    const isFest = p.festival_mode && (p.festival_artists||[]).length > 0;
+    const cities = (p.tour_cities||[]).filter(tc=>tc.city_name).map(tc=>tc.city_name).slice(0,2).join(', ');
+    return `<tr class="border-b border-white/5 hover:bg-white/2 cursor-pointer" onclick="rpOpenDeal('${p.id}')"><td class="py-2.5 pl-4 pr-2"><div class="flex items-center gap-1.5"><span class="text-xs font-medium text-white">${p.artist||'\u2014'}</span>${isFest?'<span class="text-[8px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1 rounded">\uD83C\uDFAA</span>':''}</div>${cities?`<div class="text-[9px] text-slate-500 mt-0.5">${cities}</div>`:''}</td><td class="py-2.5 px-2">${ds?`<span class="text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${ds.active}">${p.deal_stage}</span>`:'<span class="text-[9px] text-slate-700">\u2014</span>'}</td><td class="py-2.5 px-2 text-right text-xs text-slate-400">${c.n}</td><td class="py-2.5 px-2 text-right text-xs text-emerald-400">${fmtDollar(c.total_gross_rev)}</td><td class="py-2.5 px-2 text-right text-xs text-red-400">${fmtDollar(c.artist_mg_cost)}</td><td class="py-2.5 px-2 text-right text-xs text-red-400">${fmtDollar(c.total_costs)}</td><td class="py-2.5 px-2 text-right text-xs font-semibold ${isPos?'text-emerald-400':'text-red-400'}">${isPos?'+':''}${fmtDollar(c.net_profit)}</td><td class="py-2.5 px-2 text-right text-xs ${c.roi>=0?'text-cyan-400':'text-red-400'}">${(c.roi*100).toFixed(1)}%</td><td class="py-2.5 pr-4 text-right text-[9px] text-slate-600">\u2192</td></tr>`;
+  }).join('');
+  const netColor = totNet >= 0 ? 'text-emerald-400' : 'text-red-400';
+  return `<div class="glass rounded-xl overflow-hidden"><div class="px-5 py-4 border-b border-white/5"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">P&amp;L Comparison \u2014 All Models</h3></div><div class="overflow-x-auto"><table class="w-full"><thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider bg-white/2"><th class="text-left py-2.5 pl-4 pr-2">Artist / Deal</th><th class="text-left py-2.5 px-2">Stage</th><th class="text-right py-2.5 px-2">Shows</th><th class="text-right py-2.5 px-2">Gross Rev</th><th class="text-right py-2.5 px-2">Artist MG</th><th class="text-right py-2.5 px-2">Total Costs</th><th class="text-right py-2.5 px-2">Net Profit</th><th class="text-right py-2.5 px-2">ROI</th><th class="py-2.5 pr-4"></th></tr></thead><tbody>${rows}</tbody>${computed.length>1?`<tfoot><tr class="bg-white/3 border-t border-white/10"><td class="py-3 pl-4 pr-2 text-xs font-bold text-slate-300" colspan="2">Portfolio Total</td><td class="py-3 px-2 text-right text-xs text-slate-400">${totShows}</td><td class="py-3 px-2 text-right text-xs font-bold text-emerald-400">${fmtDollar(totGross)}</td><td class="py-3 px-2 text-right text-xs font-bold text-red-400">${fmtDollar(totMG)}</td><td class="py-3 px-2 text-right text-xs font-bold text-red-400">${fmtDollar(totCosts)}</td><td class="py-3 px-2 text-right text-xs font-bold ${netColor}">${totNet>=0?'+':''}${fmtDollar(totNet)}</td><td colspan="2"></td></tr></tfoot>`:''}</table></div></div>`;
+}
+function rpPaymentCalendar(computed) {
+  const now = new Date();
+  const allPmts = [];
+  for (const {p,c} of computed) {
+    if (!(p.costs?.mg_schedule?.length)) continue;
+    const firstDateStr = (p.tour_cities||[]).find(tc=>tc.concert_date)?.concert_date;
+    if (!firstDateStr) continue;
+    const showDate = new Date(firstDateStr + 'T12:00:00');
+    for (const pmt of p.costs.mg_schedule) {
+      const pct = Number(pmt.pct)||0;
+      if (!pct) continue;
+      const d = new Date(showDate);
+      d.setMonth(d.getMonth() - (Number(pmt.months_before)||0));
+      allPmts.push({ date:d, artist:p.artist||'Unnamed', label:pmt.label||'Payment', amount:c.artist_mg_cost*pct, deal_stage:p.deal_stage, isPast:d<now });
+    }
+  }
+  if (!allPmts.length) return `<div class="glass rounded-xl p-5"><h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-3">MG Payment Calendar</h3><div class="text-[10px] text-slate-600 text-center py-8 border border-dashed border-white/6 rounded-lg">Add concert dates &amp; MG payment schedules to your models to see the payment calendar.</div></div>`;
+  allPmts.sort((a,b)=>a.date-b.date);
+  const byMonth = {};
+  for (const pmt of allPmts) {
+    const key = pmt.date.getFullYear() + '-' + String(pmt.date.getMonth()+1).padStart(2,'0');
+    if (!byMonth[key]) byMonth[key] = { date:pmt.date, pmts:[], total:0, hasFuture:false };
+    byMonth[key].pmts.push(pmt); byMonth[key].total += pmt.amount;
+    if (!pmt.isPast) byMonth[key].hasFuture = true;
+  }
+  const upcomingTotal = allPmts.filter(p=>!p.isPast).reduce((s,p)=>s+p.amount,0);
+  const monthCards = Object.entries(byMonth).map(([key,month]) => {
+    const isPastMonth = !month.hasFuture;
+    const label = month.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const pmtRows = month.pmts.map(pmt => {
+      const ds = pmt.deal_stage ? DEAL_STAGES.find(d=>d.label===pmt.deal_stage) : null;
+      return `<div class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0 gap-2"><div class="flex items-center gap-1.5 min-w-0"><div class="text-[10px] font-medium text-slate-300 truncate">${pmt.artist}</div><div class="text-[9px] text-slate-600 flex-shrink-0">${pmt.label}</div></div><div class="flex items-center gap-1.5 flex-shrink-0">${ds?`<span class="text-[8px] px-1 py-0.5 rounded border ${ds.active}">${pmt.deal_stage}</span>`:''}<span class="text-[10px] font-semibold text-red-400">${fmtDollar(pmt.amount)}</span></div></div>`;
+    }).join('');
+    return `<div class="glass rounded-xl p-3.5 ${isPastMonth?'opacity-40':''}"><div class="flex items-center justify-between mb-2.5"><div class="text-[10px] font-bold ${isPastMonth?'text-slate-600':'text-white'}">${label}</div><div class="text-[10px] font-semibold text-red-400">${fmtDollar(month.total)}</div></div>${pmtRows}</div>`;
+  }).join('');
+  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">MG Payment Calendar</h3><div class="text-[10px] text-slate-400">Upcoming obligations: <span class="text-amber-400 font-semibold">${fmtDollar(upcomingTotal)}</span></div></div><div class="grid grid-cols-3 gap-3">${monthCards}</div></div>`;
+}
+function rpCommitmentExposure(computed) {
+  let totalMG = 0;
+  const stageData = DEAL_STAGES.map(ds => {
+    const deals = computed.filter(x=>x.p.deal_stage===ds.label);
+    const mg = deals.reduce((s,x)=>s+x.c.artist_mg_cost,0);
+    totalMG += mg;
+    return { ds, deals, mg };
+  }).filter(x=>x.deals.length>0);
+  if (!stageData.length) return '';
+  const stageColorMap = { 'Interest':'#94a3b8','Offer Sent':'#38bdf8','Binder Sent':'#60a5fa','Offer Accepted':'#a78bfa','Show in Pre-production':'#fbbf24','Tickets Live':'#22d3ee','Completed':'#34d399' };
+  const rows = stageData.map(({ds,deals,mg}) => {
+    const pct = totalMG>0?mg/totalMG:0;
+    const color = stageColorMap[ds.label]||'#a78bfa';
+    return `<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0"><span class="text-[9px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 w-40 text-center ${ds.active}">${ds.label}</span><div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${(pct*100).toFixed(1)}%;background:${color};opacity:0.6"></div></div><span class="text-[9px] text-slate-500 w-8 text-center flex-shrink-0">${deals.length}</span><span class="text-[10px] font-semibold text-red-400 w-24 text-right flex-shrink-0">${fmtDollar(mg)}</span><span class="text-[9px] text-slate-600 w-10 text-right flex-shrink-0">${(pct*100).toFixed(0)}%</span></div>`;
+  }).join('');
+  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Commitment Exposure by Stage</h3><div class="text-[10px] text-slate-400">Total MG on the table: <span class="text-red-400 font-semibold">${fmtDollar(totalMG)}</span></div></div><div class="flex text-[9px] text-slate-600 uppercase tracking-wider pb-1.5 border-b border-white/5 mb-1"><span class="w-40 flex-shrink-0">Stage</span><span class="flex-1 pl-3">Share of MG</span><span class="w-8 text-center flex-shrink-0">Deals</span><span class="w-24 text-right flex-shrink-0">MG Amount</span><span class="w-10 text-right flex-shrink-0">%</span></div>${rows}</div>`;
+}
+function rpCompetitorBoard() {
+  const today = new Date().toISOString().slice(0, 10);
+  const sorted = [...competitorShows].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const rows = sorted.map(e => {
+    const isPast = e.date && e.date < today;
+    return `<tr class="${isPast ? 'opacity-40' : ''} border-b border-white/5 hover:bg-white/2 transition-colors">
+      <td class="py-2 pl-3 text-xs text-white font-medium">${e.artist}</td>
+      <td class="py-2 text-xs text-slate-400">${e.city}</td>
+      <td class="py-2 text-xs text-slate-400">${e.venue || '\u2014'}</td>
+      <td class="py-2 text-xs text-slate-400">${e.date || '\u2014'}</td>
+      <td class="py-2 text-xs text-slate-500 max-w-[120px] truncate">${e.notes || ''}</td>
+      <td class="py-2 pr-3 text-right">
+        <button onclick="csDelete('${e.id}')" class="text-[10px] text-slate-600 hover:text-red-400 transition-colors">\u2715</button>
+      </td>
+    </tr>`;
+  }).join('');
+  const tableHTML = sorted.length ? `<div class="overflow-x-auto mb-3"><table class="w-full">
+    <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+      <th class="text-left py-2 pl-3">Artist</th>
+      <th class="text-left py-2">City</th>
+      <th class="text-left py-2">Venue</th>
+      <th class="text-left py-2">Date</th>
+      <th class="text-left py-2">Notes</th>
+      <th class="py-2 pr-3"></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>` : `<div class="text-[10px] text-slate-600 text-center py-8 border border-dashed border-white/6 rounded-lg mb-3">No competitor shows tracked yet \u2014 add the first one below</div>`;
+  return `<div class="glass rounded-xl p-5 mt-4">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Competitor Intel</h3>
+      <button onclick="document.getElementById('cs-form').classList.toggle('hidden')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors border border-violet-500/20 px-2.5 py-1 rounded-lg">+ Add Show</button>
+    </div>
+    ${tableHTML}
+    <div id="cs-form" class="hidden border-t border-white/5 pt-3">
+      <div class="grid grid-cols-5 gap-2 mb-2">
+        <input id="cs-artist" type="text" placeholder="Artist *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
+        <input id="cs-city" type="text" placeholder="City *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
+        <input id="cs-venue" type="text" placeholder="Venue" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
+        <input id="cs-date" type="date" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-violet-500/50 transition-colors">
+        <button onclick="csAdd()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg px-3 py-2 transition-colors">Add</button>
+      </div>
+      <input id="cs-notes" type="text" placeholder="Notes\u2026" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
+    </div>
+  </div>`;
+}
+function renderReports() {
+  fdLoad();
+  const el = document.getElementById('reports-content');
+  if (!el) return;
+  const profiles = fdState.profiles || [];
+  const profilesHTML = !profiles.length
+    ? `<div class="flex flex-col items-center justify-center py-24 gap-4"><div class="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center"><svg class="w-7 h-7 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="text-center"><div class="text-white font-semibold text-sm mb-1">No models yet</div><div class="text-slate-500 text-xs">Create a financial model to start tracking your deal pipeline.</div></div><button onclick="showPage('finbuilder')" class="mt-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">Open Financial Model Builder \u2192</button></div>`
+    : (() => {
+        const computed = profiles.map(p => ({ p, c: computeProfile(p) }));
+        return [rpKPIBar(computed),rpPipelineBoard(computed),rpPLComparison(computed),rpPaymentCalendar(computed),rpCommitmentExposure(computed)].join('');
+      })();
+  el.innerHTML = profilesHTML + rpCompetitorBoard();
+}
+
+
 const _U = 'gatekeep', _P = 'admin', _KEY = 'aidash_auth';
 
 function doLogin() {
