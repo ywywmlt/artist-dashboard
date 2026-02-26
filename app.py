@@ -19,13 +19,27 @@ _refresh = {
 
 
 def _run_refresh():
-    def on_progress(done, total, message):
-        _refresh["progress"] = int(done / total * 100) if total else 0
-        _refresh["message"] = message
-
+    """Run quick refresh: kworb → news → ticketmaster → export."""
+    import importlib
+    steps = [
+        ("kworb rankings",     "pipeline.step1_seed_kworb",      20),
+        ("news articles",      "pipeline.step6_news",             40),
+        ("ticketmaster events","pipeline.step_ticketmaster",      90),
+        ("export",             "pipeline.step5_export",          100),
+    ]
     try:
-        from pipeline.step_ticketmaster import run
-        run(progress_callback=on_progress)
+        for label, module_path, pct_done in steps:
+            _refresh["message"] = f"Fetching {label}..."
+            mod = importlib.import_module(module_path)
+            if module_path == "pipeline.step_ticketmaster":
+                def _cb(done, total, msg, _pct=pct_done):
+                    base = 40  # start of TM step
+                    _refresh["progress"] = base + int(done / total * (_pct - base)) if total else base
+                    _refresh["message"] = msg
+                mod.run(progress_callback=_cb)
+            else:
+                mod.run()
+            _refresh["progress"] = pct_done
         _refresh["progress"] = 100
         _refresh["message"] = "Complete"
         _refresh["last_run"] = datetime.utcnow().isoformat() + "Z"

@@ -25,6 +25,9 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
   .tab-btn.active { color: #a78bfa; border-color: #a78bfa; }
+  .news-filter-btn.active { color: #a78bfa; border-color: #a78bfa !important; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinning { animation: spin 0.8s linear infinite; }
   .page { display: none; }
   .page.active { display: block; }
   #page-finbuilder.active { display: flex; flex-direction: column; }
@@ -157,6 +160,10 @@
         <p class="text-xs text-slate-500" id="page-subtitle">Loading data...</p>
       </div>
       <div class="flex items-center gap-3">
+        <button id="refresh-btn" onclick="refreshData()" title="Refresh rankings, news &amp; events" class="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition-all flex-shrink-0">
+          <svg id="refresh-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span id="refresh-label">Refresh</span>
+        </button>
         <div class="relative" id="search-wrapper">
           <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <input type="text" placeholder="Find an artist..." id="global-search" autocomplete="off"
@@ -213,6 +220,16 @@
           </div>
           <div id="dashboard-upcoming"></div>
         </div>
+      </div>
+
+      <!-- Latest News Feed -->
+      <div class="glass rounded-xl p-5" id="news-panel">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-white text-sm">Latest Music News</h3>
+          <div class="flex items-center gap-1.5 flex-wrap" id="news-source-filters"></div>
+        </div>
+        <div id="news-feed" class="divide-y divide-white/5"></div>
+        <button id="news-show-more" onclick="newsShowMore()" class="hidden mt-3 w-full text-center text-[10px] text-slate-500 hover:text-slate-300 py-1 transition-colors">+ Show more</button>
       </div>
 
       <div class="glass rounded-xl p-5">
@@ -798,7 +815,8 @@ async function loadData() {
   }
 
   document.getElementById('page-subtitle').innerHTML =
-    `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${new Date(artists[0].scraped_at).toLocaleDateString()} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
+    `${fmtFull(artists.length)} artists · ${venueData.cities.length} cities · Scraped ${new Date(artists[0].scraped_at).toLocaleDateString()} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
+  renderNewsFeed();
 
   // Count alerts: artists losing > 200K listeners/day
   const alertCount = artists.filter(a => a.daily_change < -200000).length;
@@ -5194,6 +5212,132 @@ function fdRemoveFestivalArtist(faId) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.festival_artists = (fdState.draftProfile.festival_artists || []).filter(function(fa) { return fa.id !== faId; });
   fdSetMain(fdState.draftProfile);
+}
+
+// ─── News Feed ──────────────────────────────────────────────────────────────
+let _newsFilter = 'all';
+let _newsShowing = 10;
+
+function renderNewsFeed() {
+  const el = document.getElementById('news-feed');
+  const filtersEl = document.getElementById('news-source-filters');
+  const moreBtn = document.getElementById('news-show-more');
+  if (!el) return;
+  const alerts = window.newsAlerts || [];
+  if (!alerts.length) {
+    el.innerHTML = '<div class="text-center py-6 text-xs text-slate-600">Run step 5 to fetch news articles.</div>';
+    if (filtersEl) filtersEl.innerHTML = '';
+    if (moreBtn) moreBtn.classList.add('hidden');
+    return;
+  }
+  // Build source list
+  const sources = ['all', ...new Set(alerts.map(a => a.source).filter(Boolean))];
+  if (filtersEl) {
+    filtersEl.innerHTML = sources.map(s =>
+      `<button onclick="filterNews('${s}')" data-source="${s}" class="news-filter-btn ${s === _newsFilter ? 'active' : ''} text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-slate-400 hover:text-white transition-colors">${s === 'all' ? 'All' : s}</button>`
+    ).join('');
+  }
+  const filtered = _newsFilter === 'all' ? alerts : alerts.filter(a => a.source === _newsFilter);
+  const slice = filtered.slice(0, _newsShowing);
+  const sourceColors = {
+    'Billboard': 'bg-violet-500/20 text-violet-300',
+    'Pitchfork': 'bg-green-500/20 text-green-300',
+    'NME': 'bg-red-500/20 text-red-300',
+    'Rolling Stone': 'bg-amber-500/20 text-amber-300',
+    'Consequence': 'bg-cyan-500/20 text-cyan-300',
+    'Stereogum': 'bg-pink-500/20 text-pink-300',
+  };
+  function relTime(iso) {
+    if (!iso) return '';
+    const diff = Math.floor((Date.now() - new Date(iso)) / 60000);
+    if (diff < 60) return diff + 'm ago';
+    const hrs = Math.floor(diff / 60);
+    if (hrs < 24) return hrs + 'h ago';
+    return Math.floor(hrs / 24) + 'd ago';
+  }
+  el.innerHTML = slice.map(a => `
+    <a href="${a.url}" target="_blank" rel="noopener" class="flex items-start gap-3 py-2.5 hover:bg-white/3 transition-colors rounded-lg px-1 -mx-1">
+      <span class="flex-shrink-0 mt-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded ${sourceColors[a.source] || 'bg-slate-500/20 text-slate-400'}">${a.source || 'News'}</span>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs text-white leading-snug line-clamp-2">${a.title}</div>
+        <div class="text-[10px] text-slate-500 mt-0.5">${(a.matched_artists||[]).slice(0,3).join(', ')}${a.matched_artists?.length > 3 ? ' +' + (a.matched_artists.length-3) : ''} · ${relTime(a.published)}</div>
+      </div>
+    </a>`).join('');
+  if (moreBtn) {
+    if (filtered.length > _newsShowing) { moreBtn.classList.remove('hidden'); moreBtn.textContent = `+ Show ${Math.min(10, filtered.length - _newsShowing)} more (${filtered.length - _newsShowing} remaining)`; }
+    else moreBtn.classList.add('hidden');
+  }
+}
+
+function filterNews(source) {
+  _newsFilter = source;
+  _newsShowing = 10;
+  document.querySelectorAll('.news-filter-btn').forEach(b => b.classList.toggle('active', b.dataset.source === source));
+  renderNewsFeed();
+}
+
+function newsShowMore() {
+  _newsShowing += 10;
+  renderNewsFeed();
+}
+
+// ─── Refresh ────────────────────────────────────────────────────────────────
+let _refreshPollTimer = null;
+
+function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const label = document.getElementById('refresh-label');
+  if (btn?.dataset.running === '1') return;
+  if (btn) btn.dataset.running = '1';
+  if (icon) icon.classList.add('spinning');
+  if (label) label.textContent = 'Refreshing…';
+  fetch('/api/events/refresh', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => {
+      if (d.status === 'already_running') { _pollRefresh(); return; }
+      if (d.status === 'started') _pollRefresh();
+    })
+    .catch(e => { _refreshDone('Error: ' + e.message); });
+}
+
+function _pollRefresh() {
+  clearTimeout(_refreshPollTimer);
+  _refreshPollTimer = setTimeout(() => {
+    fetch('/api/events/refresh/status')
+      .then(r => r.json())
+      .then(d => {
+        const label = document.getElementById('refresh-label');
+        if (label && d.message) label.textContent = d.progress < 100 ? (d.progress + '% — ' + d.message.slice(0,30)) : 'Done!';
+        if (d.running) { _pollRefresh(); return; }
+        const sub = document.getElementById('page-subtitle');
+        if (sub && d.last_run) {
+          const ago = Math.round((Date.now() - new Date(d.last_run)) / 60000);
+          const badge = sub.querySelector('.pulse-dot');
+          if (badge) badge.insertAdjacentHTML('afterend', ` <span class="text-green-400">· refreshed ${ago < 1 ? 'just now' : ago + 'm ago'}</span>`);
+        }
+        // Re-fetch fresh data
+        Promise.all([
+          fetch('data/raw/kworb_seed.json').then(r=>r.json()).catch(()=>null),
+          fetch('data/raw/news_alerts.json').then(r=>r.json()).catch(()=>null),
+          fetch('data/raw/ticketmaster_events.json').then(r=>r.json()).catch(()=>null),
+        ]).then(([seed, news, events]) => {
+          if (news) { window.newsAlerts = news; renderDashboardAlerts(); renderNewsFeed(); }
+          _refreshDone(d.error ? 'Error' : 'Refresh');
+        });
+      })
+      .catch(() => _refreshDone('Error'));
+  }, 2000);
+}
+
+function _refreshDone(label) {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const lbl = document.getElementById('refresh-label');
+  if (btn) btn.dataset.running = '';
+  if (icon) icon.classList.remove('spinning');
+  if (lbl) lbl.textContent = label;
+  setTimeout(() => { if (lbl && lbl.textContent !== 'Refresh') lbl.textContent = 'Refresh'; }, 3000);
 }
 
 function fdPatchFestivalArtist(faId, field, value) {
