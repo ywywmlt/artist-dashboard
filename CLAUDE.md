@@ -103,6 +103,7 @@ python run_pipeline.py -v
 | 3 | MusicBrainz enrich | `step4_social_handles.py` | ~17min | `data/raw/musicbrainz_data.json` |
 | 4 | Export CSV/JSON | `step5_export.py` | instant | `data/output/artists_master.{csv,json}` |
 | 5 | News mentions | `step6_news.py` | ~25s | `data/raw/news_alerts.json` |
+| 6 | Ticketmaster events | `step_ticketmaster.py` | ~8min | `data/raw/ticketmaster_events.json` |
 
 ### Step 1: Seed
 Scrapes `https://kworb.net/spotify/listeners.html`. Parses the HTML table with BeautifulSoup, extracting rank, artist name, Spotify ID (from href), monthly listeners, daily change, and peak listeners. Saves ~1000+ artists to `kworb_seed.json`.

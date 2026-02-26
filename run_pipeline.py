@@ -16,6 +16,7 @@ STEPS = {
     3: ("MusicBrainz enrich", "pipeline.step4_social_handles"),
     4: ("Export CSV/JSON", "pipeline.step5_export"),
     5: ("News mentions", "pipeline.step6_news"),
+    6: ("Ticketmaster events", "pipeline.step_ticketmaster"),
 }
 
 
