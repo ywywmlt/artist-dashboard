@@ -5284,7 +5284,7 @@ function newsShowMore() {
 }
 
 // ─── Refresh ────────────────────────────────────────────────────────────────
-let _refreshPollTimer = null;
+let _dataPollTimer = null;
 
 function refreshData() {
   const btn = document.getElementById('refresh-btn');
@@ -5304,8 +5304,8 @@ function refreshData() {
 }
 
 function _pollRefresh() {
-  clearTimeout(_refreshPollTimer);
-  _refreshPollTimer = setTimeout(() => {
+  clearTimeout(_dataPollTimer);
+  _dataPollTimer = setTimeout(() => {
     fetch('/api/events/refresh/status')
       .then(r => r.json())
       .then(d => {
