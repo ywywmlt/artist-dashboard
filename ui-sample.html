@@ -826,8 +826,18 @@ async function loadData() {
   contactsLoad();
   amLoad(); mhLoad(); csLoad();
   triggeredAlerts = checkThresholds();
-  renderDashboard();
-  renderVenuesPage();
+  try {
+    renderDashboard();
+  } catch(e) {
+    console.error('renderDashboard failed:', e);
+    const kpis = document.getElementById('dashboard-kpis');
+    if (kpis) kpis.innerHTML = '<div class="col-span-4 text-red-400 text-xs p-4">Dashboard render error: ' + e.message + '</div>';
+  }
+  try {
+    renderVenuesPage();
+  } catch(e) {
+    console.error('renderVenuesPage failed:', e);
+  }
   // If artist page is already active (unlikely but safe), populate the grid now
   if (document.getElementById('page-artist')?.classList.contains('active')) showArtistList();
 }
@@ -3271,6 +3281,13 @@ function fdLoad() {
 }
 function fdSave() { localStorage.setItem(FD_KEY, JSON.stringify(fdState.profiles)); }
 function fdGenId() { return Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
+function fdToast(msg, ms) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e1b2e;border:1px solid rgba(139,92,246,0.4);color:#e2e8f0;padding:8px 18px;border-radius:8px;font-size:12px;z-index:9999;pointer-events:none;transition:opacity 0.3s';
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms || 2000);
+}
 
 function computeProfile(p) {
   // Fallback global cats for legacy profiles before per-city migration
