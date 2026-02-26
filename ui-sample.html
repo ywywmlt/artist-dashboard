@@ -31,6 +31,7 @@
   .artist-row:hover { background: rgba(139,92,246,0.08); }
   .pulse-dot { animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .trend-up { color: #4ade80; }
   .trend-down { color: #f87171; }
   #login-gate { position:fixed; inset:0; background:#0a0a0f; z-index:9999; display:flex; align-items:center; justify-content:center; }
@@ -154,7 +155,13 @@
     <header class="sticky top-0 z-10 border-b border-white/5 px-6 py-3 flex items-center justify-between" style="background: rgba(10,10,15,0.85); backdrop-filter: blur(20px);">
       <div>
         <h1 class="text-lg font-semibold text-white" id="page-title">Dashboard</h1>
-        <p class="text-xs text-slate-500" id="page-subtitle">Loading data...</p>
+        <div class="flex items-center gap-2">
+          <p class="text-xs text-slate-500" id="page-subtitle">Loading data...</p>
+          <button id="refresh-btn" onclick="refreshData()" title="Refresh all data" class="hidden flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1.5 py-0.5 rounded border border-white/8 hover:border-white/20">
+            <svg id="refresh-icon" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span id="refresh-label">Refresh</span>
+          </button>
+        </div>
       </div>
       <div class="flex items-center gap-3">
         <div class="relative" id="search-wrapper">
@@ -799,6 +806,7 @@ async function loadData() {
 
   document.getElementById('page-subtitle').innerHTML =
     `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${new Date(artists[0].scraped_at).toLocaleDateString()} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
+  document.getElementById('refresh-btn')?.classList.remove('hidden');
 
   // Count alerts: artists losing > 200K listeners/day
   const alertCount = artists.filter(a => a.daily_change < -200000).length;
@@ -2205,6 +2213,30 @@ function amSectionHTML(sid) {
   const hsLabel = hs == null ? '' : hs >= 7 ? 'Hot' : hs >= 4 ? 'Warm' : 'Cold';
   const dir = meta.alert_direction || 'above';
   const playlistChecked = meta.playlist_flag ? 'checked' : '';
+  // ── Auto-derived from touring data ───────────────────────────────────────
+  const t = touringMap[sid] || null;
+  const a = artists.find(x => x.spotify_id === sid);
+  const tmEvents = eventsMap[sid] || [];
+  const today = new Date().toISOString().slice(0,10);
+  const pastTm = tmEvents.filter(e => e.date && e.date < today);
+  const futureTm = tmEvents.filter(e => e.date && e.date >= today);
+  let suggestedHeat = null;
+  if (a && t) {
+    const d = computeArtistDemand(a.monthly_listeners, a.peak_listeners, t.is_touring, a.daily_change || 0, t.recent_event_count || 0, tmEvents);
+    suggestedHeat = Math.max(1, Math.min(10, Math.round(d.demandScore / 10)));
+  }
+  const touringBadge = !t ? '<span class="text-slate-500">No data</span>'
+    : t.is_touring ? '<span class="text-emerald-400 font-medium">● Active</span>'
+    : '<span class="text-slate-500">● Inactive</span>';
+  const lastShow = t?.last_event_date ? new Date(t.last_event_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+  const nextShow = t?.next_event_date ? new Date(t.next_event_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : (futureTm.length ? new Date(futureTm[0].date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—');
+  const derivedStrip = `<div class="grid grid-cols-4 gap-2 mb-4 p-3 rounded-lg bg-white/3 border border-white/8">
+    <div><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Status</div><div class="text-xs">${touringBadge}</div></div>
+    <div><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Recent Shows</div><div class="text-xs text-white">${t ? (t.recent_event_count || 0) : '—'} <span class="text-slate-600">/ 2yr</span></div></div>
+    <div><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Last Show</div><div class="text-xs text-slate-300">${lastShow}</div></div>
+    <div><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Next Show</div><div class="text-xs text-slate-300">${nextShow}</div></div>
+  </div>
+  ${suggestedHeat != null ? `<div class="flex items-center gap-2 mb-3 text-[10px] text-slate-500"><span class="text-amber-400/70">💡 Suggested heat score:</span><span class="font-semibold text-amber-300">${suggestedHeat}/10</span><span class="text-slate-600">(based on ${t?.recent_event_count||0} events · ${a ? fmt(a.monthly_listeners) : '—'} listeners · ${a?.daily_change >= 0 ? '+' : ''}${a ? fmt(a.daily_change||0) : '0'}/day)</span></div>` : ''}`;
   return `<div id="am-section-${sid}" class="glass rounded-xl p-5 mb-4">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
@@ -2218,6 +2250,7 @@ function amSectionHTML(sid) {
       </div>
       <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">LOCAL</span>
     </div>
+    ${derivedStrip}
     <div class="grid grid-cols-2 gap-4">
       <div class="bg-white/5 rounded-lg p-3">
         <div class="flex items-center justify-between mb-2">
@@ -2288,7 +2321,28 @@ function mhSectionHTML(sid) {
       </td>
     </tr>`;
   }).join('');
-  const emptyRow = !entries.length ? `<tr><td colspan="6" class="py-6 text-center text-xs text-slate-600">No market history yet \u2014 add the first entry below</td></tr>` : '';
+  // ── Auto-rows from Ticketmaster ─────────────────────────────────────────
+  const tmEvents = (eventsMap[sid] || [])
+    .filter(e => e.date && e.date < today)
+    .sort((a,b) => b.date.localeCompare(a.date))
+    .slice(0, 15);
+  const manualIds = new Set(entries.map(e => e.city + '|' + e.date));
+  const tmRows = tmEvents
+    .filter(e => !manualIds.has(e.city + '|' + e.date))
+    .map(e => {
+      const vn = e.venueName || e.venue || '\u2014';
+      const dl = new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      return `<tr class="opacity-40 border-b border-white/5 hover:opacity-60 transition-opacity">
+        <td class="py-1.5 pl-3 text-xs text-slate-300">${e.city || '\u2014'}</td>
+        <td class="py-1.5 text-xs text-slate-500 truncate max-w-[120px]">${vn}</td>
+        <td class="py-1.5 text-xs text-slate-500">${dl}</td>
+        <td class="py-1.5 text-right text-[9px] text-slate-600">\u2014</td>
+        <td class="py-1.5 text-xs text-slate-600"><span class="text-[8px] bg-sky-500/15 text-sky-400 px-1 py-0.5 rounded">TM</span></td>
+        <td class="py-1.5 pr-3"></td>
+      </tr>`;
+    }).join('');
+  const divider = tmRows ? `<tr><td colspan="6" class="pt-2 pb-1 pl-3 text-[9px] text-slate-600 uppercase tracking-wider">Ticketmaster history (read-only)</td></tr>` : '';
+  const emptyRow = !entries.length && !tmRows ? `<tr><td colspan="6" class="py-6 text-center text-xs text-slate-600">No market history yet \u2014 add the first entry below</td></tr>` : '';
   return `<div id="mh-section-${sid}" class="glass rounded-xl p-5 mb-4">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
@@ -2311,7 +2365,7 @@ function mhSectionHTML(sid) {
         <th class="text-left pb-2">Notes</th>
         <th class="pb-2 pr-3"></th>
       </tr></thead>
-      <tbody>${rows}${emptyRow}</tbody>
+      <tbody>${rows}${emptyRow}${divider}${tmRows}</tbody>
     </table>
     <div class="border-t border-white/5 pt-3">
       <div class="grid grid-cols-5 gap-2 mb-2">
@@ -2360,6 +2414,7 @@ function renderArtistGrid(query) {
       : bulkMode
         ? ('glass rounded-xl p-3.5 cursor-pointer border transition-all relative ' + (isSelected ? 'border-violet-500 ring-2 ring-violet-500 bg-violet-500/5' : 'border-white/5 hover:border-white/20'))
         : 'glass rounded-xl p-3.5 cursor-pointer hover:bg-white/8 border border-white/5 hover:border-violet-500/20 transition-all group';
+    const hoverAttrs = (!compareMode && !bulkMode) ? ' onmouseenter="showDemandCard(event,\'' + a.spotify_id + '\')" onmouseleave="hideDemandCard()"' : '';
     const onClickAttr = compareMode ? 'toggleCompareSelect(\'' + a.spotify_id + '\')' : (bulkMode ? 'toggleBulkSelect(\'' + a.spotify_id + '\')' : 'selectArtist(\'' + a.spotify_id + '\')');
     const checkboxOverlay = compareMode
       ? '<div class="absolute top-2 left-2 w-4 h-4 rounded border flex items-center justify-center ' + (isCmpSelected ? 'bg-cyan-500 border-cyan-500' : 'border-white/30 bg-black/20') + '">'
@@ -2377,7 +2432,7 @@ function renderArtistGrid(query) {
       ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-500 truncate max-w-[80px]">' + genre + '</span>'
       : '';
     return (
-      '<div class="' + cardCls + '" data-bulk-id="' + a.spotify_id + '" onclick="' + onClickAttr + '">' +
+      '<div class="' + cardCls + '" data-bulk-id="' + a.spotify_id + '" onclick="' + onClickAttr + '"' + hoverAttrs + '>' +
         checkboxOverlay +
         '<div class="flex items-start gap-2.5 mb-2.5">' +
           '<div class="relative flex-shrink-0">' +
@@ -2405,6 +2460,56 @@ function renderArtistGrid(query) {
       '</div>'
     );
   }).join('');
+}
+
+function showDemandCard(e, sid) {
+  const a = artists.find(x => x.spotify_id === sid);
+  if (!a) return;
+  const t = touringMap[sid] || null;
+  const showEvents = eventsMap[sid] || [];
+  const d = computeArtistDemand(a.monthly_listeners, a.peak_listeners, t ? t.is_touring : false, a.daily_change || 0, t ? t.recent_event_count : 0, showEvents);
+  const sc = d.demandScore >= 75 ? '#34d399' : d.demandScore >= 50 ? '#22d3ee' : d.demandScore >= 30 ? '#fbbf24' : '#f87171';
+  const mc = d.demandScore > 0 ? d.momentumColor.replace('text-', '') : 'slate-400';
+  let card = document.getElementById('demand-hover-card');
+  if (!card) {
+    card = document.createElement('div');
+    card.id = 'demand-hover-card';
+    card.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;display:none;opacity:0;transition:opacity 0.12s';
+    document.body.appendChild(card);
+  }
+  card.innerHTML = `<div style="background:#0f0e1a;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;min-width:210px;box-shadow:0 8px 32px rgba(0,0,0,0.7)">
+    <div style="font-size:11px;font-weight:600;color:#f8fafc;margin-bottom:8px">${a.name}</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <span style="font-size:26px;font-weight:800;color:${sc};line-height:1">${d.demandScore}</span>
+      <div>
+        <div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Demand /100</div>
+        <div style="font-size:10px;color:${sc}">${d.momentum}</div>
+      </div>
+    </div>
+    <div style="font-size:9px;display:flex;flex-direction:column;gap:4px">
+      <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Tier</span><span style="color:#e2e8f0">${d.tierLabel}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Capacity</span><span style="color:#e2e8f0">${d.capDisplay}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#64748b">MG / show</span><span style="color:#e2e8f0">${d.mgDisplay}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="color:#64748b">Heat adj.</span><span style="color:#e2e8f0">&times;${d.mult.toFixed(2)}</span></div>
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:#475569;border-top:1px solid rgba(255,255,255,0.06);padding-top:6px">Click card to view full profile</div>
+  </div>`;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const cardW = 220;
+  let left = rect.left;
+  if (left + cardW > window.innerWidth - 12) left = window.innerWidth - cardW - 12;
+  const spaceAbove = rect.top - 190;
+  card.style.left = left + 'px';
+  card.style.top = (spaceAbove > 0 ? rect.top - 185 : rect.bottom + 8) + 'px';
+  card.style.display = 'block';
+  requestAnimationFrame(() => { card.style.opacity = '1'; });
+}
+
+function hideDemandCard() {
+  const card = document.getElementById('demand-hover-card');
+  if (!card) return;
+  card.style.opacity = '0';
+  setTimeout(() => { if (card.style.opacity === '0') card.style.display = 'none'; }, 130);
 }
 
 function renderArtistCharts(a, t) {
@@ -4448,6 +4553,7 @@ function fdUpdateLive() {
   const p = fdState.draftProfile;
   const c = computeProfile(p);
   const upd = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  upd('fd-demand-preview', fdDemandCardHTML(p));
   upd('fd-kpi-strip',    fdKPIStripHTML(c, p));
   upd('fd-addl-derived', fdAddlDerivedHTML(p, c));
   upd('fd-costs-summary',fdCostSummaryHTML(c));
@@ -4683,6 +4789,38 @@ function fdPostRenderArtistProfile(p) {
   });
 }
 
+function fdDemandCardHTML(p) {
+  const name = (p.artist || '').trim();
+  if (!name) return `<div class="text-center py-2 text-[10px] text-slate-600">Type an artist name above to see market demand analysis</div>`;
+  const a = artists.find(x => x.name.toLowerCase() === name.toLowerCase());
+  if (!a) return `<div class="flex items-center gap-2 py-2 px-3 rounded-lg bg-amber-500/5 border border-amber-500/15">
+    <svg class="w-3.5 h-3.5 text-amber-400/60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    <span class="text-[10px] text-slate-500">\u201c${name}\u201d not in dataset \u2014 check spelling to link live data</span>
+  </div>`;
+  const t = touringMap[a.spotify_id] || null;
+  const showEvents = eventsMap[a.spotify_id] || [];
+  const d = computeArtistDemand(a.monthly_listeners, a.peak_listeners, t ? t.is_touring : false, a.daily_change || 0, t ? t.recent_event_count : 0, showEvents);
+  const scoreColor = d.demandScore >= 75 ? 'text-emerald-400' : d.demandScore >= 50 ? 'text-cyan-400' : d.demandScore >= 30 ? 'text-amber-400' : 'text-red-400';
+  return `<div class="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/3 border border-white/8 cursor-pointer hover:bg-white/5 transition-colors" onclick="document.getElementById('fd-artist-profile')?.scrollIntoView({behavior:'smooth',block:'nearest'})" title="Click to jump to full demand analysis">
+    <span class="text-[9px] font-bold text-emerald-400 bg-emerald-500/15 px-1.5 py-0.5 rounded flex-shrink-0">\u2713 LINKED</span>
+    <div class="flex items-center gap-1 flex-shrink-0">
+      <span class="text-[9px] text-slate-500 uppercase tracking-wider">Demand</span>
+      <span class="text-sm font-bold ${scoreColor}">${d.demandScore}</span>
+      <span class="text-[9px] text-slate-600">/100</span>
+    </div>
+    <div class="w-px h-4 bg-white/10 flex-shrink-0"></div>
+    <span class="text-[9px] px-1.5 py-0.5 rounded border ${d.tierColor} flex-shrink-0">${d.tierLabel}</span>
+    <div class="w-px h-4 bg-white/10 flex-shrink-0"></div>
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      <span class="text-[9px] text-slate-500">MG/show</span>
+      <span class="text-[10px] font-semibold text-white">${d.mgDisplay}</span>
+    </div>
+    <div class="w-px h-4 bg-white/10 flex-shrink-0"></div>
+    <span class="text-[9px] ${d.momentumColor} flex-shrink-0">${d.momentum}</span>
+    <span class="text-[9px] text-slate-600 ml-auto">\u2193 scroll for full analysis</span>
+  </div>`;
+}
+
 function fdRenderLive(p) {
   const c = computeProfile(p);
   const n = c.n;
@@ -4739,7 +4877,10 @@ function fdRenderLive(p) {
     <!-- Header -->
     <div class="flex items-start justify-between gap-4">
       <div class="flex-1 min-w-0">
-        <input type="text" class="w-full bg-transparent border-b border-white/10 text-xl font-bold text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 pb-1 mb-2" placeholder="Artist Name" value="${(p.artist||'').replace(/"/g,'&quot;')}" oninput="fdPatch('artist',this.value)">
+        <div class="relative mb-2">
+          <input type="text" id="fd-artist-input" class="w-full bg-transparent border-b border-white/10 text-xl font-bold text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 pb-1" placeholder="Search artist name…" value="${(p.artist||'').replace(/"/g,'&quot;')}" oninput="fdArtistSearch(this.value)" onblur="setTimeout(()=>{const d=document.getElementById('fd-artist-dropdown');if(d)d.classList.add('hidden');},150)" autocomplete="off">
+          <div id="fd-artist-dropdown" class="hidden fixed bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] max-h-52 overflow-y-auto"></div>
+        </div>
         <div class="flex flex-wrap items-center gap-2">
           <select class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" onchange="fdPatchVenueType(this.value)">
             <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (seat preset)</option>
@@ -4764,6 +4905,9 @@ function fdRenderLive(p) {
         <button onclick="fdCancelForm()" class="bg-white/5 hover:bg-white/10 text-slate-400 text-xs px-3 py-2 rounded-lg transition-colors">Cancel</button>
       </div>
     </div>
+
+    <!-- Demand Preview -->
+    <div id="fd-demand-preview">${fdDemandCardHTML(p)}</div>
 
     <!-- KPI Strip -->
     <div id="fd-kpi-strip">${fdKPIStripHTML(c, p)}</div>
@@ -5086,6 +5230,7 @@ function fdRenderLive(p) {
     </div>` : ''}
 
   </div>`;
+}
 
 // ─── Festival Mode ─────────────────────────────────────────────────────────────────
 function fdToggleFestivalMode() {
@@ -5111,7 +5256,10 @@ function fdFestivalLineupHTML(p) {
     var roleOpts = roles.map(function(r) {
       return '<option value="' + r + '" ' + (fa.role === r ? 'selected' : '') + '>' + r + '</option>';
     }).join('');
-    return '<tr class="border-b border-white/5">' +
+    var hoverRow = fa.spotify_id
+      ? ' onmouseenter="showDemandCard(event,\'' + fa.spotify_id + '\')" onmouseleave="hideDemandCard()" style="cursor:default"'
+      : '';
+    return '<tr class="border-b border-white/5"' + hoverRow + '>' +
       '<td class="py-2 px-1 text-[11px] text-white">' + (fa.artist_name || '—') + '</td>' +
       '<td class="py-2 px-1"><select class="bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none" onchange="fdPatchFestivalArtist(\'' + fa.id + '\',\'role\',this.value)">' + roleOpts + '</select></td>' +
       '<td class="py-2 px-1"><input type="number" class="bg-white/5 border border-white/10 rounded px-2 py-0.5 text-[11px] text-white w-28 focus:outline-none" min="0" value="' + (fa.mg || 0) + '" oninput="fdPatchFestivalArtist(\'' + fa.id + '\',\'mg\',Number(this.value))"></td>' +
@@ -5131,12 +5279,46 @@ function fdFestivalLineupHTML(p) {
     '<div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/5">' +
       '<div class="relative flex-1">' +
         '<input type="text" id="fd-festival-search" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50" placeholder="Search artists..." oninput="fdFestivalSearch()" autocomplete="off">' +
-        '<div id="fd-festival-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-white/10 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto"></div>' +
+        '<div id="fd-festival-dropdown" class="hidden fixed bg-slate-900 border border-white/10 rounded-lg shadow-xl z-[9999] max-h-48 overflow-y-auto"></div>' +
       '</div>' +
       '<select id="fd-festival-role" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none">' + roleAddOpts + '</select>' +
       '<button onclick="fdAddFestivalArtist()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">+ Add</button>' +
     '</div>' +
   '</div>';
+}
+
+function fdArtistSearch(val) {
+  fdPatch('artist', val);
+  const dropdown = document.getElementById('fd-artist-dropdown');
+  if (!dropdown) return;
+  const q = (val || '').trim().toLowerCase();
+  if (q.length < 2) { dropdown.classList.add('hidden'); return; }
+  const matches = artists.filter(a => a.name.toLowerCase().includes(q)).slice(0, 10);
+  if (!matches.length) { dropdown.classList.add('hidden'); return; }
+  dropdown.innerHTML = matches.map(a =>
+    '<button class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors" onmousedown="fdArtistPick(\'' + a.spotify_id + '\')">' +
+      '<span class="text-xs text-white">' + a.name + '</span>' +
+      '<span class="text-[10px] text-slate-500">' + fmt(a.monthly_listeners) + ' listeners</span>' +
+    '</button>'
+  ).join('');
+  dropdown.classList.remove('hidden');
+  const input = document.getElementById('fd-artist-input');
+  if (input) {
+    const r = input.getBoundingClientRect();
+    dropdown.style.left  = r.left + 'px';
+    dropdown.style.top   = (r.bottom + 2) + 'px';
+    dropdown.style.width = r.width + 'px';
+  }
+}
+
+function fdArtistPick(sid) {
+  const a = artists.find(x => x.spotify_id === sid);
+  if (!a) return;
+  const input = document.getElementById('fd-artist-input');
+  if (input) input.value = a.name;
+  const dropdown = document.getElementById('fd-artist-dropdown');
+  if (dropdown) dropdown.classList.add('hidden');
+  fdPatch('artist', a.name);
 }
 
 function fdFestivalSearch() {
@@ -5154,6 +5336,10 @@ function fdFestivalSearch() {
     '</button>';
   }).join('');
   dropdown.classList.remove('hidden');
+  var r = input.getBoundingClientRect();
+  dropdown.style.left  = r.left + 'px';
+  dropdown.style.top   = (r.bottom + 2) + 'px';
+  dropdown.style.width = r.width + 'px';
 }
 
 function fdFestivalPickArtist(sid) {
@@ -5212,8 +5398,6 @@ function fdPatchFestivalArtist(faId, field, value) {
   } else {
     fdSave();
   }
-}
-
 }
 
 // ─── Multi-city helpers ────────────────────────────────────────────────────────
@@ -5801,6 +5985,49 @@ if (sessionStorage.getItem(_KEY) === '1') {
   document.getElementById('app-shell').style.removeProperty('display');
 } else {
   setTimeout(() => document.getElementById('login-user').focus(), 50);
+}
+
+// ─── Refresh ────────────────────────────────────────────────────────────────
+let _dataRefreshTimer = null;
+function refreshData() {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const lbl = document.getElementById('refresh-label');
+  if (btn?.dataset.running === '1') return;
+  if (btn) btn.dataset.running = '1';
+  if (icon) icon.style.animation = 'spin 0.8s linear infinite';
+  if (lbl) lbl.textContent = 'Refreshing\u2026';
+  fetch('/api/events/refresh', { method: 'POST' })
+    .then(r => r.json())
+    .then(d => { if (d.status === 'started' || d.status === 'already_running') _pollRefreshStatus(); })
+    .catch(e => _refreshDone('Error'));
+}
+function _pollRefreshStatus() {
+  clearTimeout(_dataRefreshTimer);
+  _dataRefreshTimer = setTimeout(() => {
+    fetch('/api/events/refresh/status').then(r => r.json()).then(d => {
+      const lbl = document.getElementById('refresh-label');
+      if (lbl && d.message) lbl.textContent = d.progress < 100 ? d.progress + '% \u2014 ' + d.message.slice(0, 28) : 'Done!';
+      if (d.running) { _pollRefreshStatus(); return; }
+      Promise.all([
+        fetch('data/raw/kworb_seed.json').then(r => r.json()).catch(() => null),
+        fetch('data/raw/news_alerts.json').then(r => r.json()).catch(() => null),
+        fetch('data/raw/ticketmaster_events.json').then(r => r.json()).catch(() => null),
+      ]).then(([seed, news, events]) => {
+        if (seed) location.reload();
+      });
+      _refreshDone(d.error ? 'Error' : 'Refresh');
+    }).catch(() => _refreshDone('Error'));
+  }, 2500);
+}
+function _refreshDone(label) {
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const lbl = document.getElementById('refresh-label');
+  if (btn) btn.dataset.running = '';
+  if (icon) icon.style.animation = '';
+  if (lbl) lbl.textContent = label;
+  setTimeout(() => { const l = document.getElementById('refresh-label'); if (l && l.textContent !== 'Refresh') l.textContent = 'Refresh'; }, 3000);
 }
 
 // ─── Init ───
