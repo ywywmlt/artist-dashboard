@@ -620,6 +620,7 @@ const DEAL_STAGES = [
   { label: 'Show in Pre-production', active: 'bg-amber-500/20 border-amber-500 text-amber-300' },
   { label: 'Tickets Live',           active: 'bg-cyan-500/20 border-cyan-500 text-cyan-300' },
   { label: 'Completed',              active: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
+  { label: 'Passed',                 active: 'bg-red-500/20 border-red-500 text-red-300' },
 ];
 let compareMode = false;
 let bulkMode = false;
@@ -5864,7 +5865,7 @@ function rpCycleStage(id, dir, evt) {
   evt.stopPropagation();
   const p = fdState.profiles.find(x => x.id === id);
   if (!p) return;
-  const stages = DEAL_STAGES.map(ds => ds.label);
+  const stages = FMB_STAGES.map(s => s.v);
   const idx = stages.indexOf(p.deal_stage);
   let next;
   if (idx === -1) { next = dir === 1 ? 0 : stages.length - 1; }
@@ -6114,9 +6115,9 @@ function _pollRefreshStatus() {
         fetch('data/raw/news_alerts.json').then(r => r.json()).catch(() => null),
         fetch('data/raw/ticketmaster_events.json').then(r => r.json()).catch(() => null),
       ]).then(([seed, news, events]) => {
-        if (seed) location.reload();
-      });
-      _refreshDone(d.error ? 'Error' : 'Refresh');
+        if (seed) { location.reload(); return; }
+        _refreshDone(d.error ? 'Error' : 'Refresh');
+      }).catch(() => _refreshDone('Error'));
     }).catch(() => _refreshDone('Error'));
   }, 2500);
 }
