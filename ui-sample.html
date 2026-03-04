@@ -4344,6 +4344,29 @@ async function fdExportExcel() {
   sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='< 100% = profitable';
   ws.getRow(r).height=17; r++;
 
+  // Break-Even + Working Capital
+  const _beFull = c.cityCalcs.reduce((s,cc) => s + (cc.cats||[]).reduce((a,cat) => a + (Number(cat.count)||0), 0) * cc.shows, 0);
+  const _advPct = Number((p.ticketing_settlement||{}).advance_pct)||0;
+  r++;
+  const _beRevPerSeat = totAttend > 0 ? gRevAll / totAttend : 0;
+  const _beAtt = _beRevPerSeat > 0 ? Math.round(totalCosts / _beRevPerSeat) : 0;
+  const _bePct = _beFull > 0 ? _beAtt / _beFull : 0;
+  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Break-Even Sell-Through %';
+  sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'0.0%'}).value=_bePct;
+  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='sell-through needed to cover all costs';
+  ws.getRow(r).height=17; r++;
+
+  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Break-Even Attendance';
+  sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'#,##0'}).value=_beAtt;
+  ws.getRow(r).height=17; r++;
+
+  r++;
+  const _wcReq = Math.max(0, artistMG + opAll + agFees + bfFees - tktRevAll * _advPct * (1 - feePct));
+  sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dark}}}).value='Working Capital Requirement';
+  sc(ws.getCell(r,2),{fill:C.totR,font:{bold:true,color:{argb:C.red}},align:{horizontal:'right'},numFmt:'$#,##0'}).value=_wcReq;
+  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='peak cash out before advance receipts';
+  ws.getRow(r).height=17; r++;
+
   // INVESTOR SCENARIOS
   if (invScens.length > 0) {
     r++; r++;
@@ -4470,6 +4493,264 @@ async function fdExportExcel() {
   spRow2('ROI',           spScens.map(s=>s.roi),   '0.0%',  {profit:true});
   sr++;
   spRow2('Implied Attendance', spScens.map(s=>s.att), '#,##0');
+
+  if (invScens.length > 0) {
+    sr++; sr++;
+    spHdr2('INVESTOR RETURNS AT EACH SCENARIO', C.purple);
+    for (const invScen of invScens) {
+      const eq2 = Number(invScen.equity)||0;
+      if (eq2 <= 0) continue;
+      const hr2 = Number(invScen.hurdle_rate)||0.20;
+      const sp2 = Number(invScen.above_hurdle_investor_pct)||0.50;
+      const lbl2 = invScen.label || 'Investor';
+      const moics = spScens.map(s => {
+        const net = s.net;
+        return (eq2 + Math.min(net, eq2 * hr2) + Math.max(0, net - eq2 * hr2) * sp2) / eq2;
+      });
+      const roes = spScens.map(s => {
+        const net = s.net;
+        return (Math.min(net, eq2 * hr2) + Math.max(0, net - eq2 * hr2) * sp2) / eq2;
+      });
+      spRow2(lbl2 + ' \u2014 MOIC', moics, '0.00"x"', {});
+      spRow2(lbl2 + ' \u2014 Return on Equity', roes, '0.0%', { profit: true });
+    }
+  }
+
+  // ── Sheet 3: Cash Flow Timeline ──────────────────────────────────────────
+  const ws3 = wb.addWorksheet('Cash Flow');
+  ws3.views = [{ showGridLines: false, zoomScale: 110 }];
+  ws3.columns = [{ width: 16 }, { width: 30 }, { width: 16 }, { width: 16 }, { width: 18 }];
+
+  function _addDays(dt, days)   { const d = new Date(dt); d.setDate(d.getDate() + days); return d; }
+  function _addMonths(dt, mnths) { const d = new Date(dt); d.setMonth(d.getMonth() + mnths); return d; }
+
+  const _tktSet    = p.ticketing_settlement || {};
+  const _advDays   = Number(_tktSet.advance_days_before) || 30;
+  const _daysAfter = Number(_tktSet.days_after_show)     || 7;
+
+  const _firstShowStr = _exDate || null;
+  const _firstShow    = _firstShowStr ? new Date(_firstShowStr + 'T12:00:00') : null;
+
+  const _cfEvents = [];
+  if (_firstShow) {
+    // 1. Agency/BluFin fees — 6 months before first show
+    if (agFees + bfFees > 0) {
+      _cfEvents.push({ date: _addMonths(_firstShow, -6), label: 'Agency & BluFin Fees', out: agFees + bfFees, cin: 0 });
+    }
+    // 2. MG payments
+    if (mgSched.length > 0) {
+      for (const pmt of mgSched) {
+        const mb  = Number(pmt.months_before) || 0;
+        const amt = artistMG * (Number(pmt.pct) || 0);
+        if (amt > 0) _cfEvents.push({ date: _addMonths(_firstShow, -mb), label: pmt.label || 'MG Payment', out: amt, cin: 0 });
+      }
+    } else if (artistMG > 0) {
+      _cfEvents.push({ date: _addMonths(_firstShow, -2), label: 'Artist MG (full)', out: artistMG, cin: 0 });
+    }
+    // 3. Operating costs + ticket advance per city + show markers
+    for (const cc of c.cityCalcs) {
+      const cityDateStr = cc.tc.concert_date || _firstShowStr;
+      if (!cityDateStr) continue;
+      const cityDate = new Date(cityDateStr + 'T12:00:00');
+      const cityName = cc.tc.city_name || cc.tc.venue_name || 'City';
+      const cpp = (Number(cc.tc.venue_fee)||0) + (Number(cc.tc.production)||0) + (Number(cc.tc.hospitality)||0) + (Number(cc.tc.insurance)||0);
+      const cityOp = cpp * cc.shows;
+      if (cityOp > 0) {
+        _cfEvents.push({ date: _addDays(cityDate, -60), label: 'Operating Costs \u2014 ' + cityName, out: cityOp, cin: 0 });
+      }
+      if (_advPct > 0) {
+        const advAmt = cc.total_ticket_rev * _advPct * (1 - feePct);
+        if (advAmt > 0) {
+          _cfEvents.push({ date: _addDays(cityDate, -_advDays), label: 'Ticket Advance \u2014 ' + cityName, out: 0, cin: advAmt });
+        }
+      }
+      _cfEvents.push({ date: cityDate, label: '\u2605 SHOW DATE \u2014 ' + cityName + (cc.shows > 1 ? ' (\xd7' + cc.shows + ')' : ''), out: 0, cin: 0, isShow: true });
+    }
+    // 6. Additional revenue settlement — 1 day after first show
+    if (addlAll > 0) {
+      _cfEvents.push({ date: _addDays(_firstShow, 1), label: 'Additional Revenue Settlement (Merch / F&B / Sponsorship)', out: 0, cin: addlAll });
+    }
+    // 7. Final ticket settlement
+    const _remainTkt = tktRevAll * (1 - _advPct) * (1 - feePct);
+    if (_remainTkt > 0) {
+      _cfEvents.push({ date: _addDays(_firstShow, _daysAfter), label: 'Final Ticket Settlement (' + _daysAfter + ' days after show)', out: 0, cin: _remainTkt });
+    } else if (_advPct === 0 && tktRevAll * (1 - feePct) > 0) {
+      _cfEvents.push({ date: _addDays(_firstShow, _daysAfter), label: 'Ticket Settlement (' + _daysAfter + ' days after show)', out: 0, cin: tktRevAll * (1 - feePct) });
+    }
+  }
+  _cfEvents.sort((a, b) => a.date - b.date);
+
+  let r3 = 1;
+  ws3.mergeCells('A'+r3+':E'+r3);
+  sc(ws3.getCell('A'+r3), { fill: C.purple, font: { bold: true, size: 14, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  CASH FLOW TIMELINE  \u2014  ' + (p.artist || 'Artist').toUpperCase();
+  ws3.getRow(r3).height = 30; r3++;
+  ws3.mergeCells('A'+r3+':E'+r3);
+  sc(ws3.getCell('A'+r3), { fill: C.dark, font: { size: 9, italic: true, color: { argb: 'FF94A3B8' } }, align: { horizontal: 'left' } }).value = '  Cash Out = upfront payments  \xb7  Cash In = revenue receipts  \xb7  Balance = running cumulative';
+  ws3.getRow(r3).height = 14; r3++; r3++;
+
+  ['Date', 'Milestone', 'Cash Out', 'Cash In', 'Cumulative Balance'].forEach((h, i) => {
+    sc(ws3.getCell(r3, i + 1), { fill: C.bgLt, font: { bold: true, color: { argb: C.dgray } }, align: { horizontal: i <= 1 ? 'left' : 'right' }, border: bBot('FF94A3B8') }).value = h;
+  });
+  ws3.getRow(r3).height = 16; r3++;
+
+  let _cumBal = 0;
+  for (const ev of _cfEvents) {
+    _cumBal += ev.cin - ev.out;
+    const isShow = !!ev.isShow;
+    const showFill = 'FFFFF8DC';
+    const showFontC = 'FF92400E';
+    sc(ws3.getCell(r3, 1), { fill: isShow ? showFill : undefined, font: { bold: isShow, color: { argb: isShow ? showFontC : C.gray } }, align: { horizontal: 'left' }, numFmt: 'mmm d, yyyy' }).value = ev.date;
+    sc(ws3.getCell(r3, 2), { fill: isShow ? showFill : undefined, font: { bold: isShow, color: { argb: isShow ? showFontC : C.dgray } } }).value = ev.label;
+    if (ev.out > 0) {
+      sc(ws3.getCell(r3, 3), { fill: isShow ? showFill : undefined, font: { color: { argb: C.red } }, align: { horizontal: 'right' }, numFmt: '"($"#,##0")"' }).value = -ev.out;
+    } else {
+      sc(ws3.getCell(r3, 3), { fill: isShow ? showFill : undefined });
+    }
+    if (ev.cin > 0) {
+      sc(ws3.getCell(r3, 4), { fill: isShow ? showFill : undefined, font: { color: { argb: C.green } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = ev.cin;
+    } else {
+      sc(ws3.getCell(r3, 4), { fill: isShow ? showFill : undefined });
+    }
+    if (!isShow) {
+      sc(ws3.getCell(r3, 5), { fill: _cumBal >= 0 ? C.totG : C.totR, font: { bold: true, color: { argb: _cumBal >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = _cumBal;
+    } else {
+      sc(ws3.getCell(r3, 5), { fill: showFill });
+    }
+    ws3.getRow(r3).height = 17; r3++;
+  }
+
+  // Totals row
+  r3++;
+  const _cfTotalOut = _cfEvents.reduce((s, e) => s + e.out, 0);
+  const _cfTotalIn  = _cfEvents.reduce((s, e) => s + e.cin, 0);
+  const _cfFinalBal = _cfTotalIn - _cfTotalOut;
+  [1, 2, 3, 4, 5].forEach(col => sc(ws3.getCell(r3, col), { fill: C.dark, font: { bold: true, color: { argb: C.white } } }));
+  sc(ws3.getCell(r3, 2), { fill: C.dark, font: { bold: true, color: { argb: C.white } } }).value = 'TOTALS';
+  if (_cfTotalOut > 0) sc(ws3.getCell(r3, 3), { fill: C.totR, font: { bold: true, color: { argb: C.red } }, align: { horizontal: 'right' }, numFmt: '"($"#,##0")"' }).value = -_cfTotalOut;
+  if (_cfTotalIn  > 0) sc(ws3.getCell(r3, 4), { fill: C.totG, font: { bold: true, color: { argb: C.green } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = _cfTotalIn;
+  sc(ws3.getCell(r3, 5), { fill: _cfFinalBal >= 0 ? C.totG : C.totR, font: { bold: true, color: { argb: _cfFinalBal >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = _cfFinalBal;
+  ws3.getRow(r3).height = 20; r3++;
+
+  // Peak working capital callout
+  r3++;
+  let _peakDrain = 0, _runBal3 = 0;
+  for (const ev of _cfEvents) { _runBal3 += ev.cin - ev.out; if (_runBal3 < _peakDrain) _peakDrain = _runBal3; }
+  ws3.mergeCells('A'+r3+':B'+r3);
+  sc(ws3.getCell('A'+r3), { fill: C.rose, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  PEAK WORKING CAPITAL REQUIRED';
+  sc(ws3.getCell(r3, 3), { fill: C.rose, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = Math.abs(_peakDrain);
+  sc(ws3.getCell(r3, 4), { fill: C.rose, font: { size: 8, italic: true, color: { argb: 'FFFECDD3' } } }).value = 'max cash out at any point';
+  ws3.getRow(r3).height = 20;
+
+  // ── Sheet 4: Sensitivity Matrix ──────────────────────────────────────────
+  const ws4 = wb.addWorksheet('Sensitivity');
+  ws4.views = [{ showGridLines: false, zoomScale: 110 }];
+  ws4.columns = [{ width: 22 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }];
+
+  // Recompute full-capacity baselines (avoids block-scope conflict with Sheet 2)
+  let _s4FullTkt = 0, _s4FullSeats = 0;
+  for (const cc of c.cityCalcs) {
+    const _sc4 = cc.cats || [];
+    _s4FullSeats += _sc4.reduce((s, cat) => s + (Number(cat.count)||0), 0) * cc.shows;
+    _s4FullTkt   += _sc4.reduce((s, cat) => s + (Number(cat.price)||0) * (Number(cat.count)||0), 0) * cc.shows;
+  }
+
+  const S4_FILLS  = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00];
+  const S4_PMULTS = [0.80, 0.90, 1.00, 1.10, 1.20];
+
+  function _s4Net(fr, pm) {
+    const tkt = _s4FullTkt * pm * fr;
+    const fee = tkt * feePct;
+    const fnb = fHead * fPct * (_s4FullSeats * fr);
+    return (tkt + _merch + fnb + _spon) - (_fixedCosts + fee);
+  }
+
+  function _s4Color(val, minV, maxV) {
+    if (minV === maxV) return 'FFFFFFFF';
+    const neutral = (minV < 0 && maxV > 0) ? 0 : (minV + maxV) / 2;
+    if (val >= neutral) {
+      const t = maxV > neutral ? Math.max(0, Math.min(1, (val - neutral) / (maxV - neutral))) : 1;
+      const rv = Math.round(255 + t * (110 - 255)), gv = Math.round(255 + t * (231 - 255)), bv = Math.round(255 + t * (183 - 255));
+      return 'FF' + [rv,gv,bv].map(x => Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0').toUpperCase()).join('');
+    } else {
+      const t = neutral > minV ? Math.max(0, Math.min(1, (neutral - val) / (neutral - minV))) : 1;
+      const rv = Math.round(255 + t * (252 - 255)), gv = Math.round(255 + t * (165 - 255)), bv = Math.round(255 + t * (165 - 255));
+      return 'FF' + [rv,gv,bv].map(x => Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0').toUpperCase()).join('');
+    }
+  }
+
+  const _s4Nets   = S4_FILLS.map(fr => S4_PMULTS.map(pm => _s4Net(fr, pm)));
+  const _s4All    = _s4Nets.flat();
+  const _s4Min    = Math.min(..._s4All), _s4Max = Math.max(..._s4All);
+  const _s4CurFr  = _s4FullSeats > 0 ? totAttend / _s4FullSeats : 1;
+  const _s4CurRow = S4_FILLS.reduce((bi, fr, i) => Math.abs(fr - _s4CurFr) < Math.abs(S4_FILLS[bi] - _s4CurFr) ? i : bi, 0);
+
+  let r4 = 1;
+  ws4.mergeCells('A'+r4+':F'+r4);
+  sc(ws4.getCell('A'+r4), { fill: C.purple, font: { bold: true, size: 14, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  SENSITIVITY MATRIX  \u2014  ' + (p.artist || 'Artist').toUpperCase();
+  ws4.getRow(r4).height = 30; r4++;
+  ws4.mergeCells('A'+r4+':F'+r4);
+  sc(ws4.getCell('A'+r4), { fill: C.dark, font: { size: 9, italic: true, color: { argb: 'FF94A3B8' } }, align: { horizontal: 'left' } }).value = '  Rows = Fill Rate  \xb7  Columns = Ticket Price Multiplier  \xb7  \u25c4 = current scenario';
+  ws4.getRow(r4).height = 14; r4++; r4++;
+
+  // NET PROFIT section header
+  ws4.mergeCells('A'+r4+':F'+r4);
+  sc(ws4.getCell('A'+r4), { fill: C.dark, font: { bold: true, size: 10, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  NET PROFIT BY FILL RATE & TICKET PRICE';
+  ws4.getRow(r4).height = 18; r4++;
+
+  // Column headers
+  sc(ws4.getCell(r4, 1), { fill: C.bgLt, font: { bold: true, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: bBot('FF94A3B8') }).value = 'Fill Rate \\ Price Mult';
+  S4_PMULTS.forEach((pm, i) => {
+    sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'right' }, border: bBot('FF94A3B8') }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
+  });
+  ws4.getRow(r4).height = 18; r4++;
+
+  // NET PROFIT data rows
+  S4_FILLS.forEach((fr, ri) => {
+    const isCur = ri === _s4CurRow;
+    sc(ws4.getCell(r4, 1), { fill: isCur ? C.calcB : C.bgLt, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
+    S4_PMULTS.forEach((pm, ci) => {
+      const net = _s4Nets[ri][ci];
+      sc(ws4.getCell(r4, ci + 2), { fill: _s4Color(net, _s4Min, _s4Max), font: { bold: isCur, color: { argb: net >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = net;
+    });
+    ws4.getRow(r4).height = isCur ? 20 : 17; r4++;
+  });
+
+  // MOIC grid (first investor scenario with equity > 0)
+  if (invScens.length > 0 && Number(invScens[0].equity) > 0) {
+    const _iv  = invScens[0];
+    const _ieq = Number(_iv.equity)||0;
+    const _ihr = Number(_iv.hurdle_rate)||0.20;
+    const _isp = Number(_iv.above_hurdle_investor_pct)||0.50;
+
+    r4++;
+    ws4.mergeCells('A'+r4+':F'+r4);
+    sc(ws4.getCell('A'+r4), { fill: C.purple, font: { bold: true, size: 10, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  INVESTOR MOIC \u2014 ' + (_iv.label || 'Investor').toUpperCase();
+    ws4.getRow(r4).height = 18; r4++;
+
+    // Column headers (repeat)
+    sc(ws4.getCell(r4, 1), { fill: C.bgLt, font: { bold: true, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: bBot('FF94A3B8') }).value = 'Fill Rate \\ Price Mult';
+    S4_PMULTS.forEach((pm, i) => {
+      sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'right' }, border: bBot('FF94A3B8') }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
+    });
+    ws4.getRow(r4).height = 18; r4++;
+
+    const _s4Moics   = S4_FILLS.map(fr => S4_PMULTS.map(pm => {
+      const net = _s4Net(fr, pm);
+      return (_ieq + Math.min(net, _ieq * _ihr) + Math.max(0, net - _ieq * _ihr) * _isp) / _ieq;
+    }));
+    const _s4MoicAll = _s4Moics.flat();
+    const _s4MMin    = Math.min(..._s4MoicAll), _s4MMax = Math.max(..._s4MoicAll);
+
+    S4_FILLS.forEach((fr, ri) => {
+      const isCur = ri === _s4CurRow;
+      sc(ws4.getCell(r4, 1), { fill: isCur ? C.calcB : C.bgLt, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
+      S4_PMULTS.forEach((pm, ci) => {
+        const moic = _s4Moics[ri][ci];
+        sc(ws4.getCell(r4, ci + 2), { fill: _s4Color(moic, _s4MMin, _s4MMax), font: { bold: isCur, color: { argb: moic >= 1 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '0.00"x"' }).value = moic;
+      });
+      ws4.getRow(r4).height = isCur ? 20 : 17; r4++;
+    });
+  }
 
   // Download
   const buf  = await wb.xlsx.writeBuffer();
