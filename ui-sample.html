@@ -4382,6 +4382,95 @@ async function fdExportExcel() {
     }
   }
 
+  // ── Sheet 2: Sell-Through Scenarios ──────────────────────────────────────
+  const ws2 = wb.addWorksheet('Scenarios');
+  ws2.views = [{ showGridLines: false, zoomScale: 110 }];
+  ws2.columns = [{ width: 34 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
+
+  // Full-capacity (100% sell-through) baselines
+  let _fullTkt = 0, _fullSeats = 0;
+  for (const cc of c.cityCalcs) {
+    const cats = cc.cats || [];
+    _fullSeats += cats.reduce((s, cat) => s + (Number(cat.count)||0), 0) * cc.shows;
+    _fullTkt   += cats.reduce((s, cat) => s + (Number(cat.price)||0) * (Number(cat.count)||0), 0) * cc.shows;
+  }
+  const _fixedCosts = artistMG + opAll + agFees + bfFees; // ticketing fee varies per scenario
+  const _merch = mGross * mSplit * n;
+  const _spon  = spPS * n;
+  const SP_PCTS = [0.80, 0.85, 0.90, 0.95, 1.00];
+  const spScens = SP_PCTS.map(pct => {
+    const tkt  = _fullTkt * pct;
+    const fee  = tkt * feePct;
+    const fnb  = fHead * fPct * (_fullSeats * pct);
+    const addl = _merch + fnb + _spon;
+    const gross = tkt + addl;
+    const costs = _fixedCosts + fee;
+    const net   = gross - costs;
+    return { pct, tkt, fee, fnb, addl, gross, costs, net, roi: costs > 0 ? net / costs : 0, att: Math.round(_fullSeats * pct) };
+  });
+
+  const SPHDR_COLS = ['FF991B1B','FFB45309','FF854D0E','FF166534','FF065F46'];
+  let sr = 1;
+
+  // Title
+  ws2.mergeCells('A'+sr+':F'+sr);
+  sc(ws2.getCell('A'+sr),{fill:C.purple,font:{bold:true,size:13,color:{argb:C.white}},align:{horizontal:'left'}}).value='  SELL-THROUGH SCENARIOS  —  '+(p.artist||'Artist').toUpperCase();
+  ws2.getRow(sr).height=28; sr++;
+  ws2.mergeCells('A'+sr+':F'+sr);
+  sc(ws2.getCell('A'+sr),{fill:C.dark,font:{size:9,italic:true,color:{argb:'FF94A3B8'}},align:{horizontal:'left'}}).value
+    ='  Based on full-capacity pricing  ·  F&B scales with attendance  ·  All other costs fixed';
+  ws2.getRow(sr).height=14; sr++; sr++;
+
+  // Column headers
+  sc(ws2.getCell(sr,1),{fill:C.bgLt,font:{bold:true,color:{argb:C.dgray}},align:{horizontal:'left'},border:bBot('FF94A3B8')}).value='Metric';
+  SP_PCTS.forEach((pct,i)=>{
+    sc(ws2.getCell(sr,i+2),{fill:SPHDR_COLS[i],font:{bold:true,size:12,color:{argb:C.white}},align:{horizontal:'right'},border:bBot('FF94A3B8')}).value=(pct*100)+'%';
+  });
+  ws2.getRow(sr).height=24; sr++;
+
+  function spHdr2(text,col){
+    ws2.mergeCells('A'+sr+':F'+sr);
+    sc(ws2.getCell('A'+sr),{fill:col,font:{bold:true,size:10,color:{argb:C.white}},align:{horizontal:'left'}}).value='  '+text;
+    ws2.getRow(sr).height=18; sr++;
+  }
+  function spRow2(label,vals,numFmt,opts){
+    opts=opts||{};
+    sc(ws2.getCell(sr,1),{font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:opts.bold?C.dark:C.gray}}}).value=label;
+    vals.forEach((v,i)=>{
+      const isPos=typeof v==='number'&&v>=0;
+      const bg=opts.profit?(isPos?C.totG:C.totR):(i===4?'FFF0FDF4':opts.fill||undefined);
+      const fc=opts.profit?(isPos?C.green:C.red):(i===4?C.green:C.blueFont);
+      sc(ws2.getCell(sr,i+2),{fill:bg,font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:fc}},align:{horizontal:'right'},numFmt,border:opts.border||undefined}).value=v;
+    });
+    ws2.getRow(sr).height=opts.tall?22:17; sr++;
+  }
+
+  spHdr2('TICKET REVENUE',C.navy);
+  spRow2('Ticket Revenue (at sell-through)', spScens.map(s=>s.tkt), '$#,##0');
+  if(feePct>0) spRow2('Less: Ticketing Fee ('+(feePct*100).toFixed(0)+'%)', spScens.map(s=>-s.fee), '"($"#,##0")"');
+  sr++;
+
+  spHdr2('ADDITIONAL REVENUE',C.navy);
+  if(_merch>0) spRow2('Merch Revenue (fixed)', spScens.map(()=>_merch), '$#,##0');
+  if(fHead>0||fPct>0) spRow2('F&B Revenue (scales with attendance)', spScens.map(s=>s.fnb), '$#,##0');
+  if(_spon>0)  spRow2('Sponsorship Revenue (fixed)', spScens.map(()=>_spon), '$#,##0');
+  sr++;
+
+  spHdr2('COSTS (Fixed except ticketing fee)',C.dark);
+  spRow2('Artist MG', spScens.map(()=>artistMG), '$#,##0');
+  spRow2('Operating Costs', spScens.map(()=>opAll), '$#,##0');
+  if(agFees+bfFees>0) spRow2('Agency / Fixed Fees', spScens.map(()=>agFees+bfFees), '$#,##0');
+  if(feePct>0) spRow2('Ticketing Fee (variable)', spScens.map(s=>s.fee), '$#,##0');
+  sr++;
+
+  spHdr2('RESULTS SUMMARY',C.purple);
+  spRow2('GROSS REVENUE', spScens.map(s=>s.gross), '$#,##0',{bold:true,tall:true});
+  spRow2('TOTAL COSTS',   spScens.map(s=>s.costs), '$#,##0',{bold:true});
+  spRow2('NET PROFIT',    spScens.map(s=>s.net),   '$#,##0',{bold:true,profit:true,tall:true,border:bTop('FF94A3B8')});
+  spRow2('ROI',           spScens.map(s=>s.roi),   '0.0%',  {profit:true});
+  sr++;
+  spRow2('Implied Attendance', spScens.map(s=>s.att), '#,##0');
+
   // Download
   const buf  = await wb.xlsx.writeBuffer();
   const blob = new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
