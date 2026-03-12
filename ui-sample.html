@@ -607,7 +607,7 @@ let competitorShows = [];
 const COMPETITOR_KEY = 'artist-dashboard-competitor-shows';
 let triggeredAlerts = [];  // in-memory, reset on each data load
 let momentumTab = 'gain';
-let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false, invReturnEnabled: false, invReturnPct: 20, invReturnScenId: null };
+let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false };
 
 // ─── Helpers ───
 function fmt(n) {
@@ -4235,6 +4235,10 @@ function fdMigrateProfile(p) {
   }
   for (const scen of (p.investor_scenarios || [])) {
     if (!scen.investors) scen.investors = [];
+    if (scen.use_for_roi === undefined) scen.use_for_roi = false;
+    for (const inv of scen.investors) {
+      if (inv.expected_return_pct === undefined) inv.expected_return_pct = 20;
+    }
   }
   if (!p.support_acts) p.support_acts = [];
   if (p.radius_days === undefined) p.radius_days = 90;
@@ -4552,8 +4556,8 @@ function fdStartCreate() {
     },
     ticketing_settlement: { company: 'ticketmaster', days_after_show: 5, advance_pct: 0, advance_days_before: 0 },
     investor_scenarios: [
-      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] },
-      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] }
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false }
     ],
     deal_stage: null,
     festival_mode: false,
@@ -4563,7 +4567,6 @@ function fdStartCreate() {
   };
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
   fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
-  fdSensState.invReturnEnabled = false; fdSensState.invReturnPct = 20; fdSensState.invReturnScenId = null;
   fdRender();
 }
 
@@ -4575,7 +4578,6 @@ function fdSelectProfile(id) {
   fdMigrateProfile(fdState.draftProfile);
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
   fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
-  fdSensState.invReturnEnabled = false; fdSensState.invReturnPct = 20; fdSensState.invReturnScenId = null;
   fdRender();
 }
 
@@ -5946,7 +5948,7 @@ function fdKPIStripHTML(c, p) {
   const mc = bestMoic >= 1 ? 'text-violet-400' : 'text-slate-400';
   const adjRoi = fdSensAdjustedROI(c, p);
   const roiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
-  const roiLabel = fdSensState.invReturnEnabled ? 'ROI (adj.)' : 'ROI';
+  const roiLabel = (p?.investor_scenarios || []).some(s => s.use_for_roi && Number(s.equity) > 0) ? 'ROI (adj.)' : 'ROI';
   return `<div class="grid grid-cols-5 gap-3">
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_attendance)} total attendance · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
@@ -6027,15 +6029,24 @@ function fdPLSummaryHTML(p, c) {
     ${(() => {
       const adjRoi = fdSensAdjustedROI(c, p);
       const adjRoiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
-      const roiLbl = fdSensState.invReturnEnabled ? 'ROI (adj.)' : 'ROI';
-      const invScens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
-      const activeInvScen = fdSensState.invReturnEnabled && invScens.length
-        ? ((fdSensState.invReturnScenId && invScens.find(s => s.id === fdSensState.invReturnScenId)) || invScens[0])
-        : null;
-      const obligation = activeInvScen ? Number(activeInvScen.equity) * (fdSensState.invReturnPct / 100) : 0;
+      const activeInvScen = (p?.investor_scenarios || []).find(s => s.use_for_roi && Number(s.equity) > 0);
+      const roiLbl = activeInvScen ? 'ROI (adj.)' : 'ROI';
+      const investors = activeInvScen?.investors || [];
+      const obligationLines = activeInvScen ? (() => {
+        if (investors.length) {
+          return investors.map(inv => {
+            const invEquity = Number(activeInvScen.equity) * (inv.pct || 0) / 100;
+            const obl = invEquity * ((inv.expected_return_pct || 0) / 100);
+            return `<div class="flex justify-between py-0.5 pl-4 text-[10px]"><span class="text-violet-400/70">↳ ${inv.name || 'Investor'} (${(inv.pct||0).toFixed(1)}% stake × ${(inv.expected_return_pct||0)}% return)</span><span class="text-amber-400/80">(${fmtDollar(obl)})</span></div>`;
+          }).join('');
+        } else {
+          const obl = Number(activeInvScen.equity) * ((activeInvScen.expected_return_pct || 0) / 100);
+          return `<div class="flex justify-between py-0.5 pl-4 text-[10px]"><span class="text-violet-400/70">↳ investor obligation (${activeInvScen.label || activeInvScen.id}, ${(activeInvScen.expected_return_pct||0)}% return)</span><span class="text-amber-400/80">(${fmtDollar(obl)})</span></div>`;
+        }
+      })() : '';
       return `<div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-semibold text-slate-300">${roiLbl}</span><span class="text-sm font-bold ${adjRoiColor}">${(adjRoi*100).toFixed(2)}%</span></div>
     ${c.invested_capital > 0 ? `<div class="flex justify-between py-1 pl-3 text-[10px] text-slate-600"><span>↳ advance MG (${Math.round(c.mg_advance_pct*100)}% — 1st+2nd pmts) ${fmtDollar(c.mg_advance_cost)} + pre-show ops ${fmtDollar(c.total_op_costs)}</span><span>${fmtDollar(c.invested_capital)}</span></div>` : ''}
-    ${activeInvScen ? `<div class="flex justify-between py-1 pl-3 text-[10px] text-slate-600"><span class="text-violet-400/70">↳ investor obligation (${fdSensState.invReturnPct}% × ${fmtDollar(Number(activeInvScen.equity))} — ${activeInvScen.label || activeInvScen.id})</span><span class="text-amber-400/80">(${fmtDollar(obligation)})</span></div>` : ''}`;
+    ${obligationLines}`;
     })()}
   </div>`;
 }
@@ -6237,57 +6248,24 @@ function fdDemandCardHTML(p) {
 }
 
 function fdSensAdjustedROI(c, p) {
-  if (!fdSensState.invReturnEnabled) return c.roi;
-  const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
-  if (!scens.length) return c.roi;
-  const scen = (fdSensState.invReturnScenId && scens.find(s => s.id === fdSensState.invReturnScenId)) || scens[0];
-  const obligation = Number(scen.equity) * (fdSensState.invReturnPct / 100);
+  const activeScen = (p?.investor_scenarios || []).find(s => s.use_for_roi && Number(s.equity) > 0);
+  if (!activeScen) return c.roi;
+  const investors = activeScen.investors || [];
+  let obligation;
+  if (investors.length) {
+    obligation = investors.reduce((acc, inv) => {
+      const invEquity = Number(activeScen.equity) * (inv.pct || 0) / 100;
+      return acc + invEquity * ((inv.expected_return_pct || 0) / 100);
+    }, 0);
+  } else {
+    obligation = Number(activeScen.equity) * ((activeScen.expected_return_pct || 0) / 100);
+  }
   const adjustedProfit = c.net_profit - obligation;
   return c.invested_capital > 0
     ? adjustedProfit / c.invested_capital
     : (c.total_costs > 0 ? adjustedProfit / c.total_costs : 0);
 }
 
-function fdSensInvSectionInnerHTML(c, p) {
-  const { invReturnEnabled, invReturnPct, invReturnScenId } = fdSensState;
-  const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
-  if (!scens.length) return '';
-  const activeScen = (invReturnScenId && scens.find(s => s.id === invReturnScenId)) || scens[0];
-  const obligation = invReturnEnabled ? Number(activeScen.equity) * (invReturnPct / 100) : 0;
-  const adjRoi = fdSensAdjustedROI(c, p);
-  const adjColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
-  const scenSelector = scens.length > 1
-    ? `<select onchange="fdSensApply('invScenId', this.value)" class="bg-white/5 border border-white/10 text-[9px] text-slate-300 rounded px-1.5 py-0.5 cursor-pointer" ${!invReturnEnabled ? 'disabled' : ''}>${scens.map(s => `<option value="${s.id}" ${s.id === activeScen.id ? 'selected' : ''}>${s.label || s.id}</option>`).join('')}</select>`
-    : '';
-  return `<div class="flex items-center justify-between gap-3">
-      <div class="flex items-center gap-2">
-        <label class="flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" id="fd-sens-inv-toggle" ${invReturnEnabled ? 'checked' : ''} onchange="fdSensApply('invEnabled', this.checked)" class="w-3 h-3 accent-violet-500">
-          <span class="text-[9px] text-slate-400 uppercase tracking-wider">Factor Investor Return</span>
-        </label>
-        ${scenSelector}
-      </div>
-      ${invReturnEnabled
-        ? `<div class="text-[9px] text-slate-500">Obligation: <span id="fd-sens-inv-obligation" class="text-amber-400 font-semibold">${fmtDollar(obligation)}</span></div>`
-        : '<div class="text-[9px] text-slate-600">Enable to subtract investor obligation from promoter ROI</div>'}
-    </div>
-    ${invReturnEnabled ? `<div class="mt-2.5 grid grid-cols-2 gap-5">
-      <div>
-        <div class="text-[9px] text-slate-400 uppercase tracking-wider flex justify-between mb-1.5">
-          <span>Expected Return</span><span id="fd-sens-inv-pct-display" class="text-violet-400">${invReturnPct}%</span>
-        </div>
-        <input id="fd-sens-inv-slider" type="range" min="0" max="50" step="1" value="${invReturnPct}" oninput="fdSensApply('invReturnPct', this.value)" class="w-full accent-violet-500 cursor-pointer" style="height:4px">
-        <div class="text-[9px] text-slate-600 mt-1.5 text-center">% of equity as expected return</div>
-      </div>
-      <div class="flex items-center justify-center">
-        <div class="text-center">
-          <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Promoter ROI (post-investor)</div>
-          <div id="fd-sens-inv-adj-roi" class="text-base font-bold ${adjColor}">${(adjRoi*100).toFixed(2)}%</div>
-          <div id="fd-sens-inv-adj-base" class="text-[9px] text-slate-500 mt-0.5">Base ROI: ${(c.roi*100).toFixed(2)}%</div>
-        </div>
-      </div>
-    </div>` : ''}`;
-}
 
 function fdSensComputeProfile(p) {
   const clone = JSON.parse(JSON.stringify(p));
@@ -6344,7 +6322,7 @@ function fdSensOutputHTML(baseC, sensC, p) {
   const beFmt  = v => v !== null ? (v * 100).toFixed(0) + '%' : '—';
   const moicFmt = v => v !== null ? v.toFixed(2) + 'x' : '—';
   const cols = scens.length ? 4 : (baseBeAvg !== null ? 3 : 2);
-  const roiLabel = fdSensState.invReturnEnabled ? 'ROI (adj.)' : 'ROI';
+  const roiLabel = (p?.investor_scenarios || []).some(s => s.use_for_roi && Number(s.equity) > 0) ? 'ROI (adj.)' : 'ROI';
   return `<div class="grid grid-cols-${cols} gap-3">
     ${card('Net Profit', baseC.net_profit, sensC.net_profit, fmtDollar, true)}
     ${card(roiLabel, fdSensAdjustedROI(baseC, p), fdSensAdjustedROI(sensC, p), roiFmt, true)}
@@ -6429,7 +6407,6 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
         <div id="fd-sens-fr-hint" class="text-[9px] text-slate-600 mt-1.5 text-center">${fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates'}</div>
       </div>
     </div>
-    ${(() => { const inner = fdSensInvSectionInnerHTML(baseC, p); return inner ? `<div id="fd-sens-inv-section" class="border-t border-white/10 pt-3 mt-1 mb-3">${inner}</div>` : ''; })()}
     <div id="fd-sens-output">${fdSensOutputHTML(baseC, sensC, p)}</div>`;
 }
 
@@ -6474,28 +6451,6 @@ function fdUpdateSens() {
     if (tpSlider) tpSlider.value = Math.round(ticketPriceMult * 100);
     const mgSlider = g('fd-sens-mg-slider');
     if (mgSlider) mgSlider.value = Math.round(mgMult * 100);
-    // Investor section — targeted patch if inv slider is active, else re-render section
-    const invSectionEl = g('fd-sens-inv-section');
-    if (invSectionEl) {
-      const invSlider = g('fd-sens-inv-slider');
-      if (fdSensState.invReturnEnabled && invSlider) {
-        // Targeted patch — don't destroy the active investor return slider
-        const pctDisp = g('fd-sens-inv-pct-display');
-        if (pctDisp) pctDisp.textContent = fdSensState.invReturnPct + '%';
-        const invScens2 = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
-        const aScen = (fdSensState.invReturnScenId && invScens2.find(s => s.id === fdSensState.invReturnScenId)) || invScens2[0];
-        const oblEl = g('fd-sens-inv-obligation');
-        if (oblEl && aScen) oblEl.textContent = fmtDollar(Number(aScen.equity) * (fdSensState.invReturnPct / 100));
-        const adjRoi2 = fdSensAdjustedROI(baseC, p);
-        const adjRoiEl = g('fd-sens-inv-adj-roi');
-        if (adjRoiEl) { adjRoiEl.textContent = (adjRoi2*100).toFixed(2) + '%'; adjRoiEl.className = 'text-base font-bold ' + (adjRoi2 >= 0 ? 'text-emerald-400' : 'text-red-400'); }
-        const adjBaseEl = g('fd-sens-inv-adj-base');
-        if (adjBaseEl) adjBaseEl.textContent = 'Base ROI: ' + (baseC.roi*100).toFixed(2) + '%';
-      } else {
-        // Checkbox toggle or scenario change — structural re-render is safe (no slider dragging)
-        invSectionEl.innerHTML = fdSensInvSectionInnerHTML(baseC, p);
-      }
-    }
     outputEl.innerHTML = fdSensOutputHTML(baseC, sensC, p);
   } else {
     el.innerHTML = fdSensPanelInnerHTML(p, baseC, sensC);
@@ -6507,16 +6462,13 @@ function fdSensApply(field, val) {
   else if (field === 'mgMult')       fdSensState.mgMult            = Number(val);
   else if (field === 'fillRatePct')  fdSensState.fillRatePct       = Number(val);
   else if (field === 'fillEnabled')  fdSensState.fillRateEnabled   = val;
-  else if (field === 'invReturnPct') fdSensState.invReturnPct      = Number(val);
-  else if (field === 'invEnabled')   fdSensState.invReturnEnabled  = val;
-  else if (field === 'invScenId')    fdSensState.invReturnScenId   = val;
+
   fdUpdateSens();
 }
 
 function fdSensReset() {
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
   fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
-  fdSensState.invReturnEnabled = false; fdSensState.invReturnPct = 20; fdSensState.invReturnScenId = null;
   fdUpdateSens();
 }
 
@@ -6595,7 +6547,13 @@ function fdRenderLive(p) {
     <div class="glass rounded-xl p-4 flex-1 min-w-0">
       <div class="flex items-center justify-between mb-3">
         <input type="text" class="bg-transparent border-b border-white/10 text-[11px] font-semibold text-violet-300 uppercase tracking-wider w-28 focus:outline-none focus:border-violet-500/50 pb-0.5" value="${(scen.label||'').replace(/"/g,'&quot;')}" oninput="fdPatchScenLabel('${scen.id}',this.value)">
-        ${i >= 2 ? `<button onclick="fdRemoveScenario('${scen.id}')" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>` : '<div class="w-5"></div>'}
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1 cursor-pointer" title="Factor this scenario's investor obligations into the promoter ROI">
+            <input type="checkbox" ${scen.use_for_roi ? 'checked' : ''} onchange="fdSetRoiScen('${scen.id}')" class="w-3 h-3 accent-violet-500">
+            <span class="text-[9px] ${scen.use_for_roi ? 'text-violet-400' : 'text-slate-500'}">Use for ROI</span>
+          </label>
+          ${i >= 2 ? `<button onclick="fdRemoveScenario('${scen.id}')" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>` : '<div class="w-5"></div>'}
+        </div>
       </div>
       <div class="space-y-2">
         <div><label class="${FD_LABEL}">Equity Invested ($)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${scen.equity||0}" oninput="fdPatchScen('${scen.id}','equity',Number(this.value))"></div>
@@ -7413,7 +7371,7 @@ function fdAddInvestorToScen(scenId) {
   const scen = fdState.draftProfile?.investor_scenarios?.find(s => s.id === scenId);
   if (!scen) return;
   if (!scen.investors) scen.investors = [];
-  scen.investors.push({ id: 'inv_' + fdGenId(), name: '', pct: 0 });
+  scen.investors.push({ id: 'inv_' + fdGenId(), name: '', pct: 0, expected_return_pct: 20 });
   fdSetMain(fdState.draftProfile);
 }
 function fdRemoveInvestorFromScen(scenId, invId) {
@@ -7430,37 +7388,39 @@ function fdPatchInvestorInScen(scenId, invId, field, val) {
   inv[field] = val;
   if (field === 'name') return; // name is display-only, no calculation impact
 
-  // Auto-fill other investors so they sum to 100%.
-  // Never re-render the input elements — update .value properties directly
-  // to avoid destroying the active element and losing cursor position.
-  const others = scen.investors.filter(i => i.id !== invId);
-  if (others.length > 0) {
-    const remaining = Math.max(0, 100 - val);
-    if (others.length === 1) {
-      others[0].pct = Math.round(remaining * 100) / 100;
-    } else {
-      const each = Math.round(remaining / others.length * 100) / 100;
-      let assigned = 0;
-      for (let i = 0; i < others.length - 1; i++) {
-        others[i].pct = each; assigned += each;
+  // Auto-fill other investor stakes so they sum to 100% — only when editing stake %
+  if (field === 'pct') {
+    const others = scen.investors.filter(i => i.id !== invId);
+    if (others.length > 0) {
+      const remaining = Math.max(0, 100 - val);
+      if (others.length === 1) {
+        others[0].pct = Math.round(remaining * 100) / 100;
+      } else {
+        const each = Math.round(remaining / others.length * 100) / 100;
+        let assigned = 0;
+        for (let i = 0; i < others.length - 1; i++) {
+          others[i].pct = each; assigned += each;
+        }
+        others[others.length - 1].pct = Math.round((remaining - assigned) * 100) / 100;
       }
-      others[others.length - 1].pct = Math.round((remaining - assigned) * 100) / 100;
-    }
-    for (const other of others) {
-      const otherPctEl = document.getElementById('fd-inv-' + other.id + '-pct');
-      if (otherPctEl) otherPctEl.value = other.pct;
+      for (const other of others) {
+        const otherPctEl = document.getElementById('fd-inv-' + other.id + '-pct');
+        if (otherPctEl) otherPctEl.value = other.pct;
+      }
     }
   }
 
-  // Patch equity cells, total row, and warning — all by stable ID, no input elements touched
+  // Patch equity cells, obligation cells, total row, and warning — all by stable ID, no input elements touched
   const sumPct = scen.investors.reduce((acc, i) => acc + (i.pct || 0), 0);
   const pctWarn = Math.abs(sumPct - 100) > 0.01;
   for (const investor of scen.investors) {
+    const eqAmt = scen.equity && sumPct > 0 ? scen.equity * (investor.pct || 0) / 100 : 0;
+    const retPct = investor.expected_return_pct !== undefined ? investor.expected_return_pct : 20;
+    const oblAmt = eqAmt * (retPct / 100);
     const eqCell = document.getElementById('fd-inv-' + investor.id + '-eq');
-    if (eqCell) {
-      const eqAmt = scen.equity ? scen.equity * (investor.pct || 0) / 100 : 0;
-      eqCell.textContent = eqAmt > 0 ? fmtDollar(eqAmt) : '—';
-    }
+    if (eqCell) eqCell.textContent = eqAmt > 0 ? fmtDollar(eqAmt) : '—';
+    const oblCell = document.getElementById('fd-inv-' + investor.id + '-obl');
+    if (oblCell) oblCell.textContent = oblAmt > 0 ? '(' + fmtDollar(oblAmt) + ')' : '—';
   }
   const totalPctEl = document.getElementById('fd-scen-' + scenId + '-inv-total-pct');
   if (totalPctEl) {
@@ -7471,7 +7431,7 @@ function fdPatchInvestorInScen(scenId, invId, field, val) {
   if (warnEl) warnEl.innerHTML = pctWarn
     ? `<div class="text-[9px] text-amber-400 mb-1">Warning: investor stakes sum to ${sumPct.toFixed(1)}% (should be 100%)</div>`
     : '';
-  // Update scenario result card and KPI strip MOIC
+  // Update scenario result card and KPI strip
   const c = computeProfile(fdState.draftProfile);
   const res = document.getElementById('fd-scen-' + scenId + '-result');
   if (res) res.innerHTML = fdScenResultHTML(c, scen);
@@ -7486,25 +7446,33 @@ function fdScenInvTableHTML(scen) {
   const pctWarn = Math.abs(sumPct - 100) > 0.01;
   const invRows = investors.map(inv => {
     const eqAmt = scen.equity && sumPct > 0 ? scen.equity * (inv.pct || 0) / 100 : 0;
+    const retPct = inv.expected_return_pct !== undefined ? inv.expected_return_pct : 20;
+    const oblAmt = eqAmt * (retPct / 100);
     return `<tr class="border-b border-white/5">
       <td class="py-1 pr-1"><input id="fd-inv-${inv.id}-name" type="text" class="${FD_INPUT} text-xs py-1 w-full" placeholder="Investor name" value="${(inv.name||'').replace(/"/g,'&quot;')}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','name',this.value)"></td>
-      <td class="py-1 px-1"><input id="fd-inv-${inv.id}-pct" type="number" class="${FD_INPUT} text-xs py-1 w-16" min="0" max="100" step="0.1" value="${inv.pct||0}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','pct',Number(this.value))"></td>
+      <td class="py-1 px-1"><input id="fd-inv-${inv.id}-pct" type="number" class="${FD_INPUT} text-xs py-1 w-14" min="0" max="100" step="0.1" value="${inv.pct||0}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','pct',Number(this.value))"></td>
+      <td class="py-1 px-1"><input id="fd-inv-${inv.id}-ret" type="number" class="${FD_INPUT} text-xs py-1 w-14" min="0" max="200" step="1" value="${retPct}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','expected_return_pct',Number(this.value))"></td>
       <td id="fd-inv-${inv.id}-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right whitespace-nowrap">${eqAmt > 0 ? fmtDollar(eqAmt) : '—'}</td>
+      <td id="fd-inv-${inv.id}-obl" class="py-1 px-1 text-[10px] text-amber-400/70 text-right whitespace-nowrap">${oblAmt > 0 ? '(' + fmtDollar(oblAmt) + ')' : '—'}</td>
       ${investors.length > 1 ? `<td class="py-1 pl-1"><button onclick="fdRemoveInvestorFromScen('${scen.id}','${inv.id}')" class="text-slate-600 hover:text-red-400 p-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>` : '<td class="py-1 pl-1 w-5"></td>'}
     </tr>`;
   }).join('');
   return `<table class="w-full mb-1">
     <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider">
       <th class="text-left pb-1 pr-1">Name</th>
-      <th class="text-left pb-1 px-1">%</th>
+      <th class="text-left pb-1 px-1">Stake %</th>
+      <th class="text-left pb-1 px-1">Exp. Return %</th>
       <th class="text-right pb-1 px-1">$ Equity</th>
+      <th class="text-right pb-1 px-1">Obligation</th>
       <th class="pb-1 pl-1 w-5"></th>
     </tr></thead>
     <tbody>${invRows}</tbody>
     <tfoot><tr class="border-t border-white/10">
       <td class="py-1 pr-1 text-[10px] font-semibold text-slate-400">Total</td>
       <td id="fd-scen-${scen.id}-inv-total-pct" class="py-1 px-1 text-[10px] font-semibold ${pctWarn ? 'text-amber-400' : 'text-slate-400'}">${sumPct.toFixed(1)}%</td>
+      <td class="py-1 px-1"></td>
       <td id="fd-scen-${scen.id}-inv-total-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right">${scen.equity ? fmtDollar(scen.equity) : '—'}</td>
+      <td class="py-1 px-1"></td>
       <td class="py-1 pl-1 w-5"></td>
     </tr></tfoot>
   </table>
@@ -7514,13 +7482,24 @@ function fdAddScenario() {
   if (!fdState.draftProfile) return;
   const id = 'scen_' + fdGenId();
   const letter = String.fromCharCode(65 + fdState.draftProfile.investor_scenarios.length);
-  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] });
+  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false });
   fdSetMain(fdState.draftProfile);
 }
 function fdRemoveScenario(id) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.investor_scenarios = fdState.draftProfile.investor_scenarios.filter(s => s.id !== id);
   fdSetMain(fdState.draftProfile);
+}
+function fdSetRoiScen(scenId) {
+  if (!fdState.draftProfile) return;
+  const scens = fdState.draftProfile.investor_scenarios || [];
+  const scen = scens.find(s => s.id === scenId);
+  if (!scen) return;
+  const wasActive = scen.use_for_roi;
+  // clear all, then toggle the clicked one (only one active at a time)
+  for (const s of scens) s.use_for_roi = false;
+  scen.use_for_roi = !wasActive;
+  fdUpdateLive();
 }
 
 
