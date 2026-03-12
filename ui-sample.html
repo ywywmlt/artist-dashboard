@@ -4641,6 +4641,8 @@ async function fdExportExcel() {
   const cats = p.seat_categories || [];
   const mgSched = co.mg_schedule || [];
   const invScens = (p.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+  const activeRoiScenXL = (p.investor_scenarios || []).find(s => s.use_for_roi && Number(s.equity) > 0) || null;
+  const adjRoiXL = fdSensAdjustedROI(c, p);
 
   const wb = new ExcelJS.Workbook();
   wb.creator = 'Artist Dashboard'; wb.created = new Date();
@@ -4954,10 +4956,30 @@ async function fdExportExcel() {
   sc(ws.getCell(r,6),{numFmt:'$#,##0'}).value=c.invested_capital;
   const IC_REF='F'+r; ws.getRow(r).height=17; r++;
 
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Return on Investment (ROI)';
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='Net Profit ÷ Invested Capital (pre-carry)';
-  fml(ws.getCell(r,6),'IF('+IC_REF+'>0,'+NP+'/'+IC_REF+',IF('+TC+'>0,'+NP+'/'+TC+',0))',c.roi,{numFmt:'0.00%'});
+  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value=activeRoiScenXL ? 'ROI (adj.) — after investor obligation' : 'Return on Investment (ROI)';
+  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value=activeRoiScenXL ? 'Net Profit − investor obligation ÷ Invested Capital' : 'Net Profit ÷ Invested Capital (pre-carry)';
+  const roiVal = activeRoiScenXL ? adjRoiXL : c.roi;
+  const roiFill = roiVal >= 0 ? C.totG : C.totR;
+  const roiFontC = roiVal >= 0 ? C.green : C.red;
+  sc(ws.getCell(r,6),{fill:roiFill,font:{bold:true,color:{argb:roiFontC}},numFmt:'0.00%',align:{horizontal:'right'}}).value=roiVal;
   ws.getRow(r).height=17; r++;
+  if (activeRoiScenXL) {
+    const invList2 = activeRoiScenXL.investors || [];
+    if (invList2.length) {
+      for (const inv of invList2) {
+        const invEq = Number(activeRoiScenXL.equity) * (inv.pct || 0) / 100;
+        const obl = invEq * ((inv.expected_return_pct || 0) / 100);
+        sc(ws.getCell(r,1),{font:{italic:true,size:9,color:{argb:'FF92400E'}}}).value='  ↳ '+(inv.name||'Investor')+' ('+((inv.pct||0).toFixed(1))+'% stake × '+(inv.expected_return_pct||0)+'% return)';
+        sc(ws.getCell(r,6),{font:{italic:true,size:9,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value=obl;
+        ws.getRow(r).height=14; r++;
+      }
+    } else {
+      const obl = Number(activeRoiScenXL.equity) * ((activeRoiScenXL.expected_return_pct || 0) / 100);
+      sc(ws.getCell(r,1),{font:{italic:true,size:9,color:{argb:'FF92400E'}}}).value='  ↳ Investor obligation ('+((activeRoiScenXL.expected_return_pct||0))+'% × equity)';
+      sc(ws.getCell(r,6),{font:{italic:true,size:9,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value=obl;
+      ws.getRow(r).height=14; r++;
+    }
+  }
 
   const avgTkt = totSeatsAll > 0 ? tktRevAll/totSeatsAll : 0;
   sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Blended Average Ticket Price';
@@ -5030,6 +5052,13 @@ async function fdExportExcel() {
         ws.getRow(r).height=17; r++;
       }
 
+      // ── Use for ROI indicator ────────────────────────────────────────────
+      if (scen.use_for_roi) {
+        ws.mergeCells('A'+r+':F'+r);
+        sc(ws.getCell('A'+r),{fill:'FF5B21B6',font:{bold:true,size:9,color:{argb:C.white}},align:{horizontal:'left'}}).value='  ★ USE FOR ROI — Investor obligations factored into Adjusted Promoter ROI above';
+        ws.getRow(r).height=14; r++;
+      }
+
       // ── Per-investor breakdown (live formula-linked) ──────────────────────
       const invList = scen.investors || [];
       if (invList.length > 0) {
@@ -5048,20 +5077,14 @@ async function fdExportExcel() {
           const totR  = eqAmt + dist;
           const moic  = eqAmt > 0 ? totR/eqAmt : 0;
           sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value = inv.name||'(Unnamed)';
-          // Col B: Stake % — yellow INPUT so the user can edit it and watch cols C–F recalc
           inp(ws.getCell(r,2), (inv.pct||0)/100, {numFmt:'0.0%'});
-          // Col C: Equity = total equity × this investor's stake %
           fml(ws.getCell(r,3), EQ+'*B'+r,               eqAmt, {numFmt:'$#,##0'});
-          // Col D: Distribution = total investor dist × this investor's stake %
           fml(ws.getCell(r,4), invDistRef+'*B'+r,        dist,  {numFmt:'$#,##0'});
-          // Col E: Total Return = equity + distribution
           fml(ws.getCell(r,5), 'C'+r+'+D'+r,            totR,  {numFmt:'$#,##0'});
-          // Col F: MOIC = total return ÷ equity
           fml(ws.getCell(r,6), 'IF(C'+r+'>0,E'+r+'/C'+r+',0)', moic, {numFmt:'0.00"x"'});
           ws.getRow(r).height=17; r++;
         }
         const invRowEnd = r - 1;
-        // Pool Total — SUM formulas so the row stays live as stakes are edited
         sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='Pool Total';
         fml(ws.getCell(r,2),'SUM(B'+invRowStart+':B'+invRowEnd+')', sumPct/100,
             {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'0.0%',border:bTop(C.greenLight)});
@@ -5080,6 +5103,39 @@ async function fdExportExcel() {
           sc(ws.getCell('A'+r),{fill:'FFFFF8DB',font:{italic:true,color:{argb:'FFB45309'}},align:{horizontal:'left'}}).value=
             '  ⚠ Stakes sum to '+sumPct.toFixed(1)+'% — edit Stake % column to rebalance to 100%';
           ws.getRow(r).height=14; r++;
+        }
+
+        // ── Obligation analysis (shown when this scenario is "Use for ROI") ──
+        if (scen.use_for_roi) {
+          r++;
+          ws.mergeCells('A'+r+':F'+r);
+          sc(ws.getCell('A'+r),{fill:'FF5B21B6',font:{bold:true,size:9,color:{argb:C.white}},align:{horizontal:'left'}}).value='  Investor Obligation Analysis';
+          ws.getRow(r).height=16; r++;
+          colHdrs(ws, r, ['Investor Name','Stake %','Equity Amount','Exp. Return %','Obligation','']); r++;
+
+          let totalOblXL = 0;
+          for (const inv of invList) {
+            const frac = sumPct > 0 ? (inv.pct||0)/sumPct : 0;
+            const eqAmt = sv.equity * frac;
+            const retPct = inv.expected_return_pct !== undefined ? inv.expected_return_pct : 20;
+            const obl = eqAmt * (retPct / 100);
+            totalOblXL += obl;
+            sc(ws.getCell(r,1),{font:{color:{argb:'FF92400E'}}}).value = inv.name||'(Unnamed)';
+            sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'0.0%'}).value = (inv.pct||0)/100;
+            sc(ws.getCell(r,3),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'$#,##0'}).value = eqAmt;
+            inp(ws.getCell(r,4), retPct/100, {numFmt:'0%',font:{bold:true,color:{argb:'FF92400E'}}});
+            sc(ws.getCell(r,5),{fill:'FFFFF8F0',font:{bold:true,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value = obl;
+            ws.getRow(r).height=17; r++;
+          }
+          sc(ws.getCell(r,1),{font:{bold:true,color:{argb:'FF92400E'}}}).value='Total Obligation';
+          sc(ws.getCell(r,5),{fill:'FFFFF8F0',font:{bold:true,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'},border:bTop('FFFDBA74')}).value=totalOblXL;
+          ws.getRow(r).height=18; r++;
+          const oblAdjRoi = c.invested_capital > 0 ? (c.net_profit - totalOblXL) / c.invested_capital : (c.total_costs > 0 ? (c.net_profit - totalOblXL) / c.total_costs : 0);
+          const adjRF = oblAdjRoi >= 0 ? C.totG : C.totR;
+          const adjRFont = oblAdjRoi >= 0 ? C.green : C.red;
+          sc(ws.getCell(r,1),{font:{bold:true,size:11,color:{argb:'FF5B21B6'}}}).value='Adjusted Promoter ROI';
+          sc(ws.getCell(r,5),{fill:adjRF,font:{bold:true,size:11,color:{argb:adjRFont}},numFmt:'0.00%',align:{horizontal:'right'},border:bTop(C.greenLight)}).value=oblAdjRoi;
+          ws.getRow(r).height=20; r++;
         }
       }
       r++;
@@ -5629,6 +5685,10 @@ function fdExportPDF() {
   const currency = v => v == null ? '—' : '$' + Math.round(v).toLocaleString();
   const pct = v => (v * 100).toFixed(1) + '%';
 
+  const activeRoiScen = (p.investor_scenarios || []).find(s => s.use_for_roi && Number(s.equity) > 0) || null;
+  const adjRoi = fdSensAdjustedROI(c, p);
+  const adjRoiLabel = activeRoiScen ? 'ROI (adj.)' : 'ROI';
+
   const cityRows = (c.cityCalcs || []).map(cc => {
     const fillPct = Math.round((cc.fill_rate || 1) * 100);
     return `<tr>
@@ -5664,12 +5724,28 @@ function fdExportPDF() {
     const investors = s.investors || [];
     const sumPct = investors.reduce((acc, inv) => acc + (inv.pct||0), 0);
 
+    // Per-investor obligation calculation
+    let scenObligation = 0;
+    if (s.use_for_roi) {
+      if (investors.length) {
+        scenObligation = investors.reduce((acc, inv) => {
+          const invEquity = Number(s.equity) * (inv.pct || 0) / 100;
+          return acc + invEquity * ((inv.expected_return_pct || 0) / 100);
+        }, 0);
+      } else {
+        scenObligation = Number(s.equity) * ((s.expected_return_pct || 0) / 100);
+      }
+    }
+    const scenAdjRoi = s.use_for_roi && (c.invested_capital > 0 || c.total_costs > 0)
+      ? (c.net_profit - scenObligation) / (c.invested_capital > 0 ? c.invested_capital : c.total_costs)
+      : null;
+
     const invTable = investors.length > 0 ? `
       <div style="margin-top:10px">
         <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;margin-bottom:5px;">Investor Breakdown</div>
         <table>
           <thead><tr>
-            <th>Investor</th><th>Stake</th><th>Equity Amount</th><th>Distribution</th><th>Total Return</th><th>MOIC</th>
+            <th>Investor</th><th>Stake</th><th>Equity Amount</th><th>Exp. Return %</th><th>Obligation</th><th>Distribution</th><th>MOIC</th>
           </tr></thead>
           <tbody>
             ${investors.map(inv => {
@@ -5678,12 +5754,15 @@ function fdExportPDF() {
               const dist  = sv.investor_dist * frac;
               const totR  = eqAmt + dist;
               const moic  = eqAmt > 0 ? totR/eqAmt : 0;
+              const retPct = inv.expected_return_pct !== undefined ? inv.expected_return_pct : 20;
+              const obl   = eqAmt * (retPct / 100);
               return `<tr>
                 <td>${inv.name||'(Unnamed)'}</td>
                 <td class="num">${(inv.pct||0).toFixed(1)}%</td>
                 <td class="num">${currency(eqAmt)}</td>
+                <td class="num">${retPct}%</td>
+                <td class="num" style="color:#92400e">${obl>0?'('+currency(obl)+')':'—'}</td>
                 <td class="num">${currency(dist)}</td>
-                <td class="num">${currency(totR)}</td>
                 <td class="num" style="font-weight:700;color:${moic>=1?'#7c3aed':'#dc2626'}">${eqAmt>0?moic.toFixed(2)+'x':'—'}</td>
               </tr>`;
             }).join('')}
@@ -5691,17 +5770,21 @@ function fdExportPDF() {
               <td><strong>Pool Total</strong></td>
               <td class="num"><strong>${sumPct.toFixed(1)}%</strong></td>
               <td class="num"><strong>${currency(sv.equity)}</strong></td>
+              <td class="num"></td>
+              <td class="num" style="color:#92400e"><strong>${scenObligation>0?'('+currency(scenObligation)+')':'—'}</strong></td>
               <td class="num"><strong>${currency(sv.investor_dist)}</strong></td>
-              <td class="num"><strong>${currency(sv.total_inv_return)}</strong></td>
               <td class="num" style="font-weight:700;color:${sv.moic>=1?'#7c3aed':'#dc2626'}">${sv.moic.toFixed(2)}x</td>
             </tr>
-            ${Math.abs(sumPct-100)>0.01?`<tr><td colspan="6" style="color:#b45309;font-size:9px;font-style:italic">⚠ Stakes sum to ${sumPct.toFixed(1)}% — returns distributed proportionally</td></tr>`:''}
+            ${Math.abs(sumPct-100)>0.01?`<tr><td colspan="7" style="color:#b45309;font-size:9px;font-style:italic">⚠ Stakes sum to ${sumPct.toFixed(1)}% — returns distributed proportionally</td></tr>`:''}
           </tbody>
         </table>
       </div>` : '';
 
-    return `<div style="margin-bottom:14px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa;">
-      <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">${s.label||'Scenario'}</div>
+    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#7c3aed':'#e5e7eb'};border-radius:8px;background:${s.use_for_roi?'#faf5ff':'#fafafa'};">
+      <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+        ${s.label||'Scenario'}
+        ${s.use_for_roi ? '<span style="font-size:9px;font-weight:600;background:#7c3aed;color:white;padding:2px 6px;border-radius:4px;">USE FOR ROI</span>' : ''}
+      </div>
       <table>
         <tbody>
           <tr><td>Equity Investment</td><td class="num"><strong>${currency(s.equity)}</strong></td></tr>
@@ -5713,6 +5796,8 @@ function fdExportPDF() {
           <tr><td>Total Investor Return</td><td class="num">${currency(sv.total_inv_return)}</td></tr>
           <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#7c3aed':'#dc2626'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
           <tr><td>Absolute Return</td><td class="num">${sv.abs_return>0?pct(sv.abs_return):'—'}</td></tr>
+          ${s.use_for_roi && scenObligation > 0 ? `<tr style="background:#fef3c7"><td style="color:#92400e;font-weight:600">Total Investor Obligation</td><td class="num" style="color:#92400e;font-weight:600">(${currency(scenObligation)})</td></tr>` : ''}
+          ${scenAdjRoi !== null ? `<tr style="background:#ede9fe"><td style="color:#6d28d9;font-weight:700">Adjusted Promoter ROI</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#6d28d9':'#dc2626'}">${pct(scenAdjRoi)}</td></tr>` : ''}
         </tbody>
       </table>
       ${invTable}
@@ -5751,7 +5836,7 @@ function fdExportPDF() {
   <div class="kpi"><div class="kpi-label">Total Gross Revenue</div><div class="kpi-value green">${currency(c.total_gross_rev)}</div></div>
   <div class="kpi"><div class="kpi-label">Total Costs</div><div class="kpi-value red">${currency(c.total_costs)}</div></div>
   <div class="kpi"><div class="kpi-label">Net Profit</div><div class="kpi-value ${c.net_profit >= 0 ? 'green' : 'red'}">${currency(c.net_profit)}</div></div>
-  <div class="kpi"><div class="kpi-label">ROI</div><div class="kpi-value ${c.roi >= 0 ? 'blue' : 'red'}">${pct(c.roi)}</div></div>
+  <div class="kpi"><div class="kpi-label">${adjRoiLabel}</div><div class="kpi-value ${adjRoi >= 0 ? 'blue' : 'red'}">${pct(adjRoi)}</div></div>
   <div class="kpi"><div class="kpi-label">Total Attendance</div><div class="kpi-value purple">${Math.round(c.total_attendance).toLocaleString()}</div></div>
 </div>
 
@@ -5780,7 +5865,20 @@ ${catSummary ? `<section>
     <tr><td>Operating Costs</td><td class="num">(${currency(c.total_op_costs)})</td></tr>
     <tr><td>Agency &amp; Other Fees</td><td class="num">(${currency((p.costs?.agency_fees || 0) + (p.costs?.blufin_fees || 0))})</td></tr>
     <tr><td><strong>Net Profit</strong></td><td class="num"><strong>${currency(c.net_profit)}</strong></td></tr>
-    <tr><td>ROI</td><td class="num">${pct(c.roi)}</td></tr>
+    ${c.invested_capital > 0 ? `<tr style="font-size:10px;color:#6b7280"><td style="padding-left:16px">↳ Invested capital (${Math.round(c.mg_advance_pct*100)}% MG advance + pre-show ops)</td><td class="num">${currency(c.invested_capital)}</td></tr>` : ''}
+    <tr><td>${adjRoiLabel}</td><td class="num" style="font-weight:700;color:${adjRoi>=0?'#2563eb':'#dc2626'}">${pct(adjRoi)}</td></tr>
+    ${activeRoiScen ? (() => {
+      const invs = activeRoiScen.investors || [];
+      if (invs.length) {
+        return invs.map(inv => {
+          const invEquity = Number(activeRoiScen.equity) * (inv.pct || 0) / 100;
+          const obl = invEquity * ((inv.expected_return_pct || 0) / 100);
+          return `<tr style="font-size:10px;color:#92400e"><td style="padding-left:16px">↳ ${inv.name||'Investor'} (${(inv.pct||0).toFixed(1)}% stake × ${inv.expected_return_pct||0}% return)</td><td class="num">(${currency(obl)})</td></tr>`;
+        }).join('');
+      }
+      const obl = Number(activeRoiScen.equity) * ((activeRoiScen.expected_return_pct || 0) / 100);
+      return `<tr style="font-size:10px;color:#92400e"><td style="padding-left:16px">↳ Investor obligation (${activeRoiScen.label||''})</td><td class="num">(${currency(obl)})</td></tr>`;
+    })() : ''}
   </tbody></table>
 </section>
 
