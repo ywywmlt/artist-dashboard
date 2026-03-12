@@ -209,7 +209,12 @@
         <div class="glass rounded-xl p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold text-white text-sm">Recent Alerts</h3>
-            <span id="alerts-badge" class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
+            <div class="flex items-center gap-2">
+              <button id="notif-btn" onclick="requestNotifPermission()"
+                title="Enable browser notifications for threshold alerts"
+                class="text-[9px] text-slate-500 hover:text-violet-300 transition-colors border border-white/10 rounded px-1.5 py-0.5">🔔 Notify</button>
+              <span id="alerts-badge" class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
+            </div>
           </div>
           <div id="dashboard-alerts"></div>
         </div>
@@ -219,6 +224,26 @@
             <span class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
           </div>
           <div id="dashboard-upcoming"></div>
+        </div>
+      </div>
+
+      <!-- Momentum Leaderboard + Genre Heat Map -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="glass rounded-xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-semibold text-white text-sm">Momentum Leaderboard</h3>
+            <div class="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+              <button id="mtab-gain" onclick="setMomentumTab('gain')"
+                class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all bg-violet-600/30 text-violet-300">Gaining</button>
+              <button id="mtab-lose" onclick="setMomentumTab('lose')"
+                class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all text-slate-500 hover:text-slate-300">Losing</button>
+            </div>
+          </div>
+          <div id="dashboard-momentum"></div>
+        </div>
+        <div class="glass rounded-xl p-5">
+          <h3 class="font-semibold text-white text-sm mb-4">Genre Activity Heat Map</h3>
+          <div id="dashboard-genre-heatmap"></div>
         </div>
       </div>
 
@@ -235,12 +260,19 @@
               <option value="touring">Touring</option>
               <option value="not-touring">Not Touring</option>
               <option value="no-data">No Touring Data</option>
+              <option value="gap">Due to Tour</option>
             </select>
             <select id="filter-sort" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderArtistTable()">
               <option value="rank">Sort: Rank</option>
               <option value="listeners">Sort: Listeners</option>
               <option value="change">Sort: Daily Change</option>
               <option value="events">Sort: Recent Events</option>
+            </select>
+            <select id="filter-genre" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="currentPage=1;renderArtistTable()">
+              <option value="">All Genres</option>
+            </select>
+            <select id="filter-country" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="currentPage=1;renderArtistTable()">
+              <option value="">All Countries</option>
             </select>
           </div>
         </div>
@@ -347,6 +379,8 @@
       </div>
       <!-- Expanded city detail -->
       <div id="city-detail" class="hidden"></div>
+      <!-- Market Sizing by City -->
+      <div id="venue-market-sizing" class="mt-6"></div>
     </div>
 
     <!-- TOUR CALENDAR PAGE -->
@@ -479,6 +513,14 @@
           <span class="text-sm font-semibold text-white">Financial Model Builder</span>
         </div>
         <div class="flex items-center gap-2">
+          <button onclick="fdToggleCompare()" id="fd-compare-btn"
+  class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+  ⊞ Compare
+</button>
+          <button onclick="fdBatchExport()" class="flex items-center gap-2 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/20 text-emerald-400 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+  Export All
+</button>
           <button id="fd-dup-btn" onclick="fdDuplicate()" class="hidden items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
             Duplicate
@@ -511,7 +553,7 @@ let calendarLoaded = false;
 let financialsLoaded = false;
 let finIndex = [];
 let currentFinData = null;
-let fdState = { profiles: [], activeId: null, mode: 'list', draftProfile: null };
+let fdState = { profiles: [], activeId: null, mode: 'list', draftProfile: null, compareMode: false, compareIds: [] };
 const FMB_STAGES = [
   { v: 'Interest',               l: 'Interest',               c: 'bg-slate-500/20 text-slate-300 border-slate-400' },
   { v: 'Offer Sent',             l: 'Offer Sent',             c: 'bg-sky-500/20 text-sky-300 border-sky-500' },
@@ -555,11 +597,17 @@ let compareIds = new Set(); // up to 4 spotify_ids
 
 let artistMeta = {};
 const ARTIST_META_KEY = 'artist-dashboard-artist-meta';
+const PEER_SET_KEY = 'artist-dashboard-peer-sets';
+let peerSets = {};  // { spotify_id: [spotify_id, ...] }
+function psLoad() { try { peerSets = JSON.parse(localStorage.getItem(PEER_SET_KEY)||'{}'); } catch(e) { peerSets = {}; } }
+function psSave() { localStorage.setItem(PEER_SET_KEY, JSON.stringify(peerSets)); }
 let marketHistory = {};
 const MARKET_HISTORY_KEY = 'artist-dashboard-market-history';
 let competitorShows = [];
 const COMPETITOR_KEY = 'artist-dashboard-competitor-shows';
 let triggeredAlerts = [];  // in-memory, reset on each data load
+let momentumTab = 'gain';
+let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false };
 
 // ─── Helpers ───
 function fmt(n) {
@@ -584,6 +632,12 @@ function daysSince(dateStr) {
   if (!dateStr) return null;
   const d = new Date(dateStr);
   return Math.floor((Date.now() - d) / 86400000);
+}
+function isTourGap(t) {
+  if (!t) return false;
+  if (t.is_touring) return false;
+  if ((t.recent_event_count || 0) < 5) return false;
+  return daysSince(t.last_event_date) > 180;
 }
 function relDate(dateStr) {
   if (!dateStr) return '—';
@@ -611,6 +665,12 @@ const WL_TAGS = [
   { label: 'In Discussion', base: 'text-amber-400 border-amber-500/40',    active: 'bg-amber-500/20 border-amber-500 text-amber-300' },
   { label: 'Passed',        base: 'text-red-400 border-red-500/40',        active: 'bg-red-500/20 border-red-500 text-red-300' },
   { label: 'Completed',     base: 'text-emerald-400 border-emerald-500/40', active: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
+];
+const PRIORITY_TIERS = [
+  { label: 'Priority A', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  { label: 'Priority B', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  { label: 'Monitor',    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30' },
+  { label: 'Archive',    color: 'bg-slate-500/20 text-slate-400 border-slate-500/30' },
 ];
 const DEAL_STAGES = [
   { label: 'Interest',               active: 'bg-slate-500/20 border-slate-400 text-slate-300' },
@@ -647,6 +707,34 @@ function renderWatchlistButtons(sid) {
     const isCur = cur === t.label;
     return `<button onclick="watchlistSet('${sid}','${isCur ? '' : t.label}')" class="text-[10px] px-2.5 py-1 rounded-full border font-medium transition-all ${isCur ? t.active : 'bg-transparent ' + t.base} hover:opacity-80">${t.label}</button>`;
   }).join('') + (cur ? `<button onclick="watchlistSet('${sid}','')" class="text-[10px] px-1.5 py-0.5 text-slate-600 hover:text-slate-400 transition-colors">✕</button>` : '');
+}
+function priorityBadge(sid) {
+  const p = artistMeta[sid]?.priority;
+  if (!p) return '';
+  const t = PRIORITY_TIERS.find(x=>x.label===p);
+  if (!t) return '';
+  return `<span class="text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${t.color}">${p}</span>`;
+}
+function renderPriorityButtons(sid) {
+  const el = document.getElementById('priority-buttons-' + sid);
+  if (!el) return;
+  const cur = artistMeta[sid]?.priority || '';
+  el.innerHTML = PRIORITY_TIERS.map(t=>{
+    const active = cur===t.label;
+    return `<button onclick="prioritySet('${sid}','${t.label}')" class="text-[10px] px-2 py-0.5 rounded-full border font-medium transition-all ${active ? t.color : 'bg-transparent border-white/10 text-slate-500 hover:text-slate-300'}">${t.label}</button>`;
+  }).join('') + (cur ? `<button onclick="prioritySet('${sid}','')" class="text-[10px] px-1 py-0.5 text-slate-600 hover:text-slate-400 transition-colors">✕</button>` : '');
+}
+function prioritySet(sid, label) {
+  if (label) {
+    if (!artistMeta[sid]) artistMeta[sid] = {};
+    artistMeta[sid].priority = label;
+  } else {
+    const m = artistMeta[sid]; if(m) delete m.priority;
+  }
+  amSave();
+  renderPriorityButtons(sid);
+  const grid = document.getElementById('artist-grid');
+  if (grid) renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
 }
 function setWlFilter(tag) {
   wlFilter = tag;
@@ -706,6 +794,44 @@ function checkThresholds() {
       results.push({ sid, name: a.name, msg: `${a.name} dropped below ${fmt(threshold)} listeners (now ${fmt(a.monthly_listeners)})` });
   }
   return results;
+}
+
+// ─── Push Notifications ───
+const NOTIF_FIRED_KEY = 'artist-dashboard-fired-notifs';
+
+function requestNotifPermission() {
+  if (!('Notification' in window)) return;
+  Notification.requestPermission().then(() => updateNotifBtn());
+}
+
+function fireThresholdNotifications(alerts) {
+  if (!('Notification' in window) || Notification.permission !== 'granted' || !alerts.length) return;
+  let fired = {};
+  try { fired = JSON.parse(localStorage.getItem(NOTIF_FIRED_KEY) || '{}'); } catch(e) { fired = {}; }
+  for (const alert of alerts) {
+    const key = `${alert.sid}_${alert.msg}`;
+    if (fired[key]) continue;
+    new Notification('Artist Threshold Alert', { body: alert.msg, tag: alert.sid });
+    fired[key] = Date.now();
+  }
+  const weekAgo = Date.now() - 7 * 86400000;
+  for (const k of Object.keys(fired)) { if (fired[k] < weekAgo) delete fired[k]; }
+  localStorage.setItem(NOTIF_FIRED_KEY, JSON.stringify(fired));
+}
+
+function updateNotifBtn() {
+  const btn = document.getElementById('notif-btn');
+  if (!btn || !('Notification' in window)) { if (btn) btn.classList.add('hidden'); return; }
+  const p = Notification.permission;
+  if (p === 'granted') {
+    btn.textContent = '🔔 On';
+    btn.title = 'Notifications enabled';
+    btn.className = btn.className.replace('text-slate-500 hover:text-violet-300', 'text-violet-400');
+  } else if (p === 'denied') {
+    btn.textContent = '🔕 Blocked';
+    btn.title = 'Notifications blocked — change in browser settings';
+    btn.className = btn.className.replace('text-slate-500 hover:text-violet-300', 'text-red-500');
+  }
 }
 
 // ─── Market History ───
@@ -847,12 +973,121 @@ async function loadData() {
 
   watchlistLoad();
   contactsLoad();
-  amLoad(); mhLoad(); csLoad();
+  amLoad(); mhLoad(); csLoad(); psLoad();
+  populateTableFilters();
   triggeredAlerts = checkThresholds();
+  fireThresholdNotifications(triggeredAlerts);
   renderDashboard();
   renderVenuesPage();
   // If artist page is already active (unlikely but safe), populate the grid now
   if (document.getElementById('page-artist')?.classList.contains('active')) showArtistList();
+}
+
+// ─── Momentum Leaderboard ───
+function setMomentumTab(tab) {
+  momentumTab = tab;
+  const gainBtn = document.getElementById('mtab-gain');
+  const loseBtn = document.getElementById('mtab-lose');
+  if (gainBtn) gainBtn.className = 'text-[10px] px-2.5 py-1 rounded-md font-medium transition-all ' +
+    (tab==='gain' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300');
+  if (loseBtn) loseBtn.className = 'text-[10px] px-2.5 py-1 rounded-md font-medium transition-all ' +
+    (tab==='lose' ? 'bg-red-600/30 text-red-300' : 'text-slate-500 hover:text-slate-300');
+  renderMomentumLeaderboard();
+}
+
+function renderMomentumLeaderboard() {
+  const el = document.getElementById('dashboard-momentum');
+  if (!el) return;
+  const sorted = momentumTab === 'gain'
+    ? [...artists].filter(a => a.daily_change > 0).sort((a,b) => b.daily_change - a.daily_change).slice(0,15)
+    : [...artists].filter(a => a.daily_change < 0).sort((a,b) => a.daily_change - b.daily_change).slice(0,15);
+  if (!sorted.length) {
+    el.innerHTML = `<div class="text-xs text-slate-500 text-center py-6">No ${momentumTab==='gain'?'gaining':'losing'} artists.</div>`;
+    return;
+  }
+  el.innerHTML = sorted.map((a, i) => {
+    const up = a.daily_change > 0;
+    const pct = ((a.daily_change / a.monthly_listeners) * 100).toFixed(2);
+    const demand = computeArtistDemand(a.monthly_listeners, a.peak_listeners, false, a.daily_change, 0, []);
+    return `<div class="flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="selectArtist('${a.spotify_id}')">
+      <span class="text-[10px] text-slate-600 w-5 text-right flex-shrink-0">${i+1}</span>
+      <div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0">${initials(a.name)}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-medium text-white truncate">${a.name}</div>
+        <div class="text-[9px] ${demand.momentumColor}">${demand.momentum}</div>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <div class="text-xs font-semibold ${up ? 'trend-up' : 'trend-down'}">${up?'+':''}${fmt(a.daily_change)}</div>
+        <div class="text-[9px] text-slate-500">${up?'+':''}${pct}%</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Genre Heat Map ───
+function renderGenreHeatmap() {
+  const el = document.getElementById('dashboard-genre-heatmap');
+  if (!el) return;
+
+  const genreMap = {};
+  for (const a of artists) {
+    const mb = mbMap[a.spotify_id];
+    const genres = (mb?.genres || []).slice(0, 3);
+    const t = touringMap[a.spotify_id];
+    const status = !t ? 'none' : t.is_touring ? 'touring' : 'inactive';
+    for (const g of genres) {
+      if (!g) continue;
+      if (!genreMap[g]) genreMap[g] = { touring: 0, inactive: 0, none: 0, total: 0 };
+      genreMap[g][status]++;
+      genreMap[g].total++;
+    }
+  }
+
+  const topGenres = Object.entries(genreMap)
+    .sort((a,b) => b[1].total - a[1].total)
+    .slice(0, 12);
+
+  if (!topGenres.length) {
+    el.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">No genre data available.</div>';
+    return;
+  }
+
+  const maxVal = Math.max(...topGenres.flatMap(([,c]) => [c.touring, c.inactive, c.none])) || 1;
+
+  el.innerHTML = `
+    <div class="overflow-x-auto">
+      <table class="w-full text-[10px]">
+        <thead>
+          <tr class="text-slate-500 uppercase tracking-wider">
+            <th class="text-left pb-2 pr-3 font-medium w-28">Genre</th>
+            <th class="text-center pb-2 px-2 font-medium text-emerald-500">Touring</th>
+            <th class="text-center pb-2 px-2 font-medium text-amber-500">Inactive</th>
+            <th class="text-center pb-2 px-2 font-medium text-slate-500">No Data</th>
+            <th class="text-right pb-2 pl-2 font-medium text-slate-600">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${topGenres.map(([genre, c]) => {
+            const tOp = c.touring  ? (0.1 + (c.touring  / maxVal) * 0.65).toFixed(2) : '0.04';
+            const iOp = c.inactive ? (0.1 + (c.inactive / maxVal) * 0.65).toFixed(2) : '0.04';
+            const nOp = c.none     ? (0.1 + (c.none     / maxVal) * 0.65).toFixed(2) : '0.04';
+            return `<tr class="border-t border-white/5">
+              <td class="py-1.5 pr-3 text-slate-300 truncate max-w-[100px]">${genre}</td>
+              <td class="py-1.5 px-2 text-center">
+                <span class="inline-block rounded px-1.5 py-0.5 font-medium text-emerald-300" style="background:rgba(52,211,153,${tOp})">${c.touring||'—'}</span>
+              </td>
+              <td class="py-1.5 px-2 text-center">
+                <span class="inline-block rounded px-1.5 py-0.5 font-medium text-amber-300" style="background:rgba(251,191,36,${iOp})">${c.inactive||'—'}</span>
+              </td>
+              <td class="py-1.5 px-2 text-center">
+                <span class="inline-block rounded px-1.5 py-0.5 font-medium text-slate-400" style="background:rgba(100,116,139,${nOp})">${c.none||'—'}</span>
+              </td>
+              <td class="py-1.5 pl-2 text-right text-slate-500">${c.total}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ─── DASHBOARD ───
@@ -1083,14 +1318,32 @@ function renderDashboard() {
     }).join('');
   })();
 
+  renderMomentumLeaderboard();
+  renderGenreHeatmap();
+  updateNotifBtn();
   renderArtistTable();
 }
 
 // ─── ARTIST TABLE ───
+function populateTableFilters() {
+  const genres = [...new Set(
+    Object.values(mbMap).flatMap(m => (m.genres || []).slice(0,3))
+  )].filter(Boolean).sort();
+  const countries = [...new Set(
+    Object.values(mbMap).map(m => m.country).filter(Boolean)
+  )].sort();
+  const gSel = document.getElementById('filter-genre');
+  const cSel = document.getElementById('filter-country');
+  if (gSel) gSel.innerHTML = '<option value="">All Genres</option>' + genres.map(g=>`<option value="${g}">${g}</option>`).join('');
+  if (cSel) cSel.innerHTML = '<option value="">All Countries</option>' + countries.map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
 function renderArtistTable() {
   const filter = document.getElementById('filter-touring').value;
   const sort = document.getElementById('filter-sort').value;
   const search = (document.getElementById('table-search')?.value || '').toLowerCase();
+  const genreFilter   = document.getElementById('filter-genre')?.value   || '';
+  const countryFilter = document.getElementById('filter-country')?.value || '';
 
   let data = artists.map(a => ({ ...a, touring: touringMap[a.spotify_id] || null }));
 
@@ -1098,6 +1351,9 @@ function renderArtistTable() {
   if (filter === 'touring') data = data.filter(a => a.touring?.is_touring);
   else if (filter === 'not-touring') data = data.filter(a => a.touring && !a.touring.is_touring);
   else if (filter === 'no-data') data = data.filter(a => !a.touring);
+  else if (filter === 'gap') data = data.filter(a => isTourGap(a.touring));
+  if (genreFilter)   data = data.filter(a => (mbMap[a.spotify_id]?.genres || []).includes(genreFilter));
+  if (countryFilter) data = data.filter(a => mbMap[a.spotify_id]?.country === countryFilter);
 
   if (sort === 'listeners') data.sort((a,b) => b.monthly_listeners - a.monthly_listeners);
   else if (sort === 'change') data.sort((a,b) => b.daily_change - a.daily_change);
@@ -1113,19 +1369,22 @@ function renderArtistTable() {
     const up = a.daily_change >= 0;
     const t = a.touring;
     const pctOfPeak = a.peak_listeners ? Math.round((a.monthly_listeners / a.peak_listeners) * 100) : null;
+    const demand = computeArtistDemand(a.monthly_listeners, a.peak_listeners, false, a.daily_change, 0, []);
+    const mArrow = a.daily_change > 50000 ? '↑↑' : a.daily_change > 0 ? '↑' : a.daily_change < -50000 ? '↓↓' : '↓';
+    const gapBadge = isTourGap(t) ? '<span class="ml-1 text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">Due</span>' : '';
     return `
       <tr class="artist-row border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${a.spotify_id}')">
         <td class="py-3 pl-3 text-sm text-slate-500">${a.rank}</td>
         <td class="py-3">
           <div class="flex items-center gap-3">
             <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[9px] font-bold text-white">${initials(a.name)}</div>
-            <div class="text-sm font-medium text-white">${a.name}</div>
+            <div class="text-sm font-medium text-white">${a.name}<span class="text-[9px] ${demand.momentumColor} ml-1 opacity-80">${mArrow} ${demand.momentum}</span></div>
           </div>
         </td>
         <td class="py-3 text-right text-sm text-white">${fmt(a.monthly_listeners)}</td>
         <td class="py-3 text-right text-sm ${up ? 'trend-up' : 'trend-down'} font-medium">${up?'+':''}${fmt(a.daily_change)}</td>
         <td class="py-3 text-right text-sm text-slate-400">${fmt(a.peak_listeners)}${pctOfPeak !== null ? ` <span class="text-[10px] text-slate-500">(${pctOfPeak}%)</span>` : ''}</td>
-        <td class="py-3 text-center">${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}</td>
+        <td class="py-3 text-center">${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}${gapBadge}</td>
         <td class="py-3 text-right text-sm text-slate-300">${t ? t.recent_event_count : '—'}</td>
         <td class="py-3 text-right text-sm text-slate-400">${t ? relDate(t.last_event_date) : '—'}</td>
         <td class="py-3 text-right pr-3"><button class="text-violet-400 hover:text-violet-300 text-xs">View</button></td>
@@ -1628,6 +1887,11 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
             <span class="text-[10px] text-slate-500 uppercase tracking-wider">Deal Status:</span>
             <div id="wl-btns-${spotifyId}" class="flex items-center gap-1.5 flex-wrap"></div>
           </div>
+          <!-- Priority Tiers -->
+          <div class="border-t border-white/5 mt-3 pt-3 flex items-center gap-3 flex-wrap">
+            <span class="text-[10px] text-slate-500 uppercase tracking-wider">Priority:</span>
+            <div id="priority-buttons-${spotifyId}" class="flex items-center gap-1.5 flex-wrap"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2128,6 +2392,7 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
         </tr></thead>
         <tbody id="${peerTableId}"></tbody>
       </table>
+      <div id="peer-set-editor"></div>
     </div>
 
     ${amSectionHTML(spotifyId)}
@@ -2141,9 +2406,10 @@ function populatePeerTable(spotifyId, tableId) {
   if (!el) return;
   const idx = artists.findIndex(x => x.spotify_id === spotifyId);
   if (idx < 0) return;
-  const start = Math.max(0, idx - 5);
-  const end = Math.min(artists.length, idx + 6);
-  const peers = artists.slice(start, end);
+  const custom = peerSets[spotifyId];
+  const peers = custom
+    ? custom.map(id => artists.find(a => a.spotify_id === id)).filter(Boolean)
+    : artists.slice(Math.max(0, idx - 5), Math.min(artists.length, idx + 6));
   document.getElementById(tableId).innerHTML = peers.map(pa => {
     const isSelf = pa.spotify_id === spotifyId;
     const pt = touringMap[pa.spotify_id];
@@ -2160,6 +2426,44 @@ function populatePeerTable(spotifyId, tableId) {
         <td class="py-2.5 text-right pr-3">${pct !== null ? `<div class="flex items-center justify-end gap-1.5"><div class="w-12 h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full ${pct >= 90 ? 'bg-green-400' : pct >= 70 ? 'bg-cyan-400' : 'bg-amber-400'}" style="width:${pct}%"></div></div><span class="text-[10px] text-slate-400">${pct}%</span></div>` : '\u2014'}</td>
       </tr>`;
   }).join('');
+}
+
+function renderPeerSetEditor(sid) {
+  const el = document.getElementById('peer-set-editor');
+  if (!el) return;
+  const custom = peerSets[sid];
+  const customPeers = (custom || []).map(id => artists.find(a => a.spotify_id === id)).filter(Boolean);
+  el.innerHTML = `<div class="mt-3 pt-3 border-t border-white/5">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-[10px] text-slate-500 uppercase tracking-wider">Custom Peer Set</span>
+      ${custom ? `<button onclick="psReset('${sid}')" class="text-[9px] text-slate-500 hover:text-red-400 transition-colors">Reset to default</button>` : ''}
+    </div>
+    <div class="flex flex-wrap gap-1 mb-2">
+      ${customPeers.map(p=>`<span class="text-[9px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 flex items-center gap-1">${p.name}<button onclick="psRemove('${sid}','${p.spotify_id}')" class="text-slate-600 hover:text-red-400">×</button></span>`).join('')}
+      ${!custom ? '<span class="text-[9px] text-slate-600">Using rank-adjacent peers</span>' : ''}
+    </div>
+    <input type="text" id="peer-add-input-${sid}" placeholder="Add artist by name..." class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50" oninput="peerAddSuggest('${sid}',this.value)" autocomplete="off">
+    <div id="peer-add-dropdown-${sid}" class="mt-1"></div>
+  </div>`;
+}
+function psReset(sid) { delete peerSets[sid]; psSave(); populatePeerTable(sid,'peer-table'); renderPeerSetEditor(sid); }
+function psRemove(sid, pid) {
+  if (!peerSets[sid]) return;
+  peerSets[sid] = peerSets[sid].filter(x=>x!==pid);
+  if (!peerSets[sid].length) delete peerSets[sid];
+  psSave(); populatePeerTable(sid,'peer-table'); renderPeerSetEditor(sid);
+}
+function psAdd(sid, pid) {
+  if (!peerSets[sid]) peerSets[sid] = [];
+  if (!peerSets[sid].includes(pid)) peerSets[sid].push(pid);
+  psSave(); populatePeerTable(sid,'peer-table'); renderPeerSetEditor(sid);
+}
+function peerAddSuggest(sid, val) {
+  const dd = document.getElementById('peer-add-dropdown-'+sid);
+  if (!dd) return;
+  if (!val.trim()) { dd.innerHTML=''; return; }
+  const matches = artists.filter(a=>a.name.toLowerCase().includes(val.toLowerCase())).slice(0,5);
+  dd.innerHTML = matches.map(a=>`<div onclick="psAdd('${sid}','${a.spotify_id}');document.getElementById('peer-add-input-${sid}').value='';document.getElementById('peer-add-dropdown-${sid}').innerHTML='';" class="cursor-pointer text-xs px-2.5 py-1.5 hover:bg-white/5 text-slate-300 flex justify-between"><span>${a.name}</span><span class="text-slate-500">#${a.rank}</span></div>`).join('');
 }
 
 function selectArtist(spotifyId) {
@@ -2191,6 +2495,8 @@ function selectArtist(spotifyId) {
   populatePeerTable(spotifyId, 'peer-table');
   renderArtistCharts(a, t);
   renderWatchlistButtons(spotifyId);
+  renderPriorityButtons(spotifyId);
+  renderPeerSetEditor(spotifyId);
 }
 
 function showArtistList() {
@@ -2489,6 +2795,7 @@ function renderArtistGrid(query) {
           touringBadge +
           genreTag +
           (tag ? watchlistTagChip(tag) : '') +
+          priorityBadge(a.spotify_id) +
         '</div>' +
       '</div>'
     );
@@ -2704,6 +3011,45 @@ function renderVenuesPage() {
     sortedCities.map(c => `<option value="${c.city}">${c.city}, ${c.country}</option>`).join('');
 
   renderCityTable();
+  renderMarketSizing();
+}
+
+function renderMarketSizing() {
+  const el = document.getElementById('venue-market-sizing');
+  if (!el || !venueData.cities) return;
+  const cities = venueData.cities.slice().sort((a,b)=>{
+    const maxA = Math.max(...a.venues.map(v=>v.capacity));
+    const maxB = Math.max(...b.venues.map(v=>v.capacity));
+    return maxB - maxA;
+  }).slice(0,20);
+  el.innerHTML = `
+    <div class="glass rounded-xl p-5">
+      <h3 class="font-semibold text-white text-sm mb-1">Market Sizing by City</h3>
+      <p class="text-[11px] text-slate-500 mb-4">Top 20 cities by maximum single-venue capacity. Tier color = city tier.</p>
+      <div style="height:280px;position:relative;">
+        <canvas id="marketSizingChart"></canvas>
+      </div>
+    </div>`;
+  const tierColors = { 1: '#a78bfa', 2: '#22d3ee', 3: '#475569' };
+  if (chartInstances.marketSizing) chartInstances.marketSizing.destroy();
+  chartInstances.marketSizing = new Chart(document.getElementById('marketSizingChart'), {
+    type: 'bar',
+    data: {
+      labels: cities.map(c=>c.city),
+      datasets: [{
+        label: 'Max Capacity',
+        data: cities.map(c=>Math.max(...c.venues.map(v=>v.capacity))),
+        backgroundColor: cities.map(c=>tierColors[c.city_tier]||'#475569'),
+        borderRadius: 3, barPercentage: 0.7
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx=>' '+fmtNum(ctx.raw)+' seats' } } },
+      scales: { x: { grid: { color:'rgba(255,255,255,0.03)' }, ticks: { callback: v=>fmtNum(v) } }, y: { grid: { display:false } } }
+    }
+  });
 }
 
 // ─── CAPACITY LADDER ───
@@ -3455,36 +3801,76 @@ function computeProfile(p) {
   const co = p.costs || {};
   const ticketing_fee_pct = Number(co.ticketing_fee_pct) || 0;
   const ticketing_fee     = total_ticket_rev * ticketing_fee_pct;
-  const artist_mg_cost = (p.festival_mode && (p.festival_artists||[]).length > 0)
-    ? (p.festival_artists||[]).reduce((s,fa) => s+(Number(fa.mg)||0), 0)
-    : (Number(co.artist_mg)||0);
-  const total_costs = artist_mg_cost + ticketing_fee + total_op_costs
+  let artist_mg_cost;
+  if (co.deal_type === 'backend') {
+    const bd    = co.backend_deal || {};
+    const guar  = Number(bd.guarantee)      || 0;
+    const pct   = Number(bd.box_office_pct) || 0;
+    const basis = bd.split_basis === 'net'
+      ? total_ticket_rev * (1 - (Number(co.ticketing_fee_pct)||0))
+      : total_ticket_rev;
+    artist_mg_cost = guar + Math.max(0, basis - guar) * pct;
+  } else if (p.festival_mode && (p.festival_artists||[]).length > 0) {
+    artist_mg_cost = (p.festival_artists||[]).reduce((s,fa) => s+(Number(fa.mg)||0), 0);
+  } else {
+    artist_mg_cost = Number(co.artist_mg)||0;
+  }
+  const support_act_total = (p.support_acts||[]).reduce((s,a) => s+(Number(a.mg)||0), 0);
+  const total_costs = artist_mg_cost + support_act_total + ticketing_fee + total_op_costs
                     + (Number(co.agency_fees)||0) + (Number(co.blufin_fees)||0);
   const net_profit = total_gross_rev - total_costs;
-  const roi = total_costs > 0 ? net_profit / total_costs : 0;
+  const cop          = co.co_promoter || {};
+  const co_prom_pct  = Math.min(1, Math.max(0, Number(cop.split_pct)||0));
+  const co_promoter_share  = net_profit * co_prom_pct;
+  const blufin_net_profit  = net_profit - co_promoter_share;
+  // Invested capital = advance MG payments (all except the last, which is settled
+  // from ticket proceeds) + ALL pre-show op costs (venue fee, production,
+  // hospitality, insurance — all committed before ticket revenue is realised).
+  const mgSched = co.mg_schedule || [];
+  let mg_advance_pct;
+  if (mgSched.length === 0) {
+    mg_advance_pct = 0.5;                          // no schedule: fall back to 50%
+  } else if (mgSched.length === 1) {
+    mg_advance_pct = 1.0;                          // single payment = all upfront
+  } else {
+    // Sum every payment except the last — the last tranche is paid from
+    // collected presales/ticket revenue, not from working capital.
+    mg_advance_pct = Math.min(1, Math.max(0,
+      mgSched.slice(0, -1).reduce((s, pmt) => s + (Number(pmt.pct) || 0), 0)
+    ));
+  }
+  const mg_advance_cost  = artist_mg_cost * mg_advance_pct;
+  const invested_capital = mg_advance_cost + total_op_costs;
+  const roi = invested_capital > 0
+    ? net_profit / invested_capital
+    : (total_costs > 0 ? net_profit / total_costs : 0);
 
   return {
     cityCalcs,
     ticket_rev_per_show, total_ticket_rev, ticketing_fee,
     merch_rev, fnb_rev, sponsor_rev, total_gross_rev,
     total_op_costs, op_per_show, total_costs, net_profit, roi,
+    mg_advance_pct, mg_advance_cost, invested_capital,
     total_seats: avg_seats, total_attendance, n,
     num_cities: cities.length,
-    artist_mg_cost
+    artist_mg_cost, support_act_total,
+    co_prom_pct, co_promoter_share, blufin_net_profit,
+    deal_type: co.deal_type||'flat_mg'
   };
 }
 
 function computeScenario(c, scen) {
+  const baseProfit = (c.blufin_net_profit !== undefined) ? c.blufin_net_profit : c.net_profit;
   const equity      = Number(scen.equity) || 0;
   const hurdle_rate = Number(scen.hurdle_rate) ?? 0.20;
   const inv_split   = Number(scen.above_hurdle_investor_pct) ?? 0.50;
   const hurdle_amount = equity * hurdle_rate;
   let investor_dist = 0, blufin_dist = 0;
   if (equity > 0) {
-    if (c.net_profit <= hurdle_amount) {
-      investor_dist = c.net_profit; blufin_dist = 0;
+    if (baseProfit <= hurdle_amount) {
+      investor_dist = baseProfit; blufin_dist = 0;
     } else {
-      const above  = c.net_profit - hurdle_amount;
+      const above  = baseProfit - hurdle_amount;
       investor_dist = hurdle_amount + above * inv_split;
       blufin_dist   = above * (1 - inv_split);
     }
@@ -3843,15 +4229,227 @@ function fdMigrateProfile(p) {
   }
   if (!p.investor_scenarios) {
     p.investor_scenarios = [
-      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 },
-      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] }
     ];
   }
+  for (const scen of (p.investor_scenarios || [])) {
+    if (!scen.investors) scen.investors = [];
+  }
+  if (!p.support_acts) p.support_acts = [];
+  if (p.radius_days === undefined) p.radius_days = 90;
+  if (!p.costs.deal_type) p.costs.deal_type = 'flat_mg';
+  if (!p.costs.backend_deal) p.costs.backend_deal = { guarantee:0, box_office_pct:0.10, split_basis:'gross' };
+  if (!p.costs.co_promoter) p.costs.co_promoter = { name:'', split_pct:0 };
 }
 
 function fdSetMain(p) {
-  document.getElementById('fd-main').innerHTML = fdRenderLive(p);
+  const main = document.getElementById('fd-main');
+  const prevScroll = main?.firstElementChild?.scrollTop || 0;
+  main.innerHTML = fdRenderLive(p);
+  if (prevScroll && main.firstElementChild) main.firstElementChild.scrollTop = prevScroll;
   setTimeout(() => fdPostRenderArtistProfile(p), 0);
+}
+
+function fdToggleCompare() {
+  fdState.compareMode = !fdState.compareMode;
+  fdState.compareIds = [];
+  const btn = document.getElementById('fd-compare-btn');
+  if (btn) btn.textContent = fdState.compareMode ? '✕ Exit Compare' : '⊞ Compare';
+  fdRender();
+}
+function fdToggleCompareSelect(id) {
+  const idx = fdState.compareIds.indexOf(id);
+  if (idx >= 0) fdState.compareIds.splice(idx, 1);
+  else if (fdState.compareIds.length < 3) fdState.compareIds.push(id);
+  fdRender();
+}
+function fdCompareHTML() {
+  const profiles = fdState.compareIds.map(id => fdState.profiles.find(p => p.id === id)).filter(Boolean);
+  if (!profiles.length) return `<div class="flex flex-col items-center justify-center h-full text-center p-12">
+    <div class="text-5xl mb-4">⊞</div>
+    <h3 class="text-base font-semibold text-white mb-2">Select Profiles to Compare</h3>
+    <p class="text-sm text-slate-500 max-w-xs">Click up to 3 profiles in the sidebar to compare them side-by-side.</p>
+  </div>`;
+  const cols = profiles.map(p => {
+    const c = computeProfile(p);
+    const rc = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
+    const scens = (p.investor_scenarios||[]).filter(s => Number(s.equity)>0);
+    const scenHTML = scens.map(scen => {
+      const s = computeScenario(c, scen);
+      const mc = s.moic >= 1 ? 'text-violet-400' : 'text-red-400';
+      return `<div class="pt-2 border-t border-white/5 mt-2">
+        <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">${scen.label||'Investor'}</div>
+        <div class="flex justify-between text-xs mb-0.5"><span class="text-slate-500">Equity</span><span class="text-white">${fmtDollar(s.equity)}</span></div>
+        <div class="flex justify-between text-xs mb-0.5"><span class="text-slate-500">MOIC</span><span class="font-bold ${mc}">${s.moic.toFixed(2)}x</span></div>
+        <div class="flex justify-between text-xs"><span class="text-slate-500">Return %</span><span class="${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>
+      </div>`;
+    }).join('');
+    return `<div class="glass rounded-xl p-4 flex flex-col gap-3 min-w-0">
+      <div>
+        <div class="text-sm font-bold text-white truncate">${p.artist||'Unnamed'}</div>
+        <div class="flex gap-1.5 mt-1 flex-wrap">${fdStageBadge(p.deal_stage)}<span class="text-[9px] text-slate-500">${c.n} show${c.n!==1?'s':''} · ${c.num_cities} cit${c.num_cities>1?'ies':'y'}</span></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Gross Rev</div><div class="text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div></div>
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Net Profit</div><div class="text-sm font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Total Costs</div><div class="text-sm font-bold text-red-400">${fmtDollar(c.total_costs)}</div></div>
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">ROI</div><div class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(1)}%</div></div>
+      </div>
+      <div class="text-[10px] text-slate-500 uppercase tracking-wider pt-1 border-t border-white/5 mb-1">P&amp;L</div>
+      ${fdPLSummaryHTML(p, c)}
+      ${scenHTML}
+      <button onclick="fdSelectProfile('${p.id}');fdToggleCompare();" class="mt-auto w-full text-center text-xs text-violet-400 hover:text-violet-300 py-2 border border-violet-500/20 rounded-lg transition-colors">Open &amp; Edit →</button>
+    </div>`;
+  }).join('');
+  const gridClass = profiles.length === 1 ? 'max-w-md' : profiles.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
+  return `<div class="p-5 h-full overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-white">Comparing ${profiles.length} Profile${profiles.length>1?'s':''}</h2>
+      <button onclick="fdToggleCompare()" class="text-xs text-slate-400 hover:text-white transition-colors">✕ Exit Compare</button>
+    </div>
+    <div class="grid ${gridClass} gap-4 items-start">${cols}</div>
+  </div>`;
+}
+function fdAddSupportAct() {
+  fdState.draftProfile.support_acts = fdState.draftProfile.support_acts || [];
+  fdState.draftProfile.support_acts.push({ id:'sa_'+fdGenId(), label:'Support Act', role:'direct-support', mg:0 });
+  const el = document.getElementById('fd-support-acts-section');
+  if (el) el.innerHTML = fdSupportActsHTML(fdState.draftProfile.support_acts);
+  fdUpdateLive();
+}
+function fdRemoveSupportAct(id) {
+  fdState.draftProfile.support_acts = (fdState.draftProfile.support_acts||[]).filter(a=>a.id!==id);
+  const el = document.getElementById('fd-support-acts-section');
+  if (el) el.innerHTML = fdSupportActsHTML(fdState.draftProfile.support_acts);
+  fdUpdateLive();
+}
+function fdPatchSupportAct(id, field, val) {
+  const a = (fdState.draftProfile.support_acts||[]).find(x=>x.id===id);
+  if (a) a[field] = field==='mg' ? Number(val) : val;
+  fdUpdateLive();
+}
+function fdSupportActsHTML(acts) {
+  acts = acts || [];
+  if (!acts.length) return `<div class="text-xs text-slate-600 py-2">No support acts — click + Add Act to begin.</div>`;
+  const ROLES = ['co-headliner','direct-support','opener','other'];
+  return acts.map(a => `<div class="flex items-center gap-2 py-1.5 border-b border-white/5">
+    <input type="text" class="${FD_INPUT} text-xs py-1 flex-1 min-w-0" value="${(a.label||'').replace(/"/g,'&quot;')}" placeholder="Name" oninput="fdPatchSupportAct('${a.id}','label',this.value)">
+    <select class="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none shrink-0" onchange="fdPatchSupportAct('${a.id}','role',this.value)">
+      ${ROLES.map(r=>`<option value="${r}" ${a.role===r?'selected':''}>${r.replace('-',' ').replace(/\b\w/g,l=>l.toUpperCase())}</option>`).join('')}
+    </select>
+    <input type="number" class="${FD_INPUT} text-xs py-1 w-28 shrink-0" min="0" placeholder="MG $" value="${a.mg||0}" oninput="fdPatchSupportAct('${a.id}','mg',this.value)">
+    <span class="text-xs text-red-400 whitespace-nowrap shrink-0 w-20 text-right">${fmtDollar(Number(a.mg)||0)}</span>
+    <button onclick="fdRemoveSupportAct('${a.id}')" class="text-slate-600 hover:text-red-400 p-1 shrink-0">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>`).join('');
+}
+function fdPatchDealType(val) {
+  fdState.draftProfile.costs.deal_type = val;
+  const el = document.getElementById('fd-mg-deal-section');
+  if (el) el.innerHTML = fdMGDealSectionHTML(fdState.draftProfile);
+  fdUpdateLive();
+}
+function fdPatchBackendDeal(field, val) {
+  if (!fdState.draftProfile.costs.backend_deal) fdState.draftProfile.costs.backend_deal = {};
+  fdState.draftProfile.costs.backend_deal[field] = (field==='split_basis') ? val : Number(val);
+  fdUpdateLive();
+}
+function fdMGDealSectionHTML(p) {
+  const co = p.costs || {};
+  const bd = co.backend_deal || {};
+  const isBackend = co.deal_type === 'backend';
+  const c  = computeProfile(p);
+  return `<div class="flex gap-2 mb-3">
+    <button onclick="fdPatchDealType('flat_mg')" class="flex-1 text-xs py-1.5 rounded-lg border transition-all ${!isBackend?'bg-violet-600/30 border-violet-500/50 text-violet-300':'border-white/10 text-slate-500 hover:text-white'}">Flat MG</button>
+    <button onclick="fdPatchDealType('backend')" class="flex-1 text-xs py-1.5 rounded-lg border transition-all ${isBackend?'bg-violet-600/30 border-violet-500/50 text-violet-300':'border-white/10 text-slate-500 hover:text-white'}">Backend Deal (%)</button>
+  </div>
+  ${isBackend ? `<div class="space-y-2">
+    <div class="text-[9px] text-slate-500 mb-1">Artist receives: guarantee + X% of box office above guarantee</div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="${FD_LABEL}">Guarantee ($)</label>
+        <input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${bd.guarantee||0}" oninput="fdPatchBackendDeal('guarantee',this.value)"></div>
+      <div><label class="${FD_LABEL}">Box Office % (above guarantee)</label>
+        <input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((bd.box_office_pct||0.10)*100).toFixed(0)}" oninput="fdPatchBackendDeal('box_office_pct',Number(this.value)/100)"></div>
+    </div>
+    <div><label class="${FD_LABEL}">Split Basis</label>
+      <select class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white w-full focus:outline-none" onchange="fdPatchBackendDeal('split_basis',this.value)">
+        <option value="gross" ${bd.split_basis!=='net'?'selected':''}>Gross ticket revenue</option>
+        <option value="net"   ${bd.split_basis==='net'?'selected':''}>Net (after ticketing fee)</option>
+      </select></div>
+    <div class="flex justify-between pt-2 border-t border-white/5 text-xs">
+      <span class="text-slate-400">Computed Artist Cost</span>
+      <span id="fd-mg-computed-cost" class="text-red-400 font-semibold">${fmtDollar(c.artist_mg_cost)}</span>
+    </div>
+  </div>` : `<div>
+    <label class="${FD_LABEL}">Total MG (all-in deal)</label>
+    <input type="number" class="${FD_INPUT}" style="font-size:1.1rem;font-weight:700;" min="0" value="${co.artist_mg||0}" oninput="fdPatch('costs.artist_mg',Number(this.value))">
+  </div>`}`;
+}
+function fdPatchCoPromoter(field, val) {
+  if (!fdState.draftProfile.costs.co_promoter) fdState.draftProfile.costs.co_promoter = {};
+  fdState.draftProfile.costs.co_promoter[field] = field==='split_pct' ? Number(val)/100 : val;
+  fdUpdateLive();
+}
+function fdCoPromoterSummaryHTML(p, c) {
+  if (!c.co_prom_pct) return '';
+  const rc = c.blufin_net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
+  return `<div class="mt-3 pt-3 border-t border-white/5 space-y-1">
+    <div class="flex justify-between text-xs"><span class="text-slate-500">Net Profit (total)</span><span class="text-white">${fmtDollar(c.net_profit)}</span></div>
+    <div class="flex justify-between text-xs"><span class="text-slate-500">${p.costs?.co_promoter?.name||'Co-Promoter'} share (${(c.co_prom_pct*100).toFixed(0)}%)</span><span class="text-red-400">(${fmtDollar(c.co_promoter_share)})</span></div>
+    <div class="flex justify-between text-xs font-semibold pt-0.5"><span class="text-slate-300">BluFin Net Share</span><span class="${rc}">${fmtDollar(c.blufin_net_profit)}</span></div>
+  </div>`;
+}
+
+function fdCityRegion(cityName) {
+  if (!cityName || !venueData.cities) return null;
+  const lower = cityName.toLowerCase();
+  const match = venueData.cities.find(c => c.city.toLowerCase() === lower || lower.includes(c.city.toLowerCase()));
+  return match ? match.region : null;
+}
+
+function fdRoutingHTML(p) {
+  const cities = (p.tour_cities || []).filter(tc => tc.city_name);
+  if (cities.length < 2) return `<div class="text-xs text-slate-600 py-2">Add 2+ cities to see routing analysis.</div>`;
+  let transitions = 0;
+  const rows = cities.map((tc, i) => {
+    if (i === 0) return `<div class="flex items-center gap-2 py-1 text-xs"><span class="text-slate-500 w-4 text-right">${i+1}</span><span class="text-white">${tc.city_name}</span></div>`;
+    const prevRegion = fdCityRegion(cities[i-1].city_name);
+    const curRegion  = fdCityRegion(tc.city_name);
+    const backtrack  = prevRegion && curRegion && prevRegion !== curRegion;
+    if (backtrack) transitions++;
+    return `<div class="flex items-center gap-2 py-1 text-xs border-t border-white/5">
+      <span class="text-slate-500 w-4 text-right">${i+1}</span>
+      <span class="${backtrack?'text-amber-400':'text-white'}">${tc.city_name}</span>
+      ${backtrack ? '<span class="text-[9px] text-amber-500 ml-auto">⚠ region jump</span>' : ''}
+    </div>`;
+  }).join('');
+  const flag = transitions > 0
+    ? `<div class="mt-2 pt-2 border-t border-white/5 text-[10px] text-amber-400">${transitions} region jump${transitions>1?'s':''} detected — consider reordering cities</div>`
+    : `<div class="mt-2 pt-2 border-t border-white/5 text-[10px] text-emerald-400">Routing looks efficient — no region jumps</div>`;
+  return rows + flag;
+}
+
+function fdRadiusHTML(p) {
+  const cities = (p.tour_cities || []).filter(tc => tc.city_name && tc.concert_date);
+  const days   = Number(p.radius_days) || 90;
+  if (cities.length < 2) return `<div class="text-xs text-slate-600 py-2">Add cities with dates to check radius clauses.</div>`;
+  const conflicts = [];
+  for (let i = 0; i < cities.length; i++) {
+    for (let j = i+1; j < cities.length; j++) {
+      const a = cities[i], b = cities[j];
+      if (a.city_name.toLowerCase() === b.city_name.toLowerCase()) {
+        const diff = Math.abs(daysSince(a.concert_date) - daysSince(b.concert_date));
+        if (diff < days) conflicts.push({ a, b, diff });
+      }
+    }
+  }
+  if (!conflicts.length) return `<div class="text-xs text-emerald-400 py-2">No radius conflicts within ${days}-day window.</div>`;
+  return conflicts.map(cf=>`<div class="flex items-start gap-2 py-1.5 border-b border-white/5 text-xs">
+    <span class="text-amber-400 mt-0.5">⚠</span>
+    <div><span class="text-white font-medium">${cf.a.city_name}</span>: shows <span class="text-amber-400">${cf.diff} day${cf.diff!==1?'s':''} apart</span> (under ${days}-day clause)</div>
+  </div>`).join('');
 }
 
 function fdRender() {
@@ -3866,13 +4464,21 @@ function fdRender() {
     sidebar.innerHTML = fdState.profiles.map(p => {
       const c = computeProfile(p);
       const isActive = fdState.activeId === p.id;
+      const isSelected = fdState.compareIds.includes(p.id);
       const roiColor = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
       const vbg = p.venue_type==='stadium' ? 'bg-violet-500/15 text-violet-300' : p.venue_type==='arena' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300';
       const totalShows = (p.tour_cities && p.tour_cities.length) ? p.tour_cities.reduce((s,tc) => s+(Number(tc.num_shows)||1),0) : (p.num_shows||1);
       const numCities = (p.tour_cities && p.tour_cities.length) || 1;
       const firstCity = (p.tour_cities && p.tour_cities[0]?.city_name) || p.city || '—';
       const cityLabel = numCities > 1 ? numCities + ' cities' : (firstCity || '—');
-      return `<div onclick="fdSelectProfile('${p.id}')" class="rounded-xl p-3 cursor-pointer transition-all border ${isActive ? 'bg-violet-500/10 border-violet-500/30' : 'glass border-transparent hover:bg-white/5'}">
+      const cardClick = fdState.compareMode
+        ? `onclick="fdToggleCompareSelect('${p.id}')"`
+        : `onclick="fdSelectProfile('${p.id}')"`;
+      const borderClass = fdState.compareMode
+        ? (isSelected ? 'bg-violet-500/15 border-violet-500/40' : 'glass border-transparent hover:bg-white/5')
+        : (isActive ? 'bg-violet-500/10 border-violet-500/30' : 'glass border-transparent hover:bg-white/5');
+      return `<div ${cardClick} class="rounded-xl p-3 cursor-pointer transition-all border ${borderClass}">
+        ${fdState.compareMode && isSelected ? '<div class="text-[9px] text-violet-400 font-semibold mb-1">✓ Selected</div>' : ''}
         <div class="flex items-start justify-between gap-1 mb-1">
           <div class="text-sm font-semibold text-white truncate">${p.artist || 'Unnamed Artist'}</div>
           ${fdStageBadge(p.deal_stage)}
@@ -3893,7 +4499,9 @@ function fdRender() {
       </div>`;
     }).join('');
   }
-  if (fdState.mode === 'edit' && fdState.draftProfile) {
+  if (fdState.compareMode) {
+    main.innerHTML = fdCompareHTML();
+  } else if (fdState.mode === 'edit' && fdState.draftProfile) {
     main.innerHTML = fdRenderLive(fdState.draftProfile);
     setTimeout(() => fdPostRenderArtistProfile(fdState.draftProfile), 0);
   } else {
@@ -3937,17 +4545,24 @@ function fdStartCreate() {
         { label: '1st Payment', pct: 0.20, months_before: 7 },
         { label: '2nd Payment', pct: 0.80, months_before: 2 }
       ],
-      agency_fees: 0, blufin_fees: 0
+      agency_fees: 0, blufin_fees: 0,
+      deal_type: 'flat_mg',
+      backend_deal: { guarantee: 0, box_office_pct: 0.10, split_basis: 'gross' },
+      co_promoter: { name: '', split_pct: 0 }
     },
     ticketing_settlement: { company: 'ticketmaster', days_after_show: 5, advance_pct: 0, advance_days_before: 0 },
     investor_scenarios: [
-      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 },
-      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] }
     ],
     deal_stage: null,
     festival_mode: false,
-    festival_artists: []
+    festival_artists: [],
+    support_acts: [],
+    radius_days: 90
   };
+  fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
+  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
   fdRender();
 }
 
@@ -3957,6 +4572,8 @@ function fdSelectProfile(id) {
   fdState.activeId = id; fdState.mode = 'edit';
   fdState.draftProfile = JSON.parse(JSON.stringify(p));
   fdMigrateProfile(fdState.draftProfile);
+  fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
+  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
   fdRender();
 }
 
@@ -4328,8 +4945,14 @@ async function fdExportExcel() {
   const NP='F'+r;
   ws.getRow(r).height=24; r++; r++;
 
+  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Invested Capital (Advance MG + Venue Fees)';
+  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value=(Math.round(c.mg_advance_pct*100))+'% MG advance (1st+2nd pmts) + all pre-show ops';
+  sc(ws.getCell(r,6),{numFmt:'$#,##0'}).value=c.invested_capital;
+  const IC_REF='F'+r; ws.getRow(r).height=17; r++;
+
   sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Return on Investment (ROI)';
-  fml(ws.getCell(r,6),'IF('+TC+'>0,'+NP+'/'+TC+',0)',c.roi,{numFmt:'0.00%'});
+  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='Net Profit ÷ Invested Capital (pre-carry)';
+  fml(ws.getCell(r,6),'IF('+IC_REF+'>0,'+NP+'/'+IC_REF+',IF('+TC+'>0,'+NP+'/'+TC+',0))',c.roi,{numFmt:'0.00%'});
   ws.getRow(r).height=17; r++;
 
   const avgTkt = totSeatsAll > 0 ? tktRevAll/totSeatsAll : 0;
@@ -4386,6 +5009,7 @@ async function fdExportExcel() {
       inp(ws.getCell(r,2),sp,{numFmt:'0%'}); const SP='B'+r; ws.getRow(r).height=17; r++;
       r++;
 
+      const invDistRef = 'B' + (r + 3); // row offset 3 = 'Investor Distribution' in calcs[]
       const calcs=[
         ['Project Net Profit',          NP,                                                                    sv.hurdle_amount?netP:netP,   '$#,##0'],
         ['Hurdle Return Required',       EQ+'*'+HR,                                                             sv.hurdle_amount,             '$#,##0'],
@@ -4400,6 +5024,59 @@ async function fdExportExcel() {
         sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value=lbl;
         fml(ws.getCell(r,2),f,v,{numFmt:fmt});
         ws.getRow(r).height=17; r++;
+      }
+
+      // ── Per-investor breakdown (live formula-linked) ──────────────────────
+      const invList = scen.investors || [];
+      if (invList.length > 0) {
+        r++;
+        ws.mergeCells('A'+r+':F'+r);
+        sc(ws.getCell('A'+r),{fill:C.navy,font:{bold:true,size:9,color:{argb:C.white}},align:{horizontal:'left'}}).value='  Investor Breakdown';
+        ws.getRow(r).height=16; r++;
+        colHdrs(ws, r, ['Investor Name','Stake % (edit)','Equity Amount','Distribution','Total Return','MOIC']); r++;
+
+        const sumPct = invList.reduce((a,i) => a+(i.pct||0), 0);
+        const invRowStart = r;
+        for (const inv of invList) {
+          const frac  = sumPct > 0 ? (inv.pct||0)/sumPct : 0;
+          const eqAmt = sv.equity * frac;
+          const dist  = sv.investor_dist * frac;
+          const totR  = eqAmt + dist;
+          const moic  = eqAmt > 0 ? totR/eqAmt : 0;
+          sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value = inv.name||'(Unnamed)';
+          // Col B: Stake % — yellow INPUT so the user can edit it and watch cols C–F recalc
+          inp(ws.getCell(r,2), (inv.pct||0)/100, {numFmt:'0.0%'});
+          // Col C: Equity = total equity × this investor's stake %
+          fml(ws.getCell(r,3), EQ+'*B'+r,               eqAmt, {numFmt:'$#,##0'});
+          // Col D: Distribution = total investor dist × this investor's stake %
+          fml(ws.getCell(r,4), invDistRef+'*B'+r,        dist,  {numFmt:'$#,##0'});
+          // Col E: Total Return = equity + distribution
+          fml(ws.getCell(r,5), 'C'+r+'+D'+r,            totR,  {numFmt:'$#,##0'});
+          // Col F: MOIC = total return ÷ equity
+          fml(ws.getCell(r,6), 'IF(C'+r+'>0,E'+r+'/C'+r+',0)', moic, {numFmt:'0.00"x"'});
+          ws.getRow(r).height=17; r++;
+        }
+        const invRowEnd = r - 1;
+        // Pool Total — SUM formulas so the row stays live as stakes are edited
+        sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='Pool Total';
+        fml(ws.getCell(r,2),'SUM(B'+invRowStart+':B'+invRowEnd+')', sumPct/100,
+            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'0.0%',border:bTop(C.greenLight)});
+        fml(ws.getCell(r,3),'SUM(C'+invRowStart+':C'+invRowEnd+')', sv.equity,
+            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
+        fml(ws.getCell(r,4),'SUM(D'+invRowStart+':D'+invRowEnd+')', sv.investor_dist,
+            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
+        fml(ws.getCell(r,5),'SUM(E'+invRowStart+':E'+invRowEnd+')', sv.total_inv_return,
+            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
+        fml(ws.getCell(r,6),
+            'IF(SUM(C'+invRowStart+':C'+invRowEnd+')>0,SUM(E'+invRowStart+':E'+invRowEnd+')/SUM(C'+invRowStart+':C'+invRowEnd+'),0)',
+            sv.moic, {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'0.00"x"',border:bTop(C.greenLight)});
+        ws.getRow(r).height=18; r++;
+        if (Math.abs(sumPct-100) > 0.01) {
+          ws.mergeCells('A'+r+':F'+r);
+          sc(ws.getCell('A'+r),{fill:'FFFFF8DB',font:{italic:true,color:{argb:'FFB45309'}},align:{horizontal:'left'}}).value=
+            '  ⚠ Stakes sum to '+sumPct.toFixed(1)+'% — edit Stake % column to rebalance to 100%';
+          ws.getRow(r).height=14; r++;
+        }
       }
       r++;
     }
@@ -4762,6 +5439,181 @@ async function fdExportExcel() {
   URL.revokeObjectURL(url);
 }
 
+async function fdBatchExport() {
+  if (!fdState.profiles.length) { alert('No profiles to export.'); return; }
+  if (!window.ExcelJS) {
+    try {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+      });
+    } catch(e) { alert('Could not load Excel library. Check internet connection.'); return; }
+  }
+
+  const C = {
+    purple:'FF4C1D95', dark:'FF0F172A', navy:'FF1E3A5F', teal:'FF0F766E',
+    rose:'FFBE123C',  white:'FFFFFFFF', gray:'FF64748B', dgray:'FF334155',
+    inputY:'FFFFFDE7', calcB:'FFE8F0FE', totG:'FFECFDF5', totR:'FFFEF2F2',
+    bgLt:'FFF8FAFC',  green:'FF065F46', red:'FF991B1B', redLight:'FFFCA5A5',
+    greenLight:'FF6EE7B7', blueFont:'FF1E40AF'
+  };
+  function fill(a)     { return { type:'pattern', pattern:'solid', fgColor:{argb:a} }; }
+  function thin(a)     { return { style:'thin', color:{argb:a||'FFCBD5E1'} }; }
+  function sc(cell, opts) {
+    if (opts.fill)   cell.fill  = fill(opts.fill);
+    if (opts.font)   cell.font  = { size:10, ...opts.font };
+    else             cell.font  = { size:10 };
+    if (opts.numFmt) cell.numFmt = opts.numFmt;
+    cell.alignment = { vertical:'middle', ...(opts.align||{}) };
+    if (opts.border) cell.border = opts.border;
+    return cell;
+  }
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Artist Dashboard'; wb.created = new Date();
+
+  // ── Summary Sheet ──────────────────────────────────────────────────────────
+  const wsSumm = wb.addWorksheet('Summary');
+  wsSumm.views = [{ showGridLines:false, zoomScale:110 }];
+  wsSumm.columns = [
+    { width:28 }, { width:18 }, { width:10 }, { width:10 },
+    { width:18 }, { width:18 }, { width:10 }, { width:14 }
+  ];
+  // Header row
+  const hdrLabels = ['Artist','Deal Stage','Cities','Shows','Gross Revenue','Net Profit','ROI','Best MOIC'];
+  const hdrRow = wsSumm.addRow(hdrLabels);
+  hdrRow.height = 22;
+  hdrLabels.forEach((_, i) => {
+    sc(wsSumm.getCell(1, i+1), {
+      fill: C.purple,
+      font: { bold:true, color:{argb:C.white}, size:10 },
+      align: { horizontal: i < 2 ? 'left' : 'right' },
+      border: { bottom: thin('FF7C3AED') }
+    });
+  });
+  // Data rows
+  fdState.profiles.forEach(p => {
+    const c = computeProfile(p);
+    const scens = (p.investor_scenarios||[]).filter(s => Number(s.equity)>0);
+    const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(c,s).moic)) : 0;
+    const row = wsSumm.addRow([
+      p.artist||'Unnamed',
+      p.deal_stage||'',
+      c.num_cities,
+      c.n,
+      c.total_gross_rev,
+      c.net_profit,
+      c.roi,
+      bestMoic||''
+    ]);
+    row.height = 18;
+    // Gross Revenue
+    sc(wsSumm.getCell(row.number, 5), { numFmt:'"$"#,##0', align:{horizontal:'right'} });
+    // Net Profit — color green/red
+    const npCell = wsSumm.getCell(row.number, 6);
+    sc(npCell, {
+      fill: c.net_profit >= 0 ? C.totG : C.totR,
+      font: { bold:true, color:{argb: c.net_profit >= 0 ? C.green : C.red} },
+      numFmt: '"$"#,##0',
+      align: { horizontal:'right' }
+    });
+    // ROI
+    sc(wsSumm.getCell(row.number, 7), { numFmt:'0.0%', align:{horizontal:'right'} });
+    // MOIC
+    if (bestMoic) sc(wsSumm.getCell(row.number, 8), { numFmt:'0.00"x"', align:{horizontal:'right'} });
+    // Left-align text cols
+    sc(wsSumm.getCell(row.number, 1), { align:{horizontal:'left'} });
+    sc(wsSumm.getCell(row.number, 2), { align:{horizontal:'left'} });
+  });
+
+  // ── Per-profile sheets (max 15) ────────────────────────────────────────────
+  const profiles = fdState.profiles.slice(0, 15);
+  function sanitizeName(name) {
+    return (name||'Profile').replace(/[\/\\:\[\]\*\?]/g,'').substring(0,28).trim() || 'Profile';
+  }
+
+  profiles.forEach(p => {
+    const c = computeProfile(p);
+    const sheetName = sanitizeName(p.artist||'Profile');
+    const ws = wb.addWorksheet(sheetName);
+    ws.views = [{ showGridLines:false, zoomScale:105 }];
+    ws.columns = [{ width:24 },{ width:18 },{ width:18 },{ width:18 },{ width:18 }];
+
+    // Title row
+    ws.mergeCells('A1:E1');
+    sc(ws.getCell('A1'), {
+      fill: C.purple,
+      font: { bold:true, size:12, color:{argb:C.white} },
+      align: { horizontal:'left' }
+    }).value = '  ' + (p.artist||'Profile') + (p.deal_stage ? ' — ' + p.deal_stage : '');
+    ws.getRow(1).height = 26;
+
+    // KPI row (row 3)
+    const kpiRow = ws.addRow(['']);
+    ws.addRow(['']);
+    const kpiLabels = ['Gross Revenue','Total Costs','Net Profit','ROI'];
+    const kpiVals   = [c.total_gross_rev, c.total_costs, c.net_profit, c.roi];
+    const kpiRow2 = ws.addRow(kpiLabels);
+    kpiRow2.height = 16;
+    kpiLabels.forEach((_,i) => {
+      sc(ws.getCell(kpiRow2.number, i+1), { fill:C.bgLt, font:{bold:true,color:{argb:C.dgray}}, align:{horizontal:'right'} });
+    });
+    const kpiValRow = ws.addRow(kpiVals);
+    kpiValRow.height = 20;
+    [c.total_gross_rev, c.total_costs, c.net_profit, c.roi].forEach((v,i) => {
+      const cl = ws.getCell(kpiValRow.number, i+1);
+      const isProfit = i === 2;
+      const fmt = i === 3 ? '0.0%' : '"$"#,##0';
+      sc(cl, {
+        fill: isProfit ? (v>=0 ? C.totG : C.totR) : (i===0?C.totG:i===1?C.totR:undefined),
+        font: { bold:true, color:{argb: isProfit ? (v>=0?C.green:C.red) : (i===0?C.green:i===1?C.red:C.dgray)} },
+        numFmt: fmt, align:{horizontal:'right'}
+      });
+    });
+
+    // Tour Cities
+    ws.addRow(['']);
+    const cityHdr = ws.addRow(['City','Shows','Ticket Rev']);
+    cityHdr.height = 16;
+    [1,2,3].forEach(i => sc(ws.getCell(cityHdr.number,i), { fill:C.bgLt, font:{bold:true,color:{argb:C.dgray}}, align:{horizontal:i===1?'left':'right'} }));
+    c.cityCalcs.forEach(cc => {
+      const r = ws.addRow([(cc.tc.city_name||cc.tc.venue_name||'Stop'), cc.shows, cc.total_ticket_rev]);
+      sc(ws.getCell(r.number,1),{align:{horizontal:'left'}});
+      sc(ws.getCell(r.number,2),{align:{horizontal:'right'}});
+      sc(ws.getCell(r.number,3),{numFmt:'"$"#,##0',align:{horizontal:'right'}});
+    });
+
+    // Investor Scenarios
+    const invScens = (p.investor_scenarios||[]).filter(s=>Number(s.equity)>0);
+    if (invScens.length) {
+      ws.addRow(['']);
+      const invHdr = ws.addRow(['Scenario','Equity','MOIC','Return %']);
+      invHdr.height = 16;
+      [1,2,3,4].forEach(i => sc(ws.getCell(invHdr.number,i), { fill:C.navy, font:{bold:true,color:{argb:C.white}}, align:{horizontal:i===1?'left':'right'} }));
+      invScens.forEach(scen => {
+        const s = computeScenario(c, scen);
+        const r = ws.addRow([scen.label||'Investor', s.equity, s.moic, s.abs_return]);
+        sc(ws.getCell(r.number,1),{align:{horizontal:'left'}});
+        sc(ws.getCell(r.number,2),{numFmt:'"$"#,##0',align:{horizontal:'right'}});
+        sc(ws.getCell(r.number,3),{numFmt:'0.00"x"',align:{horizontal:'right'},font:{bold:true,color:{argb:s.moic>=1?C.purple:C.red}}});
+        sc(ws.getCell(r.number,4),{numFmt:'0.0%',align:{horizontal:'right'}});
+      });
+    }
+  });
+
+  // ── Download ────────────────────────────────────────────────────────────────
+  const today = new Date().toISOString().split('T')[0];
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Artist Dashboard — Batch Export — ' + today + '.xlsx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function fdExportPDF() {
   const p = fdState.draftProfile;
   if (!p) return;
@@ -4803,17 +5655,64 @@ function fdExportPDF() {
     `<tr><td>${m.label || '—'}</td><td class="num">${pct(m.pct || 0)}</td><td class="num">${m.months_before > 0 ? m.months_before + ' mo before show' : 'At show'}</td><td class="num">${currency((p.costs.artist_mg || 0) * (m.pct || 0))}</td></tr>`
   ).join('');
 
-  const scenRows = (p.investor_scenarios || []).filter(s => s.equity > 0).map(s => {
-    const sc = computeScenario(c, s);
-    return `<tr>
-      <td>${s.label || 'Scenario'}</td>
-      <td class="num">${currency(s.equity)}</td>
-      <td class="num">${pct(s.hurdle_rate || 0)}</td>
-      <td class="num">${currency(sc.hurdle_amount)}</td>
-      <td class="num">${currency(sc.investor_dist)}</td>
-      <td class="num">${sc.moic > 0 ? sc.moic.toFixed(2) + 'x' : '—'}</td>
-      <td class="num">${sc.abs_return > 0 ? pct(sc.abs_return) : '—'}</td>
-    </tr>`;
+  const scenBlocks = (p.investor_scenarios || []).filter(s => s.equity > 0).map(s => {
+    const sv = computeScenario(c, s);
+    const investors = s.investors || [];
+    const sumPct = investors.reduce((acc, inv) => acc + (inv.pct||0), 0);
+
+    const invTable = investors.length > 0 ? `
+      <div style="margin-top:10px">
+        <div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#6b7280;margin-bottom:5px;">Investor Breakdown</div>
+        <table>
+          <thead><tr>
+            <th>Investor</th><th>Stake</th><th>Equity Amount</th><th>Distribution</th><th>Total Return</th><th>MOIC</th>
+          </tr></thead>
+          <tbody>
+            ${investors.map(inv => {
+              const frac  = sumPct > 0 ? (inv.pct||0)/sumPct : 0;
+              const eqAmt = sv.equity * frac;
+              const dist  = sv.investor_dist * frac;
+              const totR  = eqAmt + dist;
+              const moic  = eqAmt > 0 ? totR/eqAmt : 0;
+              return `<tr>
+                <td>${inv.name||'(Unnamed)'}</td>
+                <td class="num">${(inv.pct||0).toFixed(1)}%</td>
+                <td class="num">${currency(eqAmt)}</td>
+                <td class="num">${currency(dist)}</td>
+                <td class="num">${currency(totR)}</td>
+                <td class="num" style="font-weight:700;color:${moic>=1?'#7c3aed':'#dc2626'}">${eqAmt>0?moic.toFixed(2)+'x':'—'}</td>
+              </tr>`;
+            }).join('')}
+            <tr style="border-top:2px solid #d1d5db;background:#f0fdf4">
+              <td><strong>Pool Total</strong></td>
+              <td class="num"><strong>${sumPct.toFixed(1)}%</strong></td>
+              <td class="num"><strong>${currency(sv.equity)}</strong></td>
+              <td class="num"><strong>${currency(sv.investor_dist)}</strong></td>
+              <td class="num"><strong>${currency(sv.total_inv_return)}</strong></td>
+              <td class="num" style="font-weight:700;color:${sv.moic>=1?'#7c3aed':'#dc2626'}">${sv.moic.toFixed(2)}x</td>
+            </tr>
+            ${Math.abs(sumPct-100)>0.01?`<tr><td colspan="6" style="color:#b45309;font-size:9px;font-style:italic">⚠ Stakes sum to ${sumPct.toFixed(1)}% — returns distributed proportionally</td></tr>`:''}
+          </tbody>
+        </table>
+      </div>` : '';
+
+    return `<div style="margin-bottom:14px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;background:#fafafa;">
+      <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">${s.label||'Scenario'}</div>
+      <table>
+        <tbody>
+          <tr><td>Equity Investment</td><td class="num"><strong>${currency(s.equity)}</strong></td></tr>
+          <tr><td>Hurdle Rate</td><td class="num">${pct(s.hurdle_rate||0)}</td></tr>
+          <tr><td>Investor Split (above hurdle)</td><td class="num">${pct(s.above_hurdle_investor_pct||0)}</td></tr>
+          <tr><td>Hurdle Amount</td><td class="num">${currency(sv.hurdle_amount)}</td></tr>
+          <tr><td>Investor Distribution</td><td class="num">${currency(sv.investor_dist)}</td></tr>
+          <tr><td>BluFin Distribution</td><td class="num">${currency(sv.blufin_dist)}</td></tr>
+          <tr><td>Total Investor Return</td><td class="num">${currency(sv.total_inv_return)}</td></tr>
+          <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#7c3aed':'#dc2626'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
+          <tr><td>Absolute Return</td><td class="num">${sv.abs_return>0?pct(sv.abs_return):'—'}</td></tr>
+        </tbody>
+      </table>
+      ${invTable}
+    </div>`;
   }).join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -4886,9 +5785,9 @@ ${mgRows ? `<section>
   <table><thead><tr><th>Label</th><th>%</th><th>Timing</th><th>Amount</th></tr></thead><tbody>${mgRows}</tbody></table>
 </section>` : ''}
 
-${scenRows ? `<section>
+${scenBlocks ? `<section>
   <h2>Investor Scenarios</h2>
-  <table><thead><tr><th>Scenario</th><th>Equity</th><th>Hurdle</th><th>Hurdle Amt</th><th>Investor Dist.</th><th>MOIC</th><th>Abs Return</th></tr></thead><tbody>${scenRows}</tbody></table>
+  ${scenBlocks}
 </section>` : ''}
 
 <div class="footer">
@@ -4945,13 +5844,45 @@ function fdPatchTicketingCo(val) {
 function fdPatchScen(id, field, value) {
   if (!fdState.draftProfile) return;
   const scen = fdState.draftProfile.investor_scenarios?.find(s => s.id === id);
-  if (scen) { scen[field] = value; fdUpdateLive(); }
+  if (!scen) return;
+  scen[field] = value;
+  // Only recompute the scenario-specific elements; equity/hurdle/split don't affect
+  // net_profit or total_costs, so a full fdUpdateLive() is unnecessary and would
+  // replace fd-scen-id-inv-table (killing focus on any investor inputs).
+  fdRefreshScen(id);
 }
 
 function fdPatchScenLabel(id, value) {
   if (!fdState.draftProfile) return;
   const scen = fdState.draftProfile.investor_scenarios?.find(s => s.id === id);
   if (scen) scen.label = value;
+}
+
+// Targeted refresh for a single scenario — preserves focus in investor input rows.
+function fdRefreshScen(scenId) {
+  const p = fdState.draftProfile;
+  if (!p) return;
+  const scen = p.investor_scenarios?.find(s => s.id === scenId);
+  if (!scen) return;
+  const c = computeProfile(p);
+  // Preserve focus before any innerHTML replacement
+  const ae = document.activeElement;
+  const aeId = ae?.id;
+  const ss = ae?.selectionStart;
+  const se = ae?.selectionEnd;
+  const tbl = document.getElementById('fd-scen-' + scenId + '-inv-table');
+  if (tbl) tbl.innerHTML = fdScenInvTableHTML(scen);
+  const res = document.getElementById('fd-scen-' + scenId + '-result');
+  if (res) res.innerHTML = fdScenResultHTML(c, scen);
+  // KPI strip shows best MOIC across all scenarios
+  const kpi = document.getElementById('fd-kpi-strip');
+  if (kpi) kpi.innerHTML = fdKPIStripHTML(c, p);
+  fdUpdateSens();
+  // Restore focus to whichever investor input was active
+  if (aeId) {
+    const restored = document.getElementById(aeId);
+    if (restored) { restored.focus(); try { restored.setSelectionRange(ss, se); } catch(_) {} }
+  }
 }
 
 function fdUpdateLive() {
@@ -4994,9 +5925,15 @@ function fdUpdateLive() {
         '<span>' + cc.shows + ' show' + (cc.shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtDollar(cc.total_op_cost) + '</span></span>' +
       '</span>');
   }
+  upd('fd-mg-computed-cost', fmtDollar(c.artist_mg_cost));
+  upd('fd-co-promoter-summary', fdCoPromoterSummaryHTML(p, c));
   for (const scen of (p.investor_scenarios || [])) {
+    upd('fd-scen-' + scen.id + '-inv-table', fdScenInvTableHTML(scen));
     upd('fd-scen-' + scen.id + '-result', fdScenResultHTML(c, scen));
   }
+  upd('fd-routing-section', fdRoutingHTML(p));
+  upd('fd-radius-section', fdRadiusHTML(p));
+  fdUpdateSens();
 }
 
 function fdKPIStripHTML(c, p) {
@@ -5009,7 +5946,7 @@ function fdKPIStripHTML(c, p) {
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_attendance)} total attendance · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ROI</div><div class="text-lg font-bold ${rc}">${(c.roi*100).toFixed(2)}%</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ROI</div><div class="text-lg font-bold ${rc}">${(c.roi*100).toFixed(2)}%</div><div class="text-[9px] text-slate-500 mt-1">${c.invested_capital > 0 ? 'on ' + fmtDollar(c.invested_capital) + ' capital' : 'on total costs'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Best MOIC</div><div class="text-lg font-bold ${mc}">${bestMoic > 0 ? bestMoic.toFixed(2)+'x' : '—'}</div></div>
   </div>`;
 }
@@ -5066,13 +6003,24 @@ function fdPLSummaryHTML(p, c) {
     ${c.fnb_rev>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  F&amp;B Revenue</span><span class="text-xs text-emerald-400">${fmtDollar(c.fnb_rev)}</span></div>`:''}
     ${c.sponsor_rev>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Sponsorship Revenue</span><span class="text-xs text-emerald-400">${fmtDollar(c.sponsor_rev)}</span></div>`:''}
     <div class="flex justify-between py-1.5 border-b border-white/10"><span class="text-sm font-semibold text-white">Total Gross Revenue</span><span class="text-sm font-semibold text-emerald-400">${fmtDollar(c.total_gross_rev)}</span></div>
-    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Artist MG</span><span class="text-xs text-red-400">(${fmtDollar(co.artist_mg||0)})</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  ${(p.costs?.deal_type==='backend')?'Artist Backend Deal':'Artist MG'}</span><span class="text-xs text-red-400">(${fmtDollar(c.artist_mg_cost)})</span></div>
+    ${(c.support_act_total||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Support Acts (${(p.support_acts||[]).length} act${(p.support_acts||[]).length!==1?'s':''})</span><span class="text-xs text-red-400">(${fmtDollar(c.support_act_total)})</span></div>`:''}
     ${c.ticketing_fee>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Ticketing Platform Fee</span><span class="text-xs text-red-400">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
     ${c.total_op_costs>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Operating Costs (${c.n} shows × ${c.num_cities} ${c.num_cities>1?'cities':'city'})</span><span class="text-xs text-red-400">(${fmtDollar(c.total_op_costs)})</span></div>`:''}
     ${(co.agency_fees||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  Agency Fees</span><span class="text-xs text-red-400">(${fmtDollar(co.agency_fees)})</span></div>`:''}
     ${(co.blufin_fees||0)>0?`<div class="flex justify-between py-1 border-b border-white/5"><span class="text-xs text-slate-500">  BluFin Fees</span><span class="text-xs text-red-400">(${fmtDollar(co.blufin_fees)})</span></div>`:''}
     <div class="flex justify-between py-2.5 border-t border-white/10 mt-1"><span class="text-base font-bold text-white">Net Profit</span><span class="text-base font-bold ${rc}">${fmtDollar(c.net_profit)}</span></div>
+    ${(c.co_prom_pct||0)>0?`
+<div class="flex justify-between py-1 pl-4 border-b border-white/5">
+  <span class="text-xs text-slate-500">↳ ${p.costs?.co_promoter?.name||'Co-Promoter'} share (${(c.co_prom_pct*100).toFixed(0)}%)</span>
+  <span class="text-xs text-red-400">(${fmtDollar(c.co_promoter_share)})</span>
+</div>
+<div class="flex justify-between py-1 pl-4 border-b border-white/5">
+  <span class="text-xs text-slate-500">↳ BluFin Net Share</span>
+  <span class="text-xs font-semibold ${(c.blufin_net_profit||0)>=0?'text-emerald-400':'text-red-400'}">${fmtDollar(c.blufin_net_profit)}</span>
+</div>`:''}
     <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-semibold text-slate-300">ROI</span><span class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(2)}%</span></div>
+    ${c.invested_capital > 0 ? `<div class="flex justify-between py-1 pl-3 text-[10px] text-slate-600"><span>↳ advance MG (${Math.round(c.mg_advance_pct*100)}% — 1st+2nd pmts) ${fmtDollar(c.mg_advance_cost)} + pre-show ops ${fmtDollar(c.total_op_costs)}</span><span>${fmtDollar(c.invested_capital)}</span></div>` : ''}
   </div>`;
 }
 
@@ -5081,15 +6029,59 @@ function fdScenResultHTML(c, scen) {
   if (!s.equity) return `<div class="text-[10px] text-slate-600 text-center py-4">Enter equity to see returns</div>`;
   const mc = s.moic >= 1 ? 'text-violet-400' : 'text-red-400';
   const wfNote = c.net_profit <= s.hurdle_amount ? '(all profit ≤ hurdle, 100% to investor)' : '';
-  return `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">
+  let html = `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Hurdle amount (${(s.hurdle_rate*100).toFixed(0)}%)</span><span class="text-[10px] text-white">${fmtDollar(s.hurdle_amount)}</span></div>
     ${s.investor_dist !== s.hurdle_amount ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Above-hurdle (investor ${(s.inv_split*100).toFixed(0)}%)</span><span class="text-[10px] text-emerald-400">${fmtDollar(s.investor_dist - s.hurdle_amount < 0 ? 0 : s.investor_dist - s.hurdle_amount)}</span></div>` : ''}
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor distribution ${wfNote}</span><span class="text-[10px] text-emerald-400 font-semibold">${fmtDollar(s.investor_dist)}</span></div>
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin distribution</span><span class="text-[10px] text-white">${fmtDollar(s.blufin_dist)}</span></div>
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Total investor return (equity + dist.)</span><span class="text-[10px] font-bold text-emerald-400">${fmtDollar(s.total_inv_return)}</span></div>
     <div class="flex justify-between py-1.5 bg-white/5 rounded px-2 mt-1"><span class="text-xs font-bold text-white">MOIC</span><span class="text-xs font-bold ${mc}">${s.moic.toFixed(2)}x</span></div>
-    <div class="flex justify-between py-1.5 bg-white/5 rounded px-2"><span class="text-xs font-bold text-white">Absolute Return</span><span class="text-xs font-bold ${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>
-  </div>`;
+    <div class="flex justify-between py-1.5 bg-white/5 rounded px-2"><span class="text-xs font-bold text-white">Absolute Return</span><span class="text-xs font-bold ${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>`;
+
+  if (scen.investors?.length > 0) {
+    const investors = scen.investors;
+    const sumPct = investors.reduce((acc, inv) => acc + (inv.pct || 0), 0);
+    const rows = investors.map(inv => {
+      const equity_amount = sumPct > 0 ? s.equity * (inv.pct / sumPct) : 0;
+      const dist = sumPct > 0 ? s.investor_dist * (inv.pct / sumPct) : 0;
+      const total_return = equity_amount + dist;
+      const moic = equity_amount > 0 ? total_return / equity_amount : 0;
+      const invMc = moic >= 1 ? 'text-violet-400' : 'text-red-400';
+      return `<tr class="border-b border-white/5">
+        <td class="py-1 pr-2 text-[10px] text-slate-300 truncate max-w-[80px]">${inv.name || '—'}</td>
+        <td class="py-1 px-1 text-[10px] text-slate-400 text-right">${(inv.pct || 0).toFixed(1)}%</td>
+        <td class="py-1 px-1 text-[10px] text-white text-right">${fmtDollar(equity_amount)}</td>
+        <td class="py-1 px-1 text-[10px] text-emerald-400 text-right">${fmtDollar(dist)}</td>
+        <td class="py-1 pl-1 text-[10px] font-semibold ${invMc} text-right">${equity_amount > 0 ? moic.toFixed(2) + 'x' : '—'}</td>
+      </tr>`;
+    }).join('');
+    const totalEquity = investors.reduce((acc, inv) => acc + (sumPct > 0 ? s.equity * (inv.pct / sumPct) : 0), 0);
+    const totalDist = investors.reduce((acc, inv) => acc + (sumPct > 0 ? s.investor_dist * (inv.pct / sumPct) : 0), 0);
+    html += `
+    <div class="mt-3 pt-2 border-t border-white/10">
+      <div class="text-[9px] text-slate-500 mb-2 tracking-wider">─── Investor Breakdown ─────────────────────</div>
+      <table class="w-full">
+        <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider">
+          <th class="text-left pb-1 pr-2">Name</th>
+          <th class="text-right pb-1 px-1">Stake</th>
+          <th class="text-right pb-1 px-1">Invested</th>
+          <th class="text-right pb-1 px-1">Return</th>
+          <th class="text-right pb-1 pl-1">MOIC</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr class="border-t border-white/10">
+          <td class="py-1 pr-2 text-[10px] font-semibold text-white">Total</td>
+          <td class="py-1 px-1 text-[10px] font-semibold text-white text-right">${sumPct.toFixed(1)}%</td>
+          <td class="py-1 px-1 text-[10px] font-semibold text-white text-right">${fmtDollar(totalEquity)}</td>
+          <td class="py-1 px-1 text-[10px] font-semibold text-emerald-400 text-right">${fmtDollar(totalDist)}</td>
+          <td class="py-1 pl-1 text-[10px] text-slate-500 text-right">—</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }
+
+  html += `</div>`;
+  return html;
 }
 
 function fdCashFlowHTML(p, c) {
@@ -5228,6 +6220,243 @@ function fdDemandCardHTML(p) {
   </div>`;
 }
 
+function fdSensComputeProfile(p) {
+  const clone = JSON.parse(JSON.stringify(p));
+  const { ticketPriceMult, mgMult, fillRateEnabled, fillRatePct } = fdSensState;
+  if (ticketPriceMult !== 1.0) {
+    for (const tc of (clone.tour_cities || [])) {
+      for (const cat of (tc.seat_categories || [])) {
+        cat.price = (Number(cat.price) || 0) * ticketPriceMult;
+      }
+    }
+    for (const cat of (clone.seat_categories || [])) {
+      cat.price = (Number(cat.price) || 0) * ticketPriceMult;
+    }
+  }
+  if (mgMult !== 1.0 && clone.costs) {
+    const co = clone.costs;
+    if (co.deal_type === 'backend' && co.backend_deal) {
+      co.backend_deal.guarantee = (Number(co.backend_deal.guarantee) || 0) * mgMult;
+    } else {
+      co.artist_mg = (Number(co.artist_mg) || 0) * mgMult;
+    }
+  }
+  if (fillRateEnabled) {
+    const fr = fillRatePct / 100;
+    for (const tc of (clone.tour_cities || [])) { tc.fill_rate = fr; }
+    clone.fill_rate = fr;
+  }
+  return computeProfile(clone);
+}
+
+function fdSensOutputHTML(baseC, sensC, p) {
+  const isModified = fdSensState.ticketPriceMult !== 1.0 || fdSensState.mgMult !== 1.0 || fdSensState.fillRateEnabled;
+  function card(label, bv, sv, fmtFn, positiveIsGood) {
+    const delta = sv - bv;
+    const noChange = Math.abs(delta) < 0.001;
+    const up = delta > 0;
+    const color = noChange ? 'text-slate-400' : (up === positiveIsGood ? 'text-emerald-400' : 'text-red-400');
+    const sign = up ? '+' : '';
+    return `<div class="bg-white/5 rounded-lg p-3 text-center">
+      <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">${label}</div>
+      <div class="text-sm font-bold ${color}">${fmtFn(sv)}</div>
+      <div class="text-[9px] text-slate-500 mt-0.5">Base: ${fmtFn(bv)}</div>
+      <div class="text-[9px] mt-0.5 ${noChange ? 'text-slate-600' : color}">${noChange ? 'no change' : sign + fmtFn(delta)}</div>
+    </div>`;
+  }
+  const baseBe = baseC.cityCalcs.filter(cc => cc.break_even_fill !== null && cc.break_even_fill !== undefined);
+  const sensBe = sensC.cityCalcs.filter(cc => cc.break_even_fill !== null && cc.break_even_fill !== undefined);
+  const baseBeAvg = baseBe.length ? baseBe.reduce((s,cc) => s + cc.break_even_fill, 0) / baseBe.length : null;
+  const sensBeAvg = sensBe.length ? sensBe.reduce((s,cc) => s + cc.break_even_fill, 0) / sensBe.length : null;
+  const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+  const baseMoic = scens.length ? Math.max(...scens.map(s => computeScenario(baseC, s).moic)) : null;
+  const sensMoic = scens.length ? Math.max(...scens.map(s => computeScenario(sensC, s).moic)) : null;
+  const roiFmt = v => (v * 100).toFixed(1) + '%';
+  const beFmt  = v => v !== null ? (v * 100).toFixed(0) + '%' : '—';
+  const moicFmt = v => v !== null ? v.toFixed(2) + 'x' : '—';
+  const cols = scens.length ? 4 : (baseBeAvg !== null ? 3 : 2);
+  return `<div class="grid grid-cols-${cols} gap-3">
+    ${card('Net Profit', baseC.net_profit, sensC.net_profit, fmtDollar, true)}
+    ${card('ROI', baseC.roi, sensC.roi, roiFmt, true)}
+    ${baseBeAvg !== null ? card('Avg Break-even Fill', baseBeAvg, sensBeAvg, beFmt, false) : ''}
+    ${scens.length ? card('Best MOIC', baseMoic, sensMoic, moicFmt, true) : ''}
+  </div>`;
+}
+
+function fdSensPanelInnerHTML(p, baseC, sensC) {
+  const { ticketPriceMult, mgMult, fillRatePct, fillRateEnabled } = fdSensState;
+  const isModified = ticketPriceMult !== 1.0 || mgMult !== 1.0 || fillRateEnabled;
+  const tpPct = Math.round((ticketPriceMult - 1) * 100);
+  const mgPct = Math.round((mgMult - 1) * 100);
+  const tpColor = tpPct > 0 ? 'text-emerald-400' : tpPct < 0 ? 'text-red-400' : 'text-slate-500';
+  const mgColor = mgPct > 0 ? 'text-red-400' : mgPct < 0 ? 'text-emerald-400' : 'text-slate-500';
+  const modBadge = isModified
+    ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Unsaved scenario</span>'
+    : '<span class="text-[9px] text-slate-600">Drag sliders to preview impact</span>';
+  const actionBtns = isModified
+    ? '<button onclick="fdSensReset()" class="text-[10px] text-slate-400 hover:text-white border border-white/10 rounded px-2 py-0.5 transition-colors">Reset</button>' +
+      '<button onclick="fdSensApplyToProfile()" class="text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded px-2 py-0.5 transition-colors font-medium">Save to Profile</button>'
+    : '';
+  if (!fdSensState.open) {
+    return `<div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Sensitivity Analysis</span>
+        ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Modified</span>' : ''}
+      </div>
+      <div class="flex items-center gap-2">
+        ${actionBtns}
+        <button onclick="fdToggleSens()" class="text-[10px] text-violet-400 hover:text-violet-300 border border-violet-500/30 rounded px-2 py-0.5 transition-colors">▲ Open Sliders</button>
+      </div>
+    </div>`;
+  }
+  return `
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-semibold text-white uppercase tracking-wider">Sensitivity Analysis</span>
+        <span id="fd-sens-badge">${modBadge}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="fd-sens-reset-btn">${actionBtns}</span>
+        <button onclick="fdToggleSens()" class="text-[10px] text-slate-500 hover:text-slate-300 border border-white/10 rounded px-2 py-0.5 transition-colors">▼ Collapse</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 gap-5 mb-4">
+      <div>
+        <div class="text-[9px] text-slate-400 uppercase tracking-wider flex justify-between mb-1.5">
+          <span>Ticket Price</span><span id="fd-sens-tp-pct" class="${tpColor}">${tpPct > 0 ? '+' : ''}${tpPct}%</span>
+        </div>
+        <input id="fd-sens-tp-slider" type="range" min="70" max="130" step="1" value="${Math.round(ticketPriceMult * 100)}"
+          oninput="fdSensApply('ticketPriceMult', this.value/100)"
+          class="w-full accent-violet-500 cursor-pointer" style="height:4px">
+        <div class="text-[9px] text-slate-600 mt-1.5 text-center">±30% range</div>
+      </div>
+      <div>
+        <div class="text-[9px] text-slate-400 uppercase tracking-wider flex justify-between mb-1.5">
+          <span>Artist MG</span><span id="fd-sens-mg-pct" class="${mgColor}">${mgPct > 0 ? '+' : ''}${mgPct}%</span>
+        </div>
+        <input id="fd-sens-mg-slider" type="range" min="50" max="150" step="1" value="${Math.round(mgMult * 100)}"
+          oninput="fdSensApply('mgMult', this.value/100)"
+          class="w-full accent-violet-500 cursor-pointer" style="height:4px">
+        <div class="text-[9px] text-slate-600 mt-1.5 text-center">±50% range</div>
+      </div>
+      <div>
+        <div class="text-[9px] text-slate-400 uppercase tracking-wider flex justify-between mb-1.5">
+          <span>Fill Rate Override</span>
+          <span class="flex items-center gap-1.5">
+            <span id="fd-sens-fr-display">${fillRateEnabled ? '<span class="text-cyan-400">' + fillRatePct + '%</span>' : '<span class="text-slate-600">Off</span>'}</span>
+            <label class="flex items-center gap-1 cursor-pointer">
+              <input type="checkbox" ${fillRateEnabled ? 'checked' : ''}
+                onchange="fdSensApply('fillEnabled', this.checked)"
+                class="w-3 h-3 accent-violet-500">
+              <span class="text-[9px] text-slate-500">Enable</span>
+            </label>
+          </span>
+        </div>
+        <input id="fd-sens-fr-slider" type="range" min="0" max="100" step="1" value="${fillRatePct}"
+          oninput="fdSensApply('fillRatePct', this.value)"
+          ${fillRateEnabled ? '' : 'disabled'}
+          class="w-full cursor-pointer" style="height:4px;accent-color:${fillRateEnabled ? '#8b5cf6' : '#475569'}">
+        <div id="fd-sens-fr-hint" class="text-[9px] text-slate-600 mt-1.5 text-center">${fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates'}</div>
+      </div>
+    </div>
+    <div id="fd-sens-output">${fdSensOutputHTML(baseC, sensC, p)}</div>`;
+}
+
+function fdUpdateSens() {
+  const el = document.getElementById('fd-sens-panel');
+  if (!el || !fdState.draftProfile) return;
+  const p = fdState.draftProfile;
+  const baseC = computeProfile(p);
+  const sensC = fdSensComputeProfile(p);
+  // If the expanded skeleton is already in the DOM, patch only the dynamic parts
+  // so active slider drags are never interrupted by a DOM replacement.
+  const outputEl = document.getElementById('fd-sens-output');
+  if (fdSensState.open && outputEl) {
+    const { ticketPriceMult, mgMult, fillRatePct, fillRateEnabled } = fdSensState;
+    const isModified = ticketPriceMult !== 1.0 || mgMult !== 1.0 || fillRateEnabled;
+    const tpPct = Math.round((ticketPriceMult - 1) * 100);
+    const mgPct = Math.round((mgMult - 1) * 100);
+    const tpColor = tpPct > 0 ? 'text-emerald-400' : tpPct < 0 ? 'text-red-400' : 'text-slate-500';
+    const mgColor = mgPct > 0 ? 'text-red-400' : mgPct < 0 ? 'text-emerald-400' : 'text-slate-500';
+    const g = id => document.getElementById(id);
+    const tpPctEl = g('fd-sens-tp-pct');
+    if (tpPctEl) { tpPctEl.textContent = (tpPct > 0 ? '+' : '') + tpPct + '%'; tpPctEl.className = tpColor; }
+    const mgPctEl = g('fd-sens-mg-pct');
+    if (mgPctEl) { mgPctEl.textContent = (mgPct > 0 ? '+' : '') + mgPct + '%'; mgPctEl.className = mgColor; }
+    const frDisp = g('fd-sens-fr-display');
+    if (frDisp) frDisp.innerHTML = fillRateEnabled ? '<span class="text-cyan-400">' + fillRatePct + '%</span>' : '<span class="text-slate-600">Off</span>';
+    const frSlider = g('fd-sens-fr-slider');
+    if (frSlider) { frSlider.disabled = !fillRateEnabled; frSlider.style.accentColor = fillRateEnabled ? '#8b5cf6' : '#475569'; frSlider.value = fillRatePct; }
+    const frHint = g('fd-sens-fr-hint');
+    if (frHint) frHint.textContent = fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates';
+    const badgeEl = g('fd-sens-badge');
+    if (badgeEl) badgeEl.innerHTML = isModified
+      ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Unsaved scenario</span>'
+      : '<span class="text-[9px] text-slate-600">Drag sliders to preview impact</span>';
+    const resetEl = g('fd-sens-reset-btn');
+    if (resetEl) resetEl.innerHTML = isModified
+      ? '<button onclick="fdSensReset()" class="text-[10px] text-slate-400 hover:text-white border border-white/10 rounded px-2 py-0.5 transition-colors">Reset</button>' +
+        '<button onclick="fdSensApplyToProfile()" class="text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded px-2 py-0.5 transition-colors font-medium">Save to Profile</button>'
+      : '';
+    // Sync slider thumb positions (needed after fdSensReset)
+    const tpSlider = g('fd-sens-tp-slider');
+    if (tpSlider) tpSlider.value = Math.round(ticketPriceMult * 100);
+    const mgSlider = g('fd-sens-mg-slider');
+    if (mgSlider) mgSlider.value = Math.round(mgMult * 100);
+    outputEl.innerHTML = fdSensOutputHTML(baseC, sensC, p);
+  } else {
+    el.innerHTML = fdSensPanelInnerHTML(p, baseC, sensC);
+  }
+}
+
+function fdSensApply(field, val) {
+  if (field === 'ticketPriceMult')   fdSensState.ticketPriceMult   = Number(val);
+  else if (field === 'mgMult')       fdSensState.mgMult            = Number(val);
+  else if (field === 'fillRatePct')  fdSensState.fillRatePct       = Number(val);
+  else if (field === 'fillEnabled')  fdSensState.fillRateEnabled   = val;
+  fdUpdateSens();
+}
+
+function fdSensReset() {
+  fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
+  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdUpdateSens();
+}
+
+function fdSensApplyToProfile() {
+  const p = fdState.draftProfile;
+  if (!p) return;
+  const { ticketPriceMult, mgMult, fillRateEnabled, fillRatePct } = fdSensState;
+  if (ticketPriceMult !== 1.0) {
+    for (const tc of (p.tour_cities || [])) {
+      for (const cat of (tc.seat_categories || [])) {
+        cat.price = Math.round((Number(cat.price) || 0) * ticketPriceMult * 100) / 100;
+      }
+    }
+    for (const cat of (p.seat_categories || [])) {
+      cat.price = Math.round((Number(cat.price) || 0) * ticketPriceMult * 100) / 100;
+    }
+  }
+  if (mgMult !== 1.0 && p.costs) {
+    const co = p.costs;
+    if (co.deal_type === 'backend' && co.backend_deal) {
+      co.backend_deal.guarantee = Math.round((Number(co.backend_deal.guarantee) || 0) * mgMult);
+    } else {
+      co.artist_mg = Math.round((Number(co.artist_mg) || 0) * mgMult);
+    }
+  }
+  if (fillRateEnabled) {
+    const fr = fillRatePct / 100;
+    for (const tc of (p.tour_cities || [])) { tc.fill_rate = fr; }
+    p.fill_rate = fr;
+  }
+  fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
+  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdSaveProfile();
+}
+
+function fdToggleSens() { fdSensState.open = !fdSensState.open; fdUpdateSens(); }
+
 function fdRenderLive(p) {
   const c = computeProfile(p);
   const n = c.n;
@@ -5264,7 +6493,8 @@ function fdRenderLive(p) {
     </tr>`;
   }).join('');
 
-  const scenCards = (p.investor_scenarios||[]).map((scen,i) => `
+  const scenCards = (p.investor_scenarios||[]).map((scen,i) => {
+    return `
     <div class="glass rounded-xl p-4 flex-1 min-w-0">
       <div class="flex items-center justify-between mb-3">
         <input type="text" class="bg-transparent border-b border-white/10 text-[11px] font-semibold text-violet-300 uppercase tracking-wider w-28 focus:outline-none focus:border-violet-500/50 pb-0.5" value="${(scen.label||'').replace(/"/g,'&quot;')}" oninput="fdPatchScenLabel('${scen.id}',this.value)">
@@ -5277,8 +6507,16 @@ function fdRenderLive(p) {
           <div><label class="${FD_LABEL}">Inv. Split Above Hurdle (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.above_hurdle_investor_pct??0.50)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','above_hurdle_investor_pct',Number(this.value)/100)"></div>
         </div>
       </div>
+      <div class="mt-3 pt-3 border-t border-white/5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[9px] text-slate-500 tracking-wider">─── Investors ─────</span>
+          <button onclick="fdAddInvestorToScen('${scen.id}')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ Add Investor</button>
+        </div>
+        <div id="fd-scen-${scen.id}-inv-table">${fdScenInvTableHTML(scen)}</div>
+      </div>
       <div id="fd-scen-${scen.id}-result">${fdScenResultHTML(c, scen)}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   return `<div class="p-5 space-y-4" style="height:100%;overflow-y:auto">
     <!-- Header -->
@@ -5319,6 +6557,11 @@ function fdRenderLive(p) {
 
     <!-- KPI Strip -->
     <div id="fd-kpi-strip">${fdKPIStripHTML(c, p)}</div>
+
+    <!-- Sensitivity Panel -->
+    <div id="fd-sens-panel" class="glass rounded-xl p-4">
+      ${(() => { const sensC = fdSensComputeProfile(p); return fdSensPanelInnerHTML(p, c, sensC); })()}
+    </div>
 
     <!-- Festival Lineup -->
     ${p.festival_mode ? fdFestivalLineupHTML(p) : ''}
@@ -5517,8 +6760,7 @@ function fdRenderLive(p) {
       <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">4 — Artist Fee &amp; MG Payment Schedule</h3>
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <label class="${FD_LABEL}">Total MG ($)</label>
-          <input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.artist_mg||0}" oninput="fdPatch('costs.artist_mg',Number(this.value));fdUpdateLive()">
+          <div id="fd-mg-deal-section">${fdMGDealSectionHTML(p)}</div>
         </div>
         <div>
           <label class="${FD_LABEL}">Ticketing Platform Fee (%)</label>
@@ -5590,6 +6832,20 @@ function fdRenderLive(p) {
       </table>
     </div>
 
+    <!-- Co-Headliner & Support Acts -->
+    <div class="glass rounded-xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Co-Headliner &amp; Support Acts</h3>
+        <button onclick="fdAddSupportAct()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Act</button>
+      </div>
+      <div class="text-[9px] text-slate-500 mb-3">Each act's MG is added to total deal costs. Separate from the headline artist MG above.</div>
+      <div id="fd-support-acts-section">${fdSupportActsHTML(p.support_acts||[])}</div>
+      ${(c.support_act_total||0)>0?`<div class="flex justify-between pt-2 border-t border-white/5 mt-2">
+        <span class="text-xs font-semibold text-slate-300">Total Support Act Cost</span>
+        <span class="text-xs font-semibold text-red-400">${fmtDollar(c.support_act_total)}</span>
+      </div>`:''}
+    </div>
+
     <!-- 5. One-Time Costs -->
     <div class="glass rounded-xl p-4">
       <h3 class="text-xs font-semibold text-white mb-1 uppercase tracking-wider">5 — One-Time &amp; Global Costs</h3>
@@ -5599,6 +6855,23 @@ function fdRenderLive(p) {
         <div><label class="${FD_LABEL}">BluFin Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.blufin_fees||0}" oninput="fdPatch('costs.blufin_fees',Number(this.value));fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">project cost, before waterfall</div></div>
       </div>
       <div id="fd-costs-summary">${fdCostSummaryHTML(c)}</div>
+    </div>
+
+    <!-- Co-Promoter Territory Split -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-2">Co-Promoter Territory Split</h3>
+      <div class="text-[9px] text-slate-500 mb-3">For co-promoted deals. The co-promoter's share comes off net profit before the investor waterfall — MOIC is calculated on BluFin's share.</div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="${FD_LABEL}">Co-Promoter Name</label>
+          <input type="text" class="${FD_INPUT} text-xs py-1.5" placeholder="Partner name"
+            value="${((p.costs?.co_promoter?.name)||'').replace(/"/g,'&quot;')}"
+            oninput="fdPatchCoPromoter('name',this.value)"></div>
+        <div><label class="${FD_LABEL}">Their Share of Net Profit (%)</label>
+          <input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100"
+            value="${(((p.costs?.co_promoter?.split_pct)||0)*100).toFixed(0)}"
+            oninput="fdPatchCoPromoter('split_pct',this.value)"></div>
+      </div>
+      <div id="fd-co-promoter-summary">${fdCoPromoterSummaryHTML(p, c)}</div>
     </div>
 
     <!-- P&L Summary -->
@@ -5627,6 +6900,25 @@ function fdRenderLive(p) {
     <div class="glass rounded-xl p-4">
       <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">Model Completeness</h3>
       <div id="fd-completeness">${fdCompletenessHTML(p)}</div>
+    </div>
+
+    <!-- Geographic Routing -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-2">Geographic Routing</h3>
+      <div class="text-[9px] text-slate-500 mb-3">City order reflects tour_cities list. Region jumps flag potential backtracking.</div>
+      <div id="fd-routing-section">${fdRoutingHTML(p)}</div>
+    </div>
+
+    <!-- Radius Clause Checker -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-2">Radius Clause Checker</h3>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="${FD_LABEL}">Radius Window (days)</label>
+          <input type="number" class="${FD_INPUT} text-xs py-1.5" min="1" max="365" value="${p.radius_days||90}" oninput="fdPatch('radius_days',Number(this.value))">
+        </div>
+      </div>
+      <div id="fd-radius-section">${fdRadiusHTML(p)}</div>
     </div>
 
     <!-- Artist Profile (linked from dataset) -->
@@ -6020,11 +7312,112 @@ function fdRemoveMGSchedule(i) {
   fdState.draftProfile.costs.mg_schedule.splice(i, 1);
   fdSetMain(fdState.draftProfile);
 }
+function fdAddInvestorToScen(scenId) {
+  const scen = fdState.draftProfile?.investor_scenarios?.find(s => s.id === scenId);
+  if (!scen) return;
+  if (!scen.investors) scen.investors = [];
+  scen.investors.push({ id: 'inv_' + fdGenId(), name: '', pct: 0 });
+  fdSetMain(fdState.draftProfile);
+}
+function fdRemoveInvestorFromScen(scenId, invId) {
+  const scen = fdState.draftProfile?.investor_scenarios?.find(s => s.id === scenId);
+  if (!scen) return;
+  scen.investors = (scen.investors || []).filter(i => i.id !== invId);
+  fdSetMain(fdState.draftProfile);
+}
+function fdPatchInvestorInScen(scenId, invId, field, val) {
+  const scen = fdState.draftProfile?.investor_scenarios?.find(s => s.id === scenId);
+  if (!scen) return;
+  const inv = (scen.investors || []).find(i => i.id === invId);
+  if (!inv) return;
+  inv[field] = val;
+  if (field === 'name') return; // name is display-only, no calculation impact
+
+  // Auto-fill other investors so they sum to 100%.
+  // Never re-render the input elements — update .value properties directly
+  // to avoid destroying the active element and losing cursor position.
+  const others = scen.investors.filter(i => i.id !== invId);
+  if (others.length > 0) {
+    const remaining = Math.max(0, 100 - val);
+    if (others.length === 1) {
+      others[0].pct = Math.round(remaining * 100) / 100;
+    } else {
+      const each = Math.round(remaining / others.length * 100) / 100;
+      let assigned = 0;
+      for (let i = 0; i < others.length - 1; i++) {
+        others[i].pct = each; assigned += each;
+      }
+      others[others.length - 1].pct = Math.round((remaining - assigned) * 100) / 100;
+    }
+    for (const other of others) {
+      const otherPctEl = document.getElementById('fd-inv-' + other.id + '-pct');
+      if (otherPctEl) otherPctEl.value = other.pct;
+    }
+  }
+
+  // Patch equity cells, total row, and warning — all by stable ID, no input elements touched
+  const sumPct = scen.investors.reduce((acc, i) => acc + (i.pct || 0), 0);
+  const pctWarn = Math.abs(sumPct - 100) > 0.01;
+  for (const investor of scen.investors) {
+    const eqCell = document.getElementById('fd-inv-' + investor.id + '-eq');
+    if (eqCell) {
+      const eqAmt = scen.equity ? scen.equity * (investor.pct || 0) / 100 : 0;
+      eqCell.textContent = eqAmt > 0 ? fmtDollar(eqAmt) : '—';
+    }
+  }
+  const totalPctEl = document.getElementById('fd-scen-' + scenId + '-inv-total-pct');
+  if (totalPctEl) {
+    totalPctEl.textContent = sumPct.toFixed(1) + '%';
+    totalPctEl.className = 'py-1 px-1 text-[10px] font-semibold ' + (pctWarn ? 'text-amber-400' : 'text-slate-400');
+  }
+  const warnEl = document.getElementById('fd-scen-' + scenId + '-inv-warn');
+  if (warnEl) warnEl.innerHTML = pctWarn
+    ? `<div class="text-[9px] text-amber-400 mb-1">Warning: investor stakes sum to ${sumPct.toFixed(1)}% (should be 100%)</div>`
+    : '';
+  // Update scenario result card and KPI strip MOIC
+  const c = computeProfile(fdState.draftProfile);
+  const res = document.getElementById('fd-scen-' + scenId + '-result');
+  if (res) res.innerHTML = fdScenResultHTML(c, scen);
+  const kpi = document.getElementById('fd-kpi-strip');
+  if (kpi) kpi.innerHTML = fdKPIStripHTML(c, fdState.draftProfile);
+  fdUpdateSens();
+}
+function fdScenInvTableHTML(scen) {
+  const investors = scen.investors || [];
+  if (!investors.length) return '';
+  const sumPct = investors.reduce((acc, inv) => acc + (inv.pct || 0), 0);
+  const pctWarn = Math.abs(sumPct - 100) > 0.01;
+  const invRows = investors.map(inv => {
+    const eqAmt = scen.equity && sumPct > 0 ? scen.equity * (inv.pct || 0) / 100 : 0;
+    return `<tr class="border-b border-white/5">
+      <td class="py-1 pr-1"><input id="fd-inv-${inv.id}-name" type="text" class="${FD_INPUT} text-xs py-1 w-full" placeholder="Investor name" value="${(inv.name||'').replace(/"/g,'&quot;')}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','name',this.value)"></td>
+      <td class="py-1 px-1"><input id="fd-inv-${inv.id}-pct" type="number" class="${FD_INPUT} text-xs py-1 w-16" min="0" max="100" step="0.1" value="${inv.pct||0}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','pct',Number(this.value))"></td>
+      <td id="fd-inv-${inv.id}-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right whitespace-nowrap">${eqAmt > 0 ? fmtDollar(eqAmt) : '—'}</td>
+      ${investors.length > 1 ? `<td class="py-1 pl-1"><button onclick="fdRemoveInvestorFromScen('${scen.id}','${inv.id}')" class="text-slate-600 hover:text-red-400 p-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>` : '<td class="py-1 pl-1 w-5"></td>'}
+    </tr>`;
+  }).join('');
+  return `<table class="w-full mb-1">
+    <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider">
+      <th class="text-left pb-1 pr-1">Name</th>
+      <th class="text-left pb-1 px-1">%</th>
+      <th class="text-right pb-1 px-1">$ Equity</th>
+      <th class="pb-1 pl-1 w-5"></th>
+    </tr></thead>
+    <tbody>${invRows}</tbody>
+    <tfoot><tr class="border-t border-white/10">
+      <td class="py-1 pr-1 text-[10px] font-semibold text-slate-400">Total</td>
+      <td id="fd-scen-${scen.id}-inv-total-pct" class="py-1 px-1 text-[10px] font-semibold ${pctWarn ? 'text-amber-400' : 'text-slate-400'}">${sumPct.toFixed(1)}%</td>
+      <td id="fd-scen-${scen.id}-inv-total-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right">${scen.equity ? fmtDollar(scen.equity) : '—'}</td>
+      <td class="py-1 pl-1 w-5"></td>
+    </tr></tfoot>
+  </table>
+  <div id="fd-scen-${scen.id}-inv-warn">${pctWarn ? `<div class="text-[9px] text-amber-400 mb-1">Warning: investor stakes sum to ${sumPct.toFixed(1)}% (should be 100%)</div>` : ''}</div>`;
+}
 function fdAddScenario() {
   if (!fdState.draftProfile) return;
   const id = 'scen_' + fdGenId();
   const letter = String.fromCharCode(65 + fdState.draftProfile.investor_scenarios.length);
-  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 });
+  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] });
   fdSetMain(fdState.draftProfile);
 }
 function fdRemoveScenario(id) {
