@@ -607,7 +607,7 @@ let competitorShows = [];
 const COMPETITOR_KEY = 'artist-dashboard-competitor-shows';
 let triggeredAlerts = [];  // in-memory, reset on each data load
 let momentumTab = 'gain';
-let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false };
+let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false, invReturnEnabled: false, invReturnPct: 20, invReturnScenId: null };
 
 // ─── Helpers ───
 function fmt(n) {
@@ -4563,6 +4563,7 @@ function fdStartCreate() {
   };
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
   fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdSensState.invReturnEnabled = false; fdSensState.invReturnPct = 20; fdSensState.invReturnScenId = null;
   fdRender();
 }
 
@@ -4574,6 +4575,7 @@ function fdSelectProfile(id) {
   fdMigrateProfile(fdState.draftProfile);
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
   fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdSensState.invReturnEnabled = false; fdSensState.invReturnPct = 20; fdSensState.invReturnScenId = null;
   fdRender();
 }
 
@@ -5942,11 +5944,14 @@ function fdKPIStripHTML(c, p) {
   const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
   const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(c, s).moic)) : 0;
   const mc = bestMoic >= 1 ? 'text-violet-400' : 'text-slate-400';
+  const adjRoi = fdSensAdjustedROI(c, p);
+  const roiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const roiLabel = fdSensState.invReturnEnabled ? 'ROI (adj.)' : 'ROI';
   return `<div class="grid grid-cols-5 gap-3">
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_attendance)} total attendance · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
-    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">ROI</div><div class="text-lg font-bold ${rc}">${(c.roi*100).toFixed(2)}%</div><div class="text-[9px] text-slate-500 mt-1">${c.invested_capital > 0 ? 'on ' + fmtDollar(c.invested_capital) + ' capital' : 'on total costs'}</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">${roiLabel}</div><div class="text-lg font-bold ${roiColor}">${(adjRoi*100).toFixed(2)}%</div><div class="text-[9px] text-slate-500 mt-1">${c.invested_capital > 0 ? 'on ' + fmtDollar(c.invested_capital) + ' capital' : 'on total costs'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Best MOIC</div><div class="text-lg font-bold ${mc}">${bestMoic > 0 ? bestMoic.toFixed(2)+'x' : '—'}</div></div>
   </div>`;
 }
@@ -6019,8 +6024,19 @@ function fdPLSummaryHTML(p, c) {
   <span class="text-xs text-slate-500">↳ BluFin Net Share</span>
   <span class="text-xs font-semibold ${(c.blufin_net_profit||0)>=0?'text-emerald-400':'text-red-400'}">${fmtDollar(c.blufin_net_profit)}</span>
 </div>`:''}
-    <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-semibold text-slate-300">ROI</span><span class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(2)}%</span></div>
+    ${(() => {
+      const adjRoi = fdSensAdjustedROI(c, p);
+      const adjRoiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
+      const roiLbl = fdSensState.invReturnEnabled ? 'ROI (adj.)' : 'ROI';
+      const invScens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+      const activeInvScen = fdSensState.invReturnEnabled && invScens.length
+        ? ((fdSensState.invReturnScenId && invScens.find(s => s.id === fdSensState.invReturnScenId)) || invScens[0])
+        : null;
+      const obligation = activeInvScen ? Number(activeInvScen.equity) * (fdSensState.invReturnPct / 100) : 0;
+      return `<div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-semibold text-slate-300">${roiLbl}</span><span class="text-sm font-bold ${adjRoiColor}">${(adjRoi*100).toFixed(2)}%</span></div>
     ${c.invested_capital > 0 ? `<div class="flex justify-between py-1 pl-3 text-[10px] text-slate-600"><span>↳ advance MG (${Math.round(c.mg_advance_pct*100)}% — 1st+2nd pmts) ${fmtDollar(c.mg_advance_cost)} + pre-show ops ${fmtDollar(c.total_op_costs)}</span><span>${fmtDollar(c.invested_capital)}</span></div>` : ''}
+    ${activeInvScen ? `<div class="flex justify-between py-1 pl-3 text-[10px] text-slate-600"><span class="text-violet-400/70">↳ investor obligation (${fdSensState.invReturnPct}% × ${fmtDollar(Number(activeInvScen.equity))} — ${activeInvScen.label || activeInvScen.id})</span><span class="text-amber-400/80">(${fmtDollar(obligation)})</span></div>` : ''}`;
+    })()}
   </div>`;
 }
 
@@ -6220,6 +6236,59 @@ function fdDemandCardHTML(p) {
   </div>`;
 }
 
+function fdSensAdjustedROI(c, p) {
+  if (!fdSensState.invReturnEnabled) return c.roi;
+  const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+  if (!scens.length) return c.roi;
+  const scen = (fdSensState.invReturnScenId && scens.find(s => s.id === fdSensState.invReturnScenId)) || scens[0];
+  const obligation = Number(scen.equity) * (fdSensState.invReturnPct / 100);
+  const adjustedProfit = c.net_profit - obligation;
+  return c.invested_capital > 0
+    ? adjustedProfit / c.invested_capital
+    : (c.total_costs > 0 ? adjustedProfit / c.total_costs : 0);
+}
+
+function fdSensInvSectionInnerHTML(c, p) {
+  const { invReturnEnabled, invReturnPct, invReturnScenId } = fdSensState;
+  const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+  if (!scens.length) return '';
+  const activeScen = (invReturnScenId && scens.find(s => s.id === invReturnScenId)) || scens[0];
+  const obligation = invReturnEnabled ? Number(activeScen.equity) * (invReturnPct / 100) : 0;
+  const adjRoi = fdSensAdjustedROI(c, p);
+  const adjColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
+  const scenSelector = scens.length > 1
+    ? `<select onchange="fdSensApply('invScenId', this.value)" class="bg-white/5 border border-white/10 text-[9px] text-slate-300 rounded px-1.5 py-0.5 cursor-pointer" ${!invReturnEnabled ? 'disabled' : ''}>${scens.map(s => `<option value="${s.id}" ${s.id === activeScen.id ? 'selected' : ''}>${s.label || s.id}</option>`).join('')}</select>`
+    : '';
+  return `<div class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <label class="flex items-center gap-1.5 cursor-pointer">
+          <input type="checkbox" id="fd-sens-inv-toggle" ${invReturnEnabled ? 'checked' : ''} onchange="fdSensApply('invEnabled', this.checked)" class="w-3 h-3 accent-violet-500">
+          <span class="text-[9px] text-slate-400 uppercase tracking-wider">Factor Investor Return</span>
+        </label>
+        ${scenSelector}
+      </div>
+      ${invReturnEnabled
+        ? `<div class="text-[9px] text-slate-500">Obligation: <span id="fd-sens-inv-obligation" class="text-amber-400 font-semibold">${fmtDollar(obligation)}</span></div>`
+        : '<div class="text-[9px] text-slate-600">Enable to subtract investor obligation from promoter ROI</div>'}
+    </div>
+    ${invReturnEnabled ? `<div class="mt-2.5 grid grid-cols-2 gap-5">
+      <div>
+        <div class="text-[9px] text-slate-400 uppercase tracking-wider flex justify-between mb-1.5">
+          <span>Expected Return</span><span id="fd-sens-inv-pct-display" class="text-violet-400">${invReturnPct}%</span>
+        </div>
+        <input id="fd-sens-inv-slider" type="range" min="0" max="50" step="1" value="${invReturnPct}" oninput="fdSensApply('invReturnPct', this.value)" class="w-full accent-violet-500 cursor-pointer" style="height:4px">
+        <div class="text-[9px] text-slate-600 mt-1.5 text-center">% of equity as expected return</div>
+      </div>
+      <div class="flex items-center justify-center">
+        <div class="text-center">
+          <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Promoter ROI (post-investor)</div>
+          <div id="fd-sens-inv-adj-roi" class="text-base font-bold ${adjColor}">${(adjRoi*100).toFixed(2)}%</div>
+          <div id="fd-sens-inv-adj-base" class="text-[9px] text-slate-500 mt-0.5">Base ROI: ${(c.roi*100).toFixed(2)}%</div>
+        </div>
+      </div>
+    </div>` : ''}`;
+}
+
 function fdSensComputeProfile(p) {
   const clone = JSON.parse(JSON.stringify(p));
   const { ticketPriceMult, mgMult, fillRateEnabled, fillRatePct } = fdSensState;
@@ -6275,9 +6344,10 @@ function fdSensOutputHTML(baseC, sensC, p) {
   const beFmt  = v => v !== null ? (v * 100).toFixed(0) + '%' : '—';
   const moicFmt = v => v !== null ? v.toFixed(2) + 'x' : '—';
   const cols = scens.length ? 4 : (baseBeAvg !== null ? 3 : 2);
+  const roiLabel = fdSensState.invReturnEnabled ? 'ROI (adj.)' : 'ROI';
   return `<div class="grid grid-cols-${cols} gap-3">
     ${card('Net Profit', baseC.net_profit, sensC.net_profit, fmtDollar, true)}
-    ${card('ROI', baseC.roi, sensC.roi, roiFmt, true)}
+    ${card(roiLabel, fdSensAdjustedROI(baseC, p), fdSensAdjustedROI(sensC, p), roiFmt, true)}
     ${baseBeAvg !== null ? card('Avg Break-even Fill', baseBeAvg, sensBeAvg, beFmt, false) : ''}
     ${scens.length ? card('Best MOIC', baseMoic, sensMoic, moicFmt, true) : ''}
   </div>`;
@@ -6359,6 +6429,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
         <div id="fd-sens-fr-hint" class="text-[9px] text-slate-600 mt-1.5 text-center">${fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates'}</div>
       </div>
     </div>
+    ${(() => { const inner = fdSensInvSectionInnerHTML(baseC, p); return inner ? `<div id="fd-sens-inv-section" class="border-t border-white/10 pt-3 mt-1 mb-3">${inner}</div>` : ''; })()}
     <div id="fd-sens-output">${fdSensOutputHTML(baseC, sensC, p)}</div>`;
 }
 
@@ -6403,6 +6474,28 @@ function fdUpdateSens() {
     if (tpSlider) tpSlider.value = Math.round(ticketPriceMult * 100);
     const mgSlider = g('fd-sens-mg-slider');
     if (mgSlider) mgSlider.value = Math.round(mgMult * 100);
+    // Investor section — targeted patch if inv slider is active, else re-render section
+    const invSectionEl = g('fd-sens-inv-section');
+    if (invSectionEl) {
+      const invSlider = g('fd-sens-inv-slider');
+      if (fdSensState.invReturnEnabled && invSlider) {
+        // Targeted patch — don't destroy the active investor return slider
+        const pctDisp = g('fd-sens-inv-pct-display');
+        if (pctDisp) pctDisp.textContent = fdSensState.invReturnPct + '%';
+        const invScens2 = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
+        const aScen = (fdSensState.invReturnScenId && invScens2.find(s => s.id === fdSensState.invReturnScenId)) || invScens2[0];
+        const oblEl = g('fd-sens-inv-obligation');
+        if (oblEl && aScen) oblEl.textContent = fmtDollar(Number(aScen.equity) * (fdSensState.invReturnPct / 100));
+        const adjRoi2 = fdSensAdjustedROI(baseC, p);
+        const adjRoiEl = g('fd-sens-inv-adj-roi');
+        if (adjRoiEl) { adjRoiEl.textContent = (adjRoi2*100).toFixed(2) + '%'; adjRoiEl.className = 'text-base font-bold ' + (adjRoi2 >= 0 ? 'text-emerald-400' : 'text-red-400'); }
+        const adjBaseEl = g('fd-sens-inv-adj-base');
+        if (adjBaseEl) adjBaseEl.textContent = 'Base ROI: ' + (baseC.roi*100).toFixed(2) + '%';
+      } else {
+        // Checkbox toggle or scenario change — structural re-render is safe (no slider dragging)
+        invSectionEl.innerHTML = fdSensInvSectionInnerHTML(baseC, p);
+      }
+    }
     outputEl.innerHTML = fdSensOutputHTML(baseC, sensC, p);
   } else {
     el.innerHTML = fdSensPanelInnerHTML(p, baseC, sensC);
@@ -6414,12 +6507,16 @@ function fdSensApply(field, val) {
   else if (field === 'mgMult')       fdSensState.mgMult            = Number(val);
   else if (field === 'fillRatePct')  fdSensState.fillRatePct       = Number(val);
   else if (field === 'fillEnabled')  fdSensState.fillRateEnabled   = val;
+  else if (field === 'invReturnPct') fdSensState.invReturnPct      = Number(val);
+  else if (field === 'invEnabled')   fdSensState.invReturnEnabled  = val;
+  else if (field === 'invScenId')    fdSensState.invReturnScenId   = val;
   fdUpdateSens();
 }
 
 function fdSensReset() {
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
   fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdSensState.invReturnEnabled = false; fdSensState.invReturnPct = 20; fdSensState.invReturnScenId = null;
   fdUpdateSens();
 }
 
