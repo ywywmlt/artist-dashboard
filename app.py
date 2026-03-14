@@ -313,5 +313,47 @@ def api_reset_password(username):
     return jsonify({"ok": True}), 200
 
 
+@app.route("/api/account/username", methods=["POST"])
+@login_required
+def api_change_username():
+    data = request.get_json(force=True) or {}
+    new_username = (data.get("username") or "").strip()
+    if not new_username:
+        return jsonify({"error": "Username required"}), 400
+    users = _load_users()
+    if any(u["username"] == new_username for u in users):
+        return jsonify({"error": "Username already taken"}), 409
+    old_username = session["username"]
+    for u in users:
+        if u["username"] == old_username:
+            u["username"] = new_username
+            break
+    _save_users(users)
+    # Move user data directory
+    old_dir = USERS_DATA_DIR / old_username
+    new_dir = USERS_DATA_DIR / new_username
+    if old_dir.exists():
+        old_dir.rename(new_dir)
+    session["username"] = new_username
+    return jsonify({"ok": True, "username": new_username}), 200
+
+
+@app.route("/api/account/password", methods=["POST"])
+@login_required
+def api_change_password():
+    data = request.get_json(force=True) or {}
+    current_password = data.get("current_password") or ""
+    new_password = data.get("new_password") or ""
+    if not current_password or not new_password:
+        return jsonify({"error": "Both current and new password required"}), 400
+    users = _load_users()
+    user = next((u for u in users if u["username"] == session["username"]), None)
+    if not user or not check_password_hash(user["password_hash"], current_password):
+        return jsonify({"error": "Current password is incorrect"}), 403
+    user["password_hash"] = generate_password_hash(new_password, method="pbkdf2:sha256")
+    _save_users(users)
+    return jsonify({"ok": True}), 200
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

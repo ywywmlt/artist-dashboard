@@ -8137,10 +8137,36 @@ function renderSettingsPage() {
   if (!el || !currentUser) return;
   const isAdmin = currentUser.role === 'admin';
   el.innerHTML = `
-    <div class="glass rounded-xl p-5 max-w-2xl">
-      <h2 class="text-sm font-semibold text-white mb-1">Account</h2>
-      <p class="text-xs text-slate-400 mb-4">Signed in as <span class="text-white font-medium">${currentUser.username}</span> &middot; <span class="text-violet-400">${currentUser.role}</span></p>
-      <button onclick="doLogout()" class="text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-3 py-1.5 rounded-lg transition-colors">Sign Out</button>
+    <div class="glass rounded-xl p-5 max-w-2xl space-y-5">
+      <div>
+        <h2 class="text-sm font-semibold text-white mb-1">Account</h2>
+        <p class="text-xs text-slate-400">Signed in as <span class="text-white font-medium">${currentUser.username}</span> &middot; <span class="text-violet-400">${currentUser.role}</span></p>
+      </div>
+      <div class="border-t border-white/5 pt-4 space-y-3">
+        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Change Username</h3>
+        <div class="flex items-center gap-2">
+          <input id="acct-new-username" type="text" placeholder="New username" value="${currentUser.username}"
+            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
+          <button onclick="accountChangeUsername()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded-lg transition-colors">Update</button>
+        </div>
+        <div id="acct-username-msg" class="text-xs"></div>
+      </div>
+      <div class="border-t border-white/5 pt-4 space-y-3">
+        <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Change Password</h3>
+        <div class="space-y-2">
+          <input id="acct-cur-password" type="password" placeholder="Current password"
+            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
+          <input id="acct-new-password" type="password" placeholder="New password"
+            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
+          <input id="acct-confirm-password" type="password" placeholder="Confirm new password"
+            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
+          <button onclick="accountChangePassword()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded-lg transition-colors">Update Password</button>
+        </div>
+        <div id="acct-password-msg" class="text-xs"></div>
+      </div>
+      <div class="border-t border-white/5 pt-4">
+        <button onclick="doLogout()" class="text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-3 py-1.5 rounded-lg transition-colors">Sign Out</button>
+      </div>
     </div>
     ${isAdmin ? `
     <div class="glass rounded-xl p-5 max-w-2xl" id="settings-users-panel">
@@ -8230,6 +8256,51 @@ async function settingsDeleteUser(username) {
     if (res.ok) settingsLoadUsers();
     else { const d = await res.json(); alert(d.error || 'Failed to delete'); }
   } catch(e) { alert('Connection error'); }
+}
+
+async function accountChangeUsername() {
+  const newUsername = document.getElementById('acct-new-username')?.value.trim();
+  const msgEl = document.getElementById('acct-username-msg');
+  if (!newUsername) { msgEl.textContent = 'Username required'; msgEl.className = 'text-xs text-red-400'; return; }
+  if (newUsername === currentUser.username) { msgEl.textContent = 'That is already your username'; msgEl.className = 'text-xs text-slate-400'; return; }
+  try {
+    const res = await fetch('/api/account/username', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: newUsername})
+    });
+    const data = await res.json();
+    if (res.ok) {
+      currentUser.username = data.username;
+      document.getElementById('user-display-name').textContent = data.username;
+      document.getElementById('user-avatar-initial').textContent = data.username[0].toUpperCase();
+      msgEl.textContent = 'Username updated';
+      msgEl.className = 'text-xs text-emerald-400';
+    } else { msgEl.textContent = data.error || 'Failed'; msgEl.className = 'text-xs text-red-400'; }
+  } catch(e) { msgEl.textContent = 'Connection error'; msgEl.className = 'text-xs text-red-400'; }
+}
+
+async function accountChangePassword() {
+  const cur = document.getElementById('acct-cur-password')?.value;
+  const next = document.getElementById('acct-new-password')?.value;
+  const confirm = document.getElementById('acct-confirm-password')?.value;
+  const msgEl = document.getElementById('acct-password-msg');
+  if (!cur || !next) { msgEl.textContent = 'All fields required'; msgEl.className = 'text-xs text-red-400'; return; }
+  if (next !== confirm) { msgEl.textContent = 'New passwords do not match'; msgEl.className = 'text-xs text-red-400'; return; }
+  if (next.length < 6) { msgEl.textContent = 'Password must be at least 6 characters'; msgEl.className = 'text-xs text-red-400'; return; }
+  try {
+    const res = await fetch('/api/account/password', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({current_password: cur, new_password: next})
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('acct-cur-password').value = '';
+      document.getElementById('acct-new-password').value = '';
+      document.getElementById('acct-confirm-password').value = '';
+      msgEl.textContent = 'Password updated';
+      msgEl.className = 'text-xs text-emerald-400';
+    } else { msgEl.textContent = data.error || 'Failed'; msgEl.className = 'text-xs text-red-400'; }
+  } catch(e) { msgEl.textContent = 'Connection error'; msgEl.className = 'text-xs text-red-400'; }
 }
 
 // ─── Refresh ────────────────────────────────────────────────────────────────
