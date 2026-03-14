@@ -8177,12 +8177,14 @@ function fdAddCity() {
   if (!fdState.draftProfile) return;
   if (!fdState.draftProfile.tour_cities) fdState.draftProfile.tour_cities = [];
   const firstCity = fdState.draftProfile.tour_cities[0];
+  const vt = fdState.draftProfile.venue_type || 'arena';
+  const defaultCap = firstCity?.capacity || VENUE_PRESETS[vt]?.defaultCapacity || 18000;
   const templateCats = (firstCity?.seat_categories||[]).length > 0
     ? firstCity.seat_categories.map(c => ({...c}))
-    : (VENUE_PRESETS[fdState.draftProfile.venue_type||'stadium']?.categories||[]).map(c=>({...c}));
+    : fdGenerateCategoriesForCapacity(vt, defaultCap);
   fdState.draftProfile.tour_cities.push({
     id: 'tc_' + fdGenId(), city_name: '', venue_name: '',
-    capacity: firstCity?.capacity || VENUE_PRESETS[fdState.draftProfile.venue_type||'stadium']?.capacity || 40000,
+    capacity: defaultCap,
     num_shows: 1, concert_date: '',
     seat_categories: templateCats,
     fill_rate: 1.0,
@@ -8286,15 +8288,33 @@ function fdSelectCityVenue(tcId, idx) {
   if (!r) return;
   const tc = (fdState.draftProfile.tour_cities||[]).find(c => c.id === tcId);
   if (!tc) return;
+  const p = fdState.draftProfile;
+
   tc.city_name  = r.city_name;
   tc.venue_name = r.venue_name;
-  tc.capacity   = r.capacity || tc.capacity;
-  const est = fdEstimateVenueCosts(r.venue_type, r.city_tier);
+
+  // Use the actual venue capacity — this is the real number, not a default
+  const cap = r.capacity || tc.capacity;
+  tc.capacity = cap;
+
+  // Auto-switch the global venue type to match the selected venue if it differs
+  const vType = r.venue_type || p.venue_type || 'arena';
+  if (vType !== p.venue_type) {
+    p.venue_type = vType;
+    p.venue_capacity = cap;
+  }
+
+  // Regenerate seat categories scaled exactly to the real venue capacity
+  tc.seat_categories = fdGenerateCategoriesForCapacity(vType, cap);
+
+  // Populate cost estimates based on venue type + city tier
+  const est = fdEstimateVenueCosts(vType, r.city_tier);
   tc.venue_fee   = est.venue_fee;
   tc.production  = est.production;
   tc.hospitality = est.hospitality;
   tc.insurance   = est.insurance;
-  fdSetMain(fdState.draftProfile);
+
+  fdSetMain(p);
 }
 
 // ─── Seat category helpers ─────────────────────────────────────────────────────
