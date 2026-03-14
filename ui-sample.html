@@ -8168,12 +8168,34 @@ async function doLogout() {
   setTimeout(() => document.getElementById('login-user').focus(), 50);
 }
 
+function _lsProfilesKey() { return 'fd-profiles:' + (currentUser?.username || '_'); }
+
 async function loadUserData() {
   try {
     const res = await fetch('/api/user-data');
     if (!res.ok) return;
     const data = await res.json();
-    fdState.profiles = data.profiles || [];
+    const serverProfiles = data.profiles || [];
+    if (serverProfiles.length === 0) {
+      // Server is empty — check localStorage for a backup (survives Railway redeploys)
+      try {
+        const raw = localStorage.getItem(_lsProfilesKey());
+        if (raw) {
+          const backed = JSON.parse(raw);
+          if (Array.isArray(backed) && backed.length > 0) {
+            fdState.profiles = backed;
+            // Re-save to server so it's restored
+            await saveUserData();
+          } else {
+            fdState.profiles = [];
+          }
+        } else {
+          fdState.profiles = [];
+        }
+      } catch(e) { fdState.profiles = []; }
+    } else {
+      fdState.profiles = serverProfiles;
+    }
     watchlist = data.watchlist || {};
     contacts = data.contacts || {};
     finBuilderLoaded = false; // force re-render on next visit
@@ -8184,6 +8206,8 @@ async function loadUserData() {
 
 async function saveUserData() {
   if (!currentUser) return;
+  // Mirror profiles to localStorage as backup against server resets
+  try { localStorage.setItem(_lsProfilesKey(), JSON.stringify(fdState.profiles)); } catch(e) {}
   try {
     await fetch('/api/user-data', {
       method: 'POST',
