@@ -38,6 +38,11 @@
   #login-gate.hidden { display:none; }
   @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
   .shake { animation: shake 0.4s ease; }
+  .fd-card-drag-over-top    { border-top: 2px solid #a78bfa !important; }
+  .fd-card-drag-over-bottom { border-bottom: 2px solid #a78bfa !important; }
+  .fd-card-dragging         { opacity: 0.4; }
+  [data-profile-id] .fd-drag-handle { opacity: 0; transition: opacity 0.15s; cursor: grab; }
+  [data-profile-id]:hover .fd-drag-handle { opacity: 1; }
 </style>
 </head>
 <body class="min-h-screen">
@@ -563,6 +568,7 @@ let financialsLoaded = false;
 let finIndex = [];
 let currentFinData = null;
 let fdState = { profiles: [], activeId: null, mode: 'list', draftProfile: null, compareMode: false, compareIds: [] };
+let _fdDragId = null;
 const FMB_STAGES = [
   { v: 'Interest',               l: 'Interest',               c: 'bg-slate-500/20 text-slate-300 border-slate-400' },
   { v: 'Offer Sent',             l: 'Offer Sent',             c: 'bg-sky-500/20 text-sky-300 border-sky-500' },
@@ -4521,10 +4527,15 @@ function fdRender() {
       const borderClass = fdState.compareMode
         ? (isSelected ? 'bg-violet-500/15 border-violet-500/40' : 'glass border-transparent hover:bg-white/5')
         : (isActive ? 'bg-violet-500/10 border-violet-500/30' : 'glass border-transparent hover:bg-white/5');
-      return `<div ${cardClick} class="rounded-xl p-3 cursor-pointer transition-all border ${borderClass}">
+      return `<div ${cardClick} draggable="true" data-profile-id="${p.id}" class="rounded-xl p-3 cursor-pointer transition-all border ${borderClass}">
         ${fdState.compareMode && isSelected ? '<div class="text-[9px] text-violet-400 font-semibold mb-1">✓ Selected</div>' : ''}
         <div class="flex items-start justify-between gap-1 mb-1">
-          <div class="text-sm font-semibold text-white truncate">${p.artist || 'Unnamed Artist'}</div>
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span class="fd-drag-handle flex-shrink-0 text-slate-600" title="Drag to reorder">
+              <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor"><circle cx="3" cy="2" r="1.2"/><circle cx="7" cy="2" r="1.2"/><circle cx="3" cy="7" r="1.2"/><circle cx="7" cy="7" r="1.2"/><circle cx="3" cy="12" r="1.2"/><circle cx="7" cy="12" r="1.2"/></svg>
+            </span>
+            <div class="text-sm font-semibold text-white truncate">${p.artist || 'Unnamed Artist'}</div>
+          </div>
           ${fdStageBadge(p.deal_stage)}
         </div>
         <div class="flex items-center gap-1.5 mt-1">
@@ -4542,6 +4553,7 @@ function fdRender() {
         </div>
       </div>`;
     }).join('');
+    fdBindSidebarDrag();
   }
   if (fdState.compareMode) {
     main.innerHTML = fdCompareHTML();
@@ -4551,6 +4563,56 @@ function fdRender() {
   } else {
     main.innerHTML = fdEmptyState();
   }
+}
+
+function fdBindSidebarDrag() {
+  const sidebar = document.getElementById('fd-sidebar');
+  if (!sidebar) return;
+  const cards = sidebar.querySelectorAll('[data-profile-id]');
+  function clearIndicators() {
+    cards.forEach(c => { c.classList.remove('fd-card-drag-over-top', 'fd-card-drag-over-bottom'); });
+  }
+  cards.forEach(card => {
+    card.addEventListener('dragstart', e => {
+      _fdDragId = card.dataset.profileId;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => card.classList.add('fd-card-dragging'), 0);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('fd-card-dragging');
+      clearIndicators();
+      _fdDragId = null;
+    });
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      clearIndicators();
+      const rect = card.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) {
+        card.classList.add('fd-card-drag-over-top');
+      } else {
+        card.classList.add('fd-card-drag-over-bottom');
+      }
+    });
+    card.addEventListener('dragleave', () => clearIndicators());
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      clearIndicators();
+      const overId = card.dataset.profileId;
+      if (!_fdDragId || _fdDragId === overId) return;
+      const rect = card.getBoundingClientRect();
+      const before = e.clientY < rect.top + rect.height / 2;
+      const fromIdx = fdState.profiles.findIndex(p => p.id === _fdDragId);
+      if (fromIdx < 0) return;
+      const [moved] = fdState.profiles.splice(fromIdx, 1);
+      let toIdx = fdState.profiles.findIndex(p => p.id === overId);
+      if (toIdx < 0) return;
+      if (!before) toIdx++;
+      fdState.profiles.splice(toIdx, 0, moved);
+      saveUserData();
+      fdRender();
+    });
+  });
 }
 
 function fdEmptyState() {
