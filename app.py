@@ -18,14 +18,59 @@ app.secret_key = SECRET_KEY
 TICKETMASTER_BASE = "https://app.ticketmaster.com/discovery/v2/events.json"
 
 # ── Data paths ─────────────────────────────────────────────────────────────────
+# DATA_DIR is always the local data/ folder (pipeline outputs, static files).
+# PERSISTENT_DIR is where user accounts and profiles are stored.
+# On Railway: set USER_DATA_DIR=/mnt/data and attach a Volume at /mnt/data.
+# That volume survives redeploys. Without the env var it falls back to data/
+# (ephemeral, the old behaviour).
 DATA_DIR = Path(__file__).parent / "data"
-USERS_FILE = DATA_DIR / "users.json"
-USERS_DATA_DIR = DATA_DIR / "users"
+PERSISTENT_DIR = Path(os.getenv("USER_DATA_DIR", str(DATA_DIR)))
+USERS_FILE = PERSISTENT_DIR / "users.json"
+USERS_DATA_DIR = PERSISTENT_DIR / "users"
+
+# Path to committed (git) copies — used to seed a fresh volume on first boot
+_GIT_USERS_FILE = DATA_DIR / "users.json"
+_GIT_USERS_DATA_DIR = DATA_DIR / "users"
 
 
 def _ensure_dirs():
     DATA_DIR.mkdir(exist_ok=True)
-    USERS_DATA_DIR.mkdir(exist_ok=True)
+    PERSISTENT_DIR.mkdir(parents=True, exist_ok=True)
+    USERS_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _seed_volume_from_committed():
+    """On first boot with a fresh volume, copy committed data into it.
+
+    This makes the initial deploy seamless: the volume inherits the accounts
+    and profiles that were last committed to git, then stays authoritative
+    for all future writes (surviving every subsequent redeploy).
+    """
+    # Only run when USER_DATA_DIR is set (i.e. a real volume is mounted)
+    # and the volume doesn't yet have a users.json.
+    if PERSISTENT_DIR == DATA_DIR:
+        return  # no volume configured, nothing to seed
+    if USERS_FILE.exists():
+        return  # volume already initialised
+
+    # Copy users.json
+    if _GIT_USERS_FILE.exists():
+        try:
+            USERS_FILE.write_text(_GIT_USERS_FILE.read_text())
+        except Exception:
+            pass
+
+    # Copy per-user data directories
+    if _GIT_USERS_DATA_DIR.exists():
+        import shutil
+        for user_dir in _GIT_USERS_DATA_DIR.iterdir():
+            if user_dir.is_dir():
+                target = USERS_DATA_DIR / user_dir.name
+                if not target.exists():
+                    try:
+                        shutil.copytree(str(user_dir), str(target))
+                    except Exception:
+                        pass
 
 
 def _load_users():
@@ -82,6 +127,9 @@ def _seed_admin():
     _save_users(users)
 
 
+# On first boot with a fresh Railway volume, copy committed data into it
+_ensure_dirs()
+_seed_volume_from_committed()
 # Seed admin on startup
 _seed_admin()
 
