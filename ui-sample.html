@@ -6614,10 +6614,13 @@ let fdROIThreshold = 0.05; // default 5%, adjustable per profile
 
 const FD_BENCHMARKS = {
   venue: {
-    stadium: { avg_fill:0.82, avg_ticket:125, fnb_per_head:28, merch_pct:0.08, sponsor_pct:0.12, mg_pct:0.55, vip_conv:0.05, label:'Stadium' },
-    arena:   { avg_fill:0.86, avg_ticket:95,  fnb_per_head:22, merch_pct:0.06, sponsor_pct:0.08, mg_pct:0.52, vip_conv:0.07, label:'Arena'   },
-    theater: { avg_fill:0.91, avg_ticket:68,  fnb_per_head:18, merch_pct:0.10, sponsor_pct:0.04, mg_pct:0.48, vip_conv:0.09, label:'Theater' },
-    club:    { avg_fill:0.90, avg_ticket:38,  fnb_per_head:48, merch_pct:0.12, sponsor_pct:0.02, mg_pct:0.42, vip_conv:0.04, label:'Club'    }
+    // Sources: Pollstar Q3 2025 Box Office Deep Data; Live Nation 2023 Annual Report; NIVA State of Live 2024
+    // Note: F&B per_head = fan spend; promoter may receive 0% in venue-operated (LN/AEG) venues — flag in suggestions
+    // Promoter net margin on well-sold shows: Stadium 3–8%, Arena 5–12%, Theater 10–20%, Club 2–5%
+    stadium: { avg_fill:0.82, avg_ticket:160, fnb_per_head:40, merch_pct:0.10, sponsor_pct:0.12, mg_pct:0.68, vip_conv:0.05, label:'Stadium' },
+    arena:   { avg_fill:0.86, avg_ticket:115, fnb_per_head:26, merch_pct:0.07, sponsor_pct:0.08, mg_pct:0.65, vip_conv:0.07, label:'Arena'   },
+    theater: { avg_fill:0.91, avg_ticket:74,  fnb_per_head:16, merch_pct:0.10, sponsor_pct:0.04, mg_pct:0.60, vip_conv:0.09, label:'Theater' },
+    club:    { avg_fill:0.90, avg_ticket:35,  fnb_per_head:22, merch_pct:0.10, sponsor_pct:0.02, mg_pct:0.55, vip_conv:0.04, label:'Club'    }
   },
   // City multipliers vs North American Tier-1 baseline (1.0)
   // wtp=willingness-to-pay, merch=merch spend, sponsor=brand deal size, fnb=F&B per head
@@ -6659,20 +6662,25 @@ const FD_BENCHMARKS = {
   // merch_mult = multiplier vs baseline merch per head
   // vip_conv = share of audience that converts to VIP/premium package
   genre: {
+    // Sources: Luminate Music 360 2024; Pollstar touring reports; Music Venue Trust 2025
+    // merch_mult: multiplier vs baseline (pop at 1.0 = 15–25% of ticket gross, Pollstar)
+    // K-pop: 40–80% of ticket gross (HYBE filings; BTS Vegas data); rock heritage: 20–35%; EDM: 8–15%
+    // presale_lift: % fill improvement from structured presale (Luminate 2024; Eventbrite Music Edit)
+    // NOTE: 57% of tickets now sold in final week before show (Eventbrite 2024) — short-window reality
     'pop':       {merch_mult:1.0, vip_conv:0.08,sponsor_mult:1.2,presale_lift:0.18,dyn_price_lift:0.10},
-    'hip-hop':   {merch_mult:1.3, vip_conv:0.05,sponsor_mult:1.5,presale_lift:0.14,dyn_price_lift:0.08},
-    'rap':       {merch_mult:1.3, vip_conv:0.05,sponsor_mult:1.5,presale_lift:0.14,dyn_price_lift:0.08},
+    'hip-hop':   {merch_mult:0.9, vip_conv:0.05,sponsor_mult:1.5,presale_lift:0.14,dyn_price_lift:0.08},
+    'rap':       {merch_mult:0.9, vip_conv:0.05,sponsor_mult:1.5,presale_lift:0.14,dyn_price_lift:0.08},
     'rock':      {merch_mult:1.5, vip_conv:0.07,sponsor_mult:0.9,presale_lift:0.12,dyn_price_lift:0.07},
     'metal':     {merch_mult:1.8, vip_conv:0.09,sponsor_mult:0.7,presale_lift:0.10,dyn_price_lift:0.05},
-    'edm':       {merch_mult:0.8, vip_conv:0.04,sponsor_mult:1.1,presale_lift:0.20,dyn_price_lift:0.12},
-    'electronic':{merch_mult:0.8, vip_conv:0.04,sponsor_mult:1.0,presale_lift:0.20,dyn_price_lift:0.12},
-    'k-pop':     {merch_mult:2.8, vip_conv:0.18,sponsor_mult:0.8,presale_lift:0.28,dyn_price_lift:0.15},
-    'country':   {merch_mult:1.5, vip_conv:0.10,sponsor_mult:1.0,presale_lift:0.15,dyn_price_lift:0.08},
-    'latin':     {merch_mult:1.1, vip_conv:0.07,sponsor_mult:0.9,presale_lift:0.16,dyn_price_lift:0.09},
-    'r&b':       {merch_mult:1.0, vip_conv:0.06,sponsor_mult:1.1,presale_lift:0.13,dyn_price_lift:0.08},
-    'soul':      {merch_mult:0.9, vip_conv:0.06,sponsor_mult:0.9,presale_lift:0.12,dyn_price_lift:0.07},
-    'indie':     {merch_mult:1.2, vip_conv:0.06,sponsor_mult:0.7,presale_lift:0.12,dyn_price_lift:0.06},
-    'classical': {merch_mult:0.4, vip_conv:0.12,sponsor_mult:0.8,presale_lift:0.10,dyn_price_lift:0.06},
+    'edm':       {merch_mult:0.6, vip_conv:0.04,sponsor_mult:1.1,presale_lift:0.20,dyn_price_lift:0.12},
+    'electronic':{merch_mult:0.6, vip_conv:0.04,sponsor_mult:1.0,presale_lift:0.20,dyn_price_lift:0.12},
+    'k-pop':     {merch_mult:3.5, vip_conv:0.18,sponsor_mult:0.8,presale_lift:0.28,dyn_price_lift:0.15},
+    'country':   {merch_mult:1.2, vip_conv:0.10,sponsor_mult:1.0,presale_lift:0.15,dyn_price_lift:0.08},
+    'latin':     {merch_mult:1.0, vip_conv:0.07,sponsor_mult:0.9,presale_lift:0.16,dyn_price_lift:0.09},
+    'r&b':       {merch_mult:0.9, vip_conv:0.06,sponsor_mult:1.1,presale_lift:0.13,dyn_price_lift:0.08},
+    'soul':      {merch_mult:0.8, vip_conv:0.06,sponsor_mult:0.9,presale_lift:0.12,dyn_price_lift:0.07},
+    'indie':     {merch_mult:1.1, vip_conv:0.06,sponsor_mult:0.7,presale_lift:0.12,dyn_price_lift:0.06},
+    'classical': {merch_mult:0.3, vip_conv:0.12,sponsor_mult:0.8,presale_lift:0.10,dyn_price_lift:0.06},
   }
 };
 
@@ -6804,8 +6812,8 @@ function fdROI_suggestions(c, p) {
     sugs.push({
       id:'fill_rate', rank:2, cat:'Demand', impact: fill<0.72?'HIGH':'MEDIUM', icon:'📣',
       title:`Structured presale + dynamic pricing → ${(fill*100).toFixed(0)}% → ${(targetFill*100).toFixed(0)}% fill`,
-      why:`Luminate's 2024 Music 360 report shows genre-appropriate presale programs drive ${(lift*100).toFixed(0)}% average fill improvement (${gd?.genre||'pop'} benchmark). Key levers: (1) Artist fan club presale 72h before public on-sale — captures super-fans at face value before secondary inflation; (2) Streaming platform presale tie-in (Spotify Fan First, Amazon presale); (3) TikTok/Instagram countdowns and FOMO-driven on-sale campaigns in the 4-week window; (4) Dynamic pricing post on-sale — automatically captures demand elasticity and secondary market premium, adding ${(dynLift*100).toFixed(0)}% average revenue uplift per Ticketmaster's published data.${sentiment.label==='positive' ? ' Strong press coverage currently supports aggressive on-sale marketing.' : sentiment.label==='negative' ? ' Note: current negative press requires PR groundwork before on-sale push.' : ''}`,
-      data:`Presale lift benchmark (${gd?.genre||'pop'}): +${(lift*100).toFixed(0)}% fill (Luminate 2024) | Dynamic pricing: +${(dynLift*100).toFixed(0)}% revenue (Ticketmaster data)`,
+      why:`Critical structural insight: Eventbrite Music Edit 2024 found 57% of all tickets are now sold in the final week before the show — the industry has shifted to short-window buying. Average time from purchase to show is down 26% since 2022. This means long on-sale windows matter less; concentrated 4–6 week push before show date matters more. Key levers: (1) Fan club presale 72h before public on-sale — captures super-fans at face value; (2) Platform presale (Spotify Fan First, Amex, Citi) — 15–25% of inventory; (3) TikTok/Instagram countdown campaigns in the 4-week window; (4) Hold 10–15% of floor/premium inventory for day-of dynamic pricing at 1.5–2× face value on near-sellout shows. Luminate benchmarks genre presale lift at +${(lift*100).toFixed(0)}% for ${gd?.genre||'pop'}. Dynamic pricing adds +${(dynLift*100).toFixed(0)}% avg revenue (Ticketmaster data; Live Nation: 8% conversion lift from all-in pricing, 9,000 shows, 2024).${sentiment.label==='positive' ? ' Strong press coverage supports aggressive on-sale push.' : sentiment.label==='negative' ? ' Note: negative press requires PR groundwork before on-sale.' : ''}`,
+      data:`57% of tickets sold in final week (Eventbrite Music Edit 2024) | Presale lift (${gd?.genre||'pop'}): +${(lift*100).toFixed(0)}% fill (Luminate) | Dynamic pricing: +${(dynLift*100).toFixed(0)}% revenue (Ticketmaster)`,
       lever:`Fan presale (72h) → Artist presale → Platform presale → General on-sale → Dynamic pricing`,
       sentiment,
       currentROI, projROI: p2?.roi, projC: p2?.c
@@ -6862,8 +6870,8 @@ function fdROI_suggestions(c, p) {
     sugs.push({
       id:'fnb', rank:5, cat:'Revenue', impact:'MEDIUM', icon:'🍺',
       title:`Optimize F&B — target $${sugFnb}/head (currently $${effFnbPH.toFixed(0)}/head effective)`,
-      why:`F&B is typically a 50–70% gross margin line in large venues — the highest-margin revenue stream in the model. Your effective F&B yield ($${effFnbPH.toFixed(0)}/head) is ${Math.round((1-effFnbPH/benchFnb)*100)}% below the $${Math.round(benchFnb)} benchmark${geo?.city ? ` for ${geo.city}` : ''} (fnb index: ${fnbIdx.toFixed(2)}×). Optimization levers: (1) Cashless payment systems reduce transaction friction, increasing spend 30% per venue operator data; (2) Premium bar packages with pre-loaded credits sold at ticket checkout; (3) Strategic concession placement per foot traffic modeling; (4) Show-specific themed food/drink items drive incremental purchase intent. At 55% buyer penetration × $${sugFnb}/head × ${c.total_attendance.toLocaleString()} attendance: $${Math.round(sugFnb * sugBuyPct * c.total_attendance).toLocaleString()} potential revenue.`,
-      data:`F&B benchmark: $${Math.round(benchFnb)}/head for ${p.venue_type||'arena'} (${geo?.city||'this market'}) | Cashless uplift: +30% (venue operator benchmarks)`,
+      why:`F&B is typically a 50–70% gross margin line in large venues. ⚠️ Critical: In Live Nation/AEG-operated venues, the promoter typically receives little or no F&B revenue — the venue operator captures it. Verify your venue agreement. If you do have F&B participation, your effective yield ($${effFnbPH.toFixed(0)}/head) is ${Math.round((1-effFnbPH/benchFnb)*100)}% below the $${Math.round(benchFnb)} benchmark${geo?.city ? ` for ${geo.city}` : ''} (Live Nation 2023 annual report: sheds averaged $40+/fan; arena $20–$35/fan). Optimization levers: (1) Cashless payment systems reduce transaction friction, increasing spend ~30% per venue operator data; (2) Premium bar packages with pre-loaded credits at checkout; (3) Strategic concession placement per foot traffic; (4) Show-specific themed items drive incremental intent.`,
+      data:`F&B benchmark: $${Math.round(benchFnb)}/head for ${p.venue_type||'arena'} (Live Nation 2023 filings) | ⚠️ Confirm promoter receives F&B participation in venue contract`,
       lever:`Set fnb_per_head: $${sugFnb}, buyer_pct: ${(sugBuyPct*100).toFixed(0)}%`,
       sentiment,
       currentROI, projROI: p5?.roi, projC: p5?.c
@@ -6876,9 +6884,9 @@ function fdROI_suggestions(c, p) {
   if (curMerchPH < benchMerchPH * 0.70 && c.total_attendance > 0) {
     const sugMPS = Math.round(benchMerchPH * 0.80 * c.total_attendance / Math.max(1,c.n));
     const p6 = proj(cl=>{ if(!cl.additional_revenue) cl.additional_revenue={}; cl.additional_revenue.merch_per_show=sugMPS; });
-    const genreNote = gd?.genre==='k-pop' ? 'K-pop audiences average 2.8× baseline merch spend — photo cards, light sticks, fan kits, limited album editions, and exclusive tour apparel are proven high-conversion SKUs.'
-      : gd?.genre==='rock'||gd?.genre==='metal' ? 'Rock/metal fans average 1.5–1.8× merch per head — exclusive tour-only vinyl records and limited apparel command strong premiums.'
-      : 'Activation: 3–5 exclusive show-specific items, bundle deals promoted via venue screens, online pre-order with in-venue pickup to maximize fan conversion.';
+    const genreNote = gd?.genre==='k-pop' ? 'K-pop fans spend $50–$150+/head on merch (HYBE filings; BTS Allegiant Stadium: 100,420 attendees). Merch queues start 3–6h before doors. Collectible photocards, official light sticks ($40–$70), limited-edition albums, and fan kits drive repeat purchases. K-pop merch runs 40–80% of gross ticket revenue vs. 15–25% industry average.'
+      : gd?.genre==='rock'||gd?.genre==='metal' ? 'Rock/metal merch averages $25–$45/head (20–35% of ticket gross, Pollstar). Tour-exclusive vinyl and limited apparel command 25–50% premiums. Heritage/farewell tours drive the highest merch per-head in rock.'
+      : 'Merch activation: (1) 3–5 exclusive show-specific items create urgency; (2) Artist presence near table lifts revenue 15–30%; (3) Pre-sale bundled ticket+merch packages pre-convert revenue; (4) Card-only payment increases avg transaction; (5) Multiple price points ($10 → $65 → $200 signed items).';
     sugs.push({
       id:'merch', rank:6, cat:'Revenue', impact: curMerchPH<benchMerchPH*0.35?'HIGH':'MEDIUM', icon:'👕',
       title:`Increase merch yield — $${curMerchPH.toFixed(0)}/head → $${Math.round(benchMerchPH*0.80)}/head`,
