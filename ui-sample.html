@@ -6821,198 +6821,9 @@ function fdRenderLive(p) {
     <!-- Festival Lineup -->
     ${p.festival_mode ? fdFestivalLineupHTML(p) : ''}
 
-    <!-- 1. Tour Cities -->
+    <!-- 1. Artist Fee & MG Payment Schedule -->
     <div class="glass rounded-xl p-4">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">1 — Tour Cities &amp; Venues</h3>
-        <button onclick="fdAddCity()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add City</button>
-      </div>
-      <div class="text-[9px] text-slate-500 mb-3">Type a city name to search venues from 100 major markets. Selecting a venue auto-fills capacity &amp; estimated costs.</div>
-      <div id="fd-tour-cities-list" class="space-y-4">
-        ${(() => {
-          // Build a fast lookup from cityCalcs
-          const ccMap = {};
-          for (const cc of c.cityCalcs) { if (cc.tc.id) ccMap[cc.tc.id] = cc; }
-          return (p.tour_cities||[]).map(tc => {
-            const cc = ccMap[tc.id] || { seats_per_show:0, rev_per_show:0, total_ticket_rev:0, occ:0, cpp:0, total_op_cost:0, shows:tc.num_shows||1, cats:tc.seat_categories||[] };
-            const cats = tc.seat_categories || [];
-            const shows = Number(tc.num_shows) || 1;
-            const canRemove = (p.tour_cities||[]).length > 1;
-
-            // Per-category rows (revenue cells are fill_rate-adjusted and have IDs for live updates)
-            const fillRate = Number(tc.fill_rate) !== undefined ? Math.min(1, Math.max(0, Number(tc.fill_rate) || 1)) : 1.0;
-            const catRows = cats.map((cat, i) => {
-              const revPS  = (Number(cat.price)||0) * (Number(cat.count)||0) * fillRate;
-              const revTot = revPS * shows;
-              return '<tr class="border-b border-white/5">' +
-                '<td class="py-1 pl-2 pr-1"><input type="text" class="' + FD_INPUT + ' text-[11px] py-1" value="' + (cat.name||'').replace(/"/g,'&quot;') + '" placeholder="Category" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'name\',this.value)"></td>' +
-                '<td class="py-1 px-1"><input type="number" class="' + FD_INPUT + ' text-[11px] py-1 w-20" min="0" value="' + (cat.count||0) + '" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'count\',Number(this.value));fdUpdateLive()"></td>' +
-                '<td class="py-1 px-1"><input type="number" class="' + FD_INPUT + ' text-[11px] py-1 w-20" min="0" value="' + (cat.price||0) + '" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'price\',Number(this.value));fdUpdateLive()"></td>' +
-                '<td id="fd-cat-rev-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-1 whitespace-nowrap">' + fmtDollar(revPS) + '</td>' +
-                '<td id="fd-cat-tot-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-2 whitespace-nowrap">' + fmtDollar(revTot) + '</td>' +
-                '<td class="py-1 pr-1"><button onclick="fdRemoveCityCategory(\'' + tc.id + '\',' + i + ')" class="text-slate-600 hover:text-red-400 p-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>' +
-              '</tr>';
-            }).join('');
-
-            return '<div class="bg-white/3 rounded-xl p-3 border border-white/5">' +
-              // ── Row 1: City + Venue search ──
-              '<div class="flex items-center gap-2 mb-2">' +
-                '<div class="relative flex-1">' +
-                  '<input type="text" class="' + FD_INPUT + ' text-xs" placeholder="City, Country (type to search...)" ' +
-                    'value="' + (tc.city_name||'').replace(/"/g,'&quot;') + '" ' +
-                    'oninput="fdPatchCity(\'' + tc.id + '\',\'city_name\',this.value);fdCitySuggest(\'' + tc.id + '\',this.value)" ' +
-                    'onblur="setTimeout(()=>fdHideCitySuggest(\'' + tc.id + '\'),200)" autocomplete="off">' +
-                  '<div id="fd-cs-' + tc.id + '" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-white/10 rounded-lg mt-1 shadow-2xl max-h-48 overflow-y-auto text-left"></div>' +
-                '</div>' +
-                '<div class="flex-1">' +
-                  '<input type="text" class="' + FD_INPUT + ' text-xs" placeholder="Venue name" ' +
-                    'value="' + (tc.venue_name||'').replace(/"/g,'&quot;') + '" ' +
-                    'oninput="fdPatchCity(\'' + tc.id + '\',\'venue_name\',this.value)">' +
-                '</div>' +
-                (canRemove ? '<button onclick="fdRemoveCity(\'' + tc.id + '\')" class="text-slate-600 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' : '<div class="w-5 flex-shrink-0"></div>') +
-              '</div>' +
-              // ── Row 2: Capacity / Shows / Date ──
-              '<div class="grid grid-cols-4 gap-2 mb-3">' +
-                '<div><label class="text-[9px] text-slate-500 block mb-1">CAPACITY</label>' +
-                  '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.capacity||0) + '" ' +
-                    'onchange="fdScaleCapacity(\'' + tc.id + '\',Number(this.value))"></div>' +
-                '<div><label class="text-[9px] text-slate-500 block mb-1">SHOWS</label>' +
-                  '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="1" value="' + shows + '" ' +
-                    'oninput="fdPatchCity(\'' + tc.id + '\',\'num_shows\',Number(this.value));fdUpdateLive()"></div>' +
-                '<div class="col-span-2"><label class="text-[9px] text-slate-500 block mb-1">CONCERT DATE</label>' +
-                  '<input type="date" class="' + FD_INPUT + ' text-xs py-1" value="' + (tc.concert_date||'') + '" ' +
-                    'onchange="fdPatchCity(\'' + tc.id + '\',\'concert_date\',this.value)"></div>' +
-              '</div>' +
-              // ── Seat Categories ──
-              '<div class="border-t border-white/5 pt-2 mb-3">' +
-                '<div class="flex items-center justify-between mb-1.5">' +
-                  '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Seat Categories</span>' +
-                  '<div class="flex items-center gap-2">' +
-                    '<button onclick="fdSuggestCityPrices(\'' + tc.id + '\')" class="text-[10px] text-amber-400 hover:text-amber-300 transition-colors">\uD83D\uDCA1 Suggest</button>' +
-                    '<button onclick="fdAddCityCategory(\'' + tc.id + '\')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ Category</button>' +
-                  '</div>' +
-                '</div>' +
-                '<table class="w-full">' +
-                  '<thead><tr class="text-[8px] text-slate-600 uppercase border-b border-white/5">' +
-                    '<th class="text-left pb-1 pl-2">Name</th>' +
-                    '<th class="text-left pb-1 px-1">Seats</th>' +
-                    '<th class="text-left pb-1 px-1">Price $</th>' +
-                    '<th class="text-right pb-1 pr-1">Rev/Show</th>' +
-                    '<th class="text-right pb-1 pr-2">Total (' + shows + ' show' + (shows>1?'s':'') + ')</th>' +
-                    '<th class="pb-1 w-6"></th>' +
-                  '</tr></thead>' +
-                  '<tbody>' + catRows + '</tbody>' +
-                  '<tfoot id="fd-city-cat-totals-' + tc.id + '">' + fdCityCatTotalsHTML(cc) + '</tfoot>' +
-                '</table>' +
-              '</div>' +
-              // ── Capacity Fill Rate Slider ──
-              (function() {
-                const fr = fillRate;
-                const pct = Math.round(fr * 100);
-                const col = pct < 80 ? 'text-amber-400' : pct < 100 ? 'text-cyan-300' : 'text-emerald-400';
-                // Break-even marker: cc.break_even_fill is local op cost / rev_at_100
-                const bef = cc.break_even_fill;
-                const befPct = bef !== null ? Math.max(40, Math.min(100, Math.round(bef * 100))) : null;
-                // Position as % of slider track (slider range 40–100 = span of 60)
-                const befPos = befPct !== null ? ((befPct - 40) / 60 * 100).toFixed(1) : null;
-                const befLabel = befPct !== null ? befPct + '% break-even' : '';
-                const isBelowRange = bef !== null && bef * 100 < 40;
-                const markerHtml = befPos !== null
-                  ? '<div class="relative h-4 mt-1">' +
-                      '<div class="absolute top-0 bottom-0 flex flex-col items-center" style="left:' + befPos + '%">' +
-                        '<div class="w-px h-2.5 bg-amber-400/70"></div>' +
-                      '</div>' +
-                      '<div class="absolute text-[8px] text-amber-400 whitespace-nowrap -translate-x-1/2" style="left:' + Math.min(befPos, 85) + '%;top:2px">' + befLabel + '</div>' +
-                    '</div>'
-                  : (isBelowRange ? '<div class="text-[9px] text-emerald-400 mt-1">✓ Break-even below 40% fill — all good</div>' : '<div class="h-2"></div>');
-                return '<div class="border-t border-white/5 pt-2 mb-3">' +
-                  '<div class="flex items-center justify-between mb-2">' +
-                    '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Capacity Fill Rate</span>' +
-                    '<span id="fd-city-fillrate-pct-' + tc.id + '" class="text-[11px] font-semibold ' + col + '">' + pct + '% Sell-Through</span>' +
-                  '</div>' +
-                  '<input type="range" min="40" max="100" step="5" value="' + pct + '" class="w-full h-1.5 accent-violet-500 cursor-pointer" ' +
-                    'oninput="fdPatchCity(\'' + tc.id + '\',\'fill_rate\',this.value/100);\n' +
-                      'var pct=Math.round(this.value),el=document.getElementById(\'fd-city-fillrate-pct-' + tc.id + '\');\n' +
-                      'if(el){el.textContent=pct+\'% Sell-Through\';el.className=\'text-[11px] font-semibold \'+(pct<80?\'text-amber-400\':pct<100?\'text-cyan-300\':\'text-emerald-400\');}\n' +
-                      'fdUpdateLive()">' +
-                  markerHtml +
-                  '<div class="flex justify-between text-[9px] text-slate-600 mt-1">' +
-                    '<span>40%</span><span>60%</span><span>80%</span><span>100% Sold Out</span>' +
-                  '</div>' +
-                '</div>';
-              })() +
-              // ── Costs per show ──
-              '<div class="border-t border-white/5 pt-2">' +
-                '<span class="text-[9px] text-slate-500 uppercase tracking-wider block mb-1.5">Costs per Show ($)</span>' +
-                '<div class="grid grid-cols-4 gap-2">' +
-                  '<div><label class="text-[9px] text-slate-600 block mb-1">Venue Fee</label>' +
-                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.venue_fee||0) + '" ' +
-                      'oninput="fdPatchCity(\'' + tc.id + '\',\'venue_fee\',Number(this.value));fdUpdateLive()"></div>' +
-                  '<div><label class="text-[9px] text-slate-600 block mb-1">Production</label>' +
-                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.production||0) + '" ' +
-                      'oninput="fdPatchCity(\'' + tc.id + '\',\'production\',Number(this.value));fdUpdateLive()"></div>' +
-                  '<div><label class="text-[9px] text-slate-600 block mb-1">Hospitality</label>' +
-                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.hospitality||0) + '" ' +
-                      'oninput="fdPatchCity(\'' + tc.id + '\',\'hospitality\',Number(this.value));fdUpdateLive()"></div>' +
-                  '<div><label class="text-[9px] text-slate-600 block mb-1">Insurance</label>' +
-                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.insurance||0) + '" ' +
-                      'oninput="fdPatchCity(\'' + tc.id + '\',\'insurance\',Number(this.value));fdUpdateLive()"></div>' +
-                '</div>' +
-              '</div>' +
-              // ── Live summary footer ──
-              '<div id="fd-city-footer-' + tc.id + '" class="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-500">' +
-                '<span class="flex gap-3">' +
-                  '<span>Ticket rev: <span class="text-emerald-400 font-semibold">' + fmtDollar(cc.rev_per_show) + '/show</span></span>' +
-                  '<span class="text-slate-600">·</span>' +
-                  '<span>' + fmtNum(cc.seats_per_show) + ' seats' + (cc.occ>0 ? ' · <span class="text-amber-400">' + (cc.occ*100).toFixed(0) + '% occ</span>' : '') + '</span>' +
-                '</span>' +
-                '<span class="flex gap-3">' +
-                  '<span>Cost/show: <span class="text-red-400 font-semibold">' + fmtDollar(cc.cpp) + '</span></span>' +
-                  '<span class="text-slate-600">·</span>' +
-                  '<span>' + shows + ' show' + (shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtDollar(cc.total_op_cost) + '</span></span>' +
-                '</span>' +
-              '</div>' +
-            '</div>';
-          }).join('');
-        })()}
-      </div>
-      <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
-        <span class="text-slate-500">${c.num_cities} cit${c.num_cities>1?'ies':'y'} · ${n} total show${n!==1?'s':''}</span>
-        <span class="text-slate-500">Total op. costs: <span class="text-red-400 font-semibold">${fmtDollar(c.total_op_costs)}</span></span>
-      </div>
-    </div>
-
-    <!-- 3. Additional Revenue -->
-    <div class="glass rounded-xl p-4">
-      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">3 — Additional Revenue</h3>
-      <div class="grid grid-cols-3 gap-4">
-        <div>
-          <label class="${FD_LABEL}">Merch Expected / Show ($)</label>
-          <input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.merch_per_show||0}" oninput="fdPatch('additional_revenue.merch_per_show',Number(this.value));fdUpdateLive()">
-        </div>
-        <div>
-          <label class="${FD_LABEL}">Promoter Merch Split (%)</label>
-          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.merch_split_pct',Number(this.value)/100);fdUpdateLive()">
-        </div>
-        <div>
-          <label class="${FD_LABEL}">Sponsorship / Show ($)</label>
-          <input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.sponsorship_per_show||0}" oninput="fdPatch('additional_revenue.sponsorship_per_show',Number(this.value));fdUpdateLive()">
-        </div>
-        <div>
-          <label class="${FD_LABEL}">Avg F&amp;B Spend / Head ($)</label>
-          <input type="number" class="${FD_INPUT}" min="0" step="0.01" value="${p.additional_revenue?.fnb_per_head||0}" oninput="fdPatch('additional_revenue.fnb_per_head',Number(this.value));fdUpdateLive()">
-        </div>
-        <div>
-          <label class="${FD_LABEL}">F&amp;B Buyer % of Attendance</label>
-          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.fnb_buyer_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.fnb_buyer_pct',Number(this.value)/100);fdUpdateLive()">
-        </div>
-      </div>
-      <div id="fd-addl-derived">${fdAddlDerivedHTML(p,c)}</div>
-    </div>
-
-    <!-- 4. Artist MG & Payment Schedule -->
-    <div class="glass rounded-xl p-4">
-      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">4 — Artist Fee &amp; MG Payment Schedule</h3>
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">1 — Artist Fee &amp; MG Payment Schedule</h3>
       <div class="grid grid-cols-2 gap-4 mb-4">
         <div>
           <div id="fd-mg-deal-section">${fdMGDealSectionHTML(p)}</div>
@@ -7087,6 +6898,195 @@ function fdRenderLive(p) {
       </table>
     </div>
 
+    <!-- 2. Tour Cities -->
+    <div class="glass rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-semibold text-white uppercase tracking-wider">2 — Tour Cities &amp; Venues</h3>
+        <button onclick="fdAddCity()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add City</button>
+      </div>
+      <div class="text-[9px] text-slate-500 mb-3">Type a city name to search venues from 100 major markets. Selecting a venue auto-fills capacity &amp; estimated costs.</div>
+      <div id="fd-tour-cities-list" class="space-y-4">
+        ${(() => {
+          // Build a fast lookup from cityCalcs
+          const ccMap = {};
+          for (const cc of c.cityCalcs) { if (cc.tc.id) ccMap[cc.tc.id] = cc; }
+          return (p.tour_cities||[]).map(tc => {
+            const cc = ccMap[tc.id] || { seats_per_show:0, rev_per_show:0, total_ticket_rev:0, occ:0, cpp:0, total_op_cost:0, shows:tc.num_shows||1, cats:tc.seat_categories||[] };
+            const cats = tc.seat_categories || [];
+            const shows = Number(tc.num_shows) || 1;
+            const canRemove = (p.tour_cities||[]).length > 1;
+
+            // Per-category rows (revenue cells are fill_rate-adjusted and have IDs for live updates)
+            const fillRate = Number(tc.fill_rate) !== undefined ? Math.min(1, Math.max(0, Number(tc.fill_rate) || 1)) : 1.0;
+            const catRows = cats.map((cat, i) => {
+              const revPS  = (Number(cat.price)||0) * (Number(cat.count)||0) * fillRate;
+              const revTot = revPS * shows;
+              return '<tr class="border-b border-white/5">' +
+                '<td class="py-1 pl-2 pr-1"><input type="text" class="' + FD_INPUT + ' text-[11px] py-1" value="' + (cat.name||'').replace(/"/g,'&quot;') + '" placeholder="Category" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'name\',this.value)"></td>' +
+                '<td class="py-1 px-1"><input type="number" class="' + FD_INPUT + ' text-[11px] py-1 w-20" min="0" value="' + (cat.count||0) + '" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'count\',Number(this.value));fdUpdateLive()"></td>' +
+                '<td class="py-1 px-1"><input type="number" class="' + FD_INPUT + ' text-[11px] py-1 w-20" min="0" value="' + (cat.price||0) + '" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'price\',Number(this.value));fdUpdateLive()"></td>' +
+                '<td id="fd-cat-rev-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-1 whitespace-nowrap">' + fmtDollar(revPS) + '</td>' +
+                '<td id="fd-cat-tot-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-2 whitespace-nowrap">' + fmtDollar(revTot) + '</td>' +
+                '<td class="py-1 pr-1"><button onclick="fdRemoveCityCategory(\'' + tc.id + '\',' + i + ')" class="text-slate-600 hover:text-red-400 p-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>' +
+              '</tr>';
+            }).join('');
+
+            return '<div class="bg-white/3 rounded-xl p-3 border border-white/5">' +
+              // ── Row 1: City + Venue search ──
+              '<div class="flex items-center gap-2 mb-2">' +
+                '<div class="relative flex-1">' +
+                  '<input type="text" class="' + FD_INPUT + ' text-xs" placeholder="City, Country (type to search...)" ' +
+                    'value="' + (tc.city_name||'').replace(/"/g,'&quot;') + '" ' +
+                    'oninput="fdPatchCity(\'' + tc.id + '\',\'city_name\',this.value);fdCitySuggest(\'' + tc.id + '\',this.value)" ' +
+                    'onblur="setTimeout(()=>fdHideCitySuggest(\'' + tc.id + '\'),200)" autocomplete="off">' +
+                  '<div id="fd-cs-' + tc.id + '" class="hidden absolute top-full left-0 right-0 z-50 bg-slate-900 border border-white/10 rounded-lg mt-1 shadow-2xl max-h-48 overflow-y-auto text-left"></div>' +
+                '</div>' +
+                '<div class="flex-1">' +
+                  '<input type="text" class="' + FD_INPUT + ' text-xs" placeholder="Venue name" ' +
+                    'value="' + (tc.venue_name||'').replace(/"/g,'&quot;') + '" ' +
+                    'oninput="fdPatchCity(\'' + tc.id + '\',\'venue_name\',this.value)">' +
+                '</div>' +
+                (canRemove ? '<button onclick="fdRemoveCity(\'' + tc.id + '\')" class="text-slate-600 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>' : '<div class="w-5 flex-shrink-0"></div>') +
+              '</div>' +
+              // ── Row 2: Capacity / Shows / Date ──
+              '<div class="grid grid-cols-4 gap-2 mb-3">' +
+                '<div><label class="text-[9px] text-slate-500 block mb-1">CAPACITY</label>' +
+                  '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.capacity||0) + '" ' +
+                    'onchange="fdScaleCapacity(\'' + tc.id + '\',Number(this.value))"></div>' +
+                '<div><label class="text-[9px] text-slate-500 block mb-1">SHOWS</label>' +
+                  '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="1" value="' + shows + '" ' +
+                    'oninput="fdPatchCity(\'' + tc.id + '\',\'num_shows\',Number(this.value));fdUpdateLive()"></div>' +
+                '<div class="col-span-2"><label class="text-[9px] text-slate-500 block mb-1">CONCERT DATE</label>' +
+                  '<input type="date" class="' + FD_INPUT + ' text-xs py-1" value="' + (tc.concert_date||'') + '" ' +
+                    'onchange="fdPatchCity(\'' + tc.id + '\',\'concert_date\',this.value)"></div>' +
+              '</div>' +
+              // ── Costs per show ──
+              '<div class="border-t border-white/5 pt-2 mb-3">' +
+                '<span class="text-[9px] text-slate-500 uppercase tracking-wider block mb-1.5">Costs per Show ($)</span>' +
+                '<div class="grid grid-cols-4 gap-2">' +
+                  '<div><label class="text-[9px] text-slate-600 block mb-1">Venue Fee</label>' +
+                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.venue_fee||0) + '" ' +
+                      'oninput="fdPatchCity(\'' + tc.id + '\',\'venue_fee\',Number(this.value));fdUpdateLive()"></div>' +
+                  '<div><label class="text-[9px] text-slate-600 block mb-1">Production</label>' +
+                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.production||0) + '" ' +
+                      'oninput="fdPatchCity(\'' + tc.id + '\',\'production\',Number(this.value));fdUpdateLive()"></div>' +
+                  '<div><label class="text-[9px] text-slate-600 block mb-1">Hospitality</label>' +
+                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.hospitality||0) + '" ' +
+                      'oninput="fdPatchCity(\'' + tc.id + '\',\'hospitality\',Number(this.value));fdUpdateLive()"></div>' +
+                  '<div><label class="text-[9px] text-slate-600 block mb-1">Insurance</label>' +
+                    '<input type="number" class="' + FD_INPUT + ' text-xs py-1" min="0" value="' + (tc.insurance||0) + '" ' +
+                      'oninput="fdPatchCity(\'' + tc.id + '\',\'insurance\',Number(this.value));fdUpdateLive()"></div>' +
+                '</div>' +
+              '</div>' +
+              // ── Seat Categories ──
+              '<div class="border-t border-white/5 pt-2 mb-3">' +
+                '<div class="flex items-center justify-between mb-1.5">' +
+                  '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Seat Categories</span>' +
+                  '<div class="flex items-center gap-2">' +
+                    '<button onclick="fdSuggestCityPrices(\'' + tc.id + '\')" class="text-[10px] text-amber-400 hover:text-amber-300 transition-colors">\uD83D\uDCA1 Suggest</button>' +
+                    '<button onclick="fdAddCityCategory(\'' + tc.id + '\')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ Category</button>' +
+                  '</div>' +
+                '</div>' +
+                '<table class="w-full">' +
+                  '<thead><tr class="text-[8px] text-slate-600 uppercase border-b border-white/5">' +
+                    '<th class="text-left pb-1 pl-2">Name</th>' +
+                    '<th class="text-left pb-1 px-1">Seats</th>' +
+                    '<th class="text-left pb-1 px-1">Price $</th>' +
+                    '<th class="text-right pb-1 pr-1">Rev/Show</th>' +
+                    '<th class="text-right pb-1 pr-2">Total (' + shows + ' show' + (shows>1?'s':'') + ')</th>' +
+                    '<th class="pb-1 w-6"></th>' +
+                  '</tr></thead>' +
+                  '<tbody>' + catRows + '</tbody>' +
+                  '<tfoot id="fd-city-cat-totals-' + tc.id + '">' + fdCityCatTotalsHTML(cc) + '</tfoot>' +
+                '</table>' +
+              '</div>' +
+              // ── Capacity Fill Rate Slider ──
+              (function() {
+                const fr = fillRate;
+                const pct = Math.round(fr * 100);
+                const col = pct < 80 ? 'text-amber-400' : pct < 100 ? 'text-cyan-300' : 'text-emerald-400';
+                // Break-even marker: cc.break_even_fill is local op cost / rev_at_100
+                const bef = cc.break_even_fill;
+                const befPct = bef !== null ? Math.max(40, Math.min(100, Math.round(bef * 100))) : null;
+                // Position as % of slider track (slider range 40–100 = span of 60)
+                const befPos = befPct !== null ? ((befPct - 40) / 60 * 100).toFixed(1) : null;
+                const befLabel = befPct !== null ? befPct + '% break-even' : '';
+                const isBelowRange = bef !== null && bef * 100 < 40;
+                const markerHtml = befPos !== null
+                  ? '<div class="relative h-4 mt-1">' +
+                      '<div class="absolute top-0 bottom-0 flex flex-col items-center" style="left:' + befPos + '%">' +
+                        '<div class="w-px h-2.5 bg-amber-400/70"></div>' +
+                      '</div>' +
+                      '<div class="absolute text-[8px] text-amber-400 whitespace-nowrap -translate-x-1/2" style="left:' + Math.min(befPos, 85) + '%;top:2px">' + befLabel + '</div>' +
+                    '</div>'
+                  : (isBelowRange ? '<div class="text-[9px] text-emerald-400 mt-1">✓ Break-even below 40% fill — all good</div>' : '<div class="h-2"></div>');
+                return '<div class="border-t border-white/5 pt-2 mb-3">' +
+                  '<div class="flex items-center justify-between mb-2">' +
+                    '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Capacity Fill Rate</span>' +
+                    '<span id="fd-city-fillrate-pct-' + tc.id + '" class="text-[11px] font-semibold ' + col + '">' + pct + '% Sell-Through</span>' +
+                  '</div>' +
+                  '<input type="range" min="40" max="100" step="5" value="' + pct + '" class="w-full h-1.5 accent-violet-500 cursor-pointer" ' +
+                    'oninput="fdPatchCity(\'' + tc.id + '\',\'fill_rate\',this.value/100);\n' +
+                      'var pct=Math.round(this.value),el=document.getElementById(\'fd-city-fillrate-pct-' + tc.id + '\');\n' +
+                      'if(el){el.textContent=pct+\'% Sell-Through\';el.className=\'text-[11px] font-semibold \'+(pct<80?\'text-amber-400\':pct<100?\'text-cyan-300\':\'text-emerald-400\');}\n' +
+                      'fdUpdateLive()">' +
+                  markerHtml +
+                  '<div class="flex justify-between text-[9px] text-slate-600 mt-1">' +
+                    '<span>40%</span><span>60%</span><span>80%</span><span>100% Sold Out</span>' +
+                  '</div>' +
+                '</div>';
+              })() +
+              // ── Live summary footer ──
+              '<div id="fd-city-footer-' + tc.id + '" class="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-500">' +
+                '<span class="flex gap-3">' +
+                  '<span>Ticket rev: <span class="text-emerald-400 font-semibold">' + fmtDollar(cc.rev_per_show) + '/show</span></span>' +
+                  '<span class="text-slate-600">·</span>' +
+                  '<span>' + fmtNum(cc.seats_per_show) + ' seats' + (cc.occ>0 ? ' · <span class="text-amber-400">' + (cc.occ*100).toFixed(0) + '% occ</span>' : '') + '</span>' +
+                '</span>' +
+                '<span class="flex gap-3">' +
+                  '<span>Cost/show: <span class="text-red-400 font-semibold">' + fmtDollar(cc.cpp) + '</span></span>' +
+                  '<span class="text-slate-600">·</span>' +
+                  '<span>' + shows + ' show' + (shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtDollar(cc.total_op_cost) + '</span></span>' +
+                '</span>' +
+              '</div>' +
+            '</div>';
+          }).join('');
+        })()}
+      </div>
+      <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
+        <span class="text-slate-500">${c.num_cities} cit${c.num_cities>1?'ies':'y'} · ${n} total show${n!==1?'s':''}</span>
+        <span class="text-slate-500">Total op. costs: <span class="text-red-400 font-semibold">${fmtDollar(c.total_op_costs)}</span></span>
+      </div>
+    </div>
+
+    <!-- 3. Additional Revenue -->
+    <div class="glass rounded-xl p-4">
+      <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">3 — Additional Revenue</h3>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="${FD_LABEL}">Merch Expected / Show ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.merch_per_show||0}" oninput="fdPatch('additional_revenue.merch_per_show',Number(this.value));fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Promoter Merch Split (%)</label>
+          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.merch_split_pct',Number(this.value)/100);fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Sponsorship / Show ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" value="${p.additional_revenue?.sponsorship_per_show||0}" oninput="fdPatch('additional_revenue.sponsorship_per_show',Number(this.value));fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Avg F&amp;B Spend / Head ($)</label>
+          <input type="number" class="${FD_INPUT}" min="0" step="0.01" value="${p.additional_revenue?.fnb_per_head||0}" oninput="fdPatch('additional_revenue.fnb_per_head',Number(this.value));fdUpdateLive()">
+        </div>
+        <div>
+          <label class="${FD_LABEL}">F&amp;B Buyer % of Attendance</label>
+          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.fnb_buyer_pct||0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.fnb_buyer_pct',Number(this.value)/100);fdUpdateLive()">
+        </div>
+      </div>
+      <div id="fd-addl-derived">${fdAddlDerivedHTML(p,c)}</div>
+    </div>
+
     <!-- Co-Headliner & Support Acts -->
     <div class="glass rounded-xl p-4">
       <div class="flex items-center justify-between mb-2">
@@ -7104,7 +7104,7 @@ function fdRenderLive(p) {
     <!-- 5. One-Time Costs -->
     <div class="glass rounded-xl p-4">
       <h3 class="text-xs font-semibold text-white mb-1 uppercase tracking-wider">5 — One-Time &amp; Global Costs</h3>
-      <div class="text-[9px] text-slate-500 mb-3">Per-show venue, production, hospitality, and insurance costs are set per city in Section 1.</div>
+      <div class="text-[9px] text-slate-500 mb-3">Per-show venue, production, hospitality, and insurance costs are set per city in Section 2.</div>
       <div class="grid grid-cols-2 gap-4">
         <div><label class="${FD_LABEL}">Agency Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.agency_fees||0}" oninput="fdPatch('costs.agency_fees',Number(this.value));fdUpdateLive()"></div>
         <div><label class="${FD_LABEL}">BluFin Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.blufin_fees||0}" oninput="fdPatch('costs.blufin_fees',Number(this.value));fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">project cost, before waterfall</div></div>
