@@ -1,5 +1,2432 @@
 {
-  "profiles": [],
+  "profiles": [
+    {
+      "id": "1771573832818_irtw",
+      "createdAt": "2026-02-20T07:50:32.818Z",
+      "artist": "Justin Bieber",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 3,
+      "concert_date": "2026-10-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 141.25,
+          "count": 18000
+        },
+        {
+          "name": "Golden Circle (GA+)",
+          "price": 207.72,
+          "count": 2175
+        },
+        {
+          "name": "Lower Bowl Stand",
+          "price": 191.11,
+          "count": 6000
+        },
+        {
+          "name": "Lower Bowl Prime",
+          "price": 265.88,
+          "count": 4088
+        },
+        {
+          "name": "Mid Deck Stand",
+          "price": 232.65,
+          "count": 6000
+        },
+        {
+          "name": "Mid Deck Prime",
+          "price": 315.74,
+          "count": 4088
+        },
+        {
+          "name": "Club/Loge",
+          "price": 540.08,
+          "count": 500
+        },
+        {
+          "name": "VIP",
+          "price": 415.45,
+          "count": 1000
+        },
+        {
+          "name": "VVIP",
+          "price": 789.35,
+          "count": 300
+        },
+        {
+          "name": "VVVIP",
+          "price": 1661.79,
+          "count": 100
+        },
+        {
+          "name": "Whale Talk",
+          "price": 4154.48,
+          "count": 20
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 800000,
+        "merch_split_pct": 0.2,
+        "fnb_per_head": 25,
+        "fnb_buyer_pct": 0.3,
+        "sponsorship_per_show": 450000
+      },
+      "costs": {
+        "artist_mg": 13000000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 1000000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 750000,
+        "agency_fees": 500000,
+        "blufin_fees": 500000,
+        "insurance_per_show": 0,
+        "mg_mode": "total",
+        "deal_type": "flat_mg",
+        "backend_deal": {
+          "guarantee": 0,
+          "box_office_pct": 0.1,
+          "split_basis": "gross"
+        },
+        "co_promoter": {
+          "name": "",
+          "split_pct": 0
+        }
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 7,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 10000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5,
+          "investors": [
+            {
+              "id": "inv_1773136993931_t79y",
+              "name": "Blufin",
+              "pct": 30,
+              "expected_return_pct": 20
+            },
+            {
+              "id": "inv_1773137042431_zsso",
+              "name": "Joe",
+              "pct": 70,
+              "expected_return_pct": 5
+            }
+          ],
+          "use_for_roi": true
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 25000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5,
+          "investors": [],
+          "use_for_roi": false
+        }
+      ],
+      "tour_cities": [
+        {
+          "id": "tc_legacy_1771573832818_irtw",
+          "city_name": "Seoul, Korea",
+          "venue_name": "",
+          "capacity": 50000,
+          "num_shows": 2,
+          "concert_date": "2026-10-20",
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 124.63,
+              "count": 22200
+            },
+            {
+              "name": "Golden Circle (GA+)",
+              "price": 149.56,
+              "count": 3030
+            },
+            {
+              "name": "Lower Bowl Stand",
+              "price": 166.18,
+              "count": 7240
+            },
+            {
+              "name": "Lower Bowl Prime",
+              "price": 207.72,
+              "count": 4300
+            },
+            {
+              "name": "Mid Deck Stand",
+              "price": 240.97,
+              "count": 6500
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 290.81,
+              "count": 4500
+            },
+            {
+              "name": "Club/Loge",
+              "price": 415.45,
+              "count": 900
+            },
+            {
+              "name": "VIP",
+              "price": 373.9,
+              "count": 1000
+            },
+            {
+              "name": "VVIP",
+              "price": 706.26,
+              "count": 300
+            },
+            {
+              "name": "VVVIP",
+              "price": 1661.79,
+              "count": 25
+            },
+            {
+              "name": "Whale Talk",
+              "price": 4154.48,
+              "count": 5
+            }
+          ],
+          "venue_fee": 500000,
+          "production": 500000,
+          "hospitality": 300000,
+          "insurance": 0,
+          "fill_rate": 1
+        }
+      ],
+      "deal_stage": "Offer Sent",
+      "festival_mode": true,
+      "festival_artists": [
+        {
+          "id": "fa_1771766793707_x8k1",
+          "artist_name": "Justin Bieber",
+          "spotify_id": "1uNFoZAHBGtllmzznpCI3s",
+          "role": "Headliner",
+          "mg": 13000000,
+          "monthly_listeners": 103271172,
+          "peak_listeners": 123488891,
+          "is_touring": true,
+          "daily_change": 363111,
+          "recent_events": 5
+        },
+        {
+          "id": "fa_1771766848315_bm0e",
+          "artist_name": "JENNIE",
+          "spotify_id": "250b0Wlc5Vk0CoUsaCY84M",
+          "role": "Co-Headliner",
+          "mg": 0,
+          "monthly_listeners": 42238656,
+          "peak_listeners": 51284235,
+          "is_touring": true,
+          "daily_change": 67388,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771766966101_tosy",
+          "artist_name": "GIV\u00c4\u0092ON",
+          "spotify_id": "4fxd5Ee7UefO4CUXgwJ7IP",
+          "role": "Co-Headliner",
+          "mg": 0,
+          "monthly_listeners": 26920246,
+          "peak_listeners": 30904678,
+          "is_touring": false,
+          "daily_change": 158068,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771767018880_nltf",
+          "artist_name": "DJON",
+          "spotify_id": "",
+          "role": "Co-Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771767050843_wl9l",
+          "artist_name": "Dominic Fike",
+          "spotify_id": "6USv9qhCn6zfxlBQIYJ9qs",
+          "role": "Co-Headliner",
+          "mg": 0,
+          "monthly_listeners": 23199866,
+          "peak_listeners": 26663756,
+          "is_touring": true,
+          "daily_change": 153203,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771828260188_jccl",
+          "artist_name": "KAYTRANADA",
+          "spotify_id": "6qgnBH6iDM91ipVXv28OMu",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 8544147,
+          "peak_listeners": 10305443,
+          "is_touring": false,
+          "daily_change": -2659,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771828336458_vebi",
+          "artist_name": "Leon Thomas",
+          "spotify_id": "0nnBZ8FXWjG9wZgM2cpfeb",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 13701257,
+          "peak_listeners": 16439450,
+          "is_touring": true,
+          "daily_change": 44376,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771828618187_pktz",
+          "artist_name": "MK.GEE",
+          "spotify_id": "",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771828705012_ov9a",
+          "artist_name": "Sickick",
+          "spotify_id": "3NR7hAacOhmcztWvD7vJfS",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 6642283,
+          "peak_listeners": 7117537,
+          "is_touring": false,
+          "daily_change": -2497,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771828714779_3tmw",
+          "artist_name": "DJ Snake",
+          "spotify_id": "540vIaP2JwjQb9dm3aArA4",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 52197543,
+          "peak_listeners": 52365207,
+          "is_touring": true,
+          "daily_change": -68014,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771828742794_jnqs",
+          "artist_name": "Kenny Beats",
+          "spotify_id": "",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771828761304_1lnr",
+          "artist_name": "Pink Sweat$",
+          "spotify_id": "",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771828803532_aha5",
+          "artist_name": "TroyBoi",
+          "spotify_id": "",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771828890219_vrqu",
+          "artist_name": "Tems",
+          "spotify_id": "687cZJR45JO7jhk1LHIbgq",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 35373182,
+          "peak_listeners": 35373182,
+          "is_touring": true,
+          "daily_change": 457993,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771829469166_vmsl",
+          "artist_name": "LUNICE",
+          "spotify_id": "",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771829480574_eqeq",
+          "artist_name": "Daniel Caesar",
+          "spotify_id": "20wkVLutqVOYrc0kxFs7rA",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 41792302,
+          "peak_listeners": 44105561,
+          "is_touring": true,
+          "daily_change": 162518,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771829497232_tylk",
+          "artist_name": "The Kid LAROI",
+          "spotify_id": "2tIP7SsRs7vjIcLrU85W8J",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 35776565,
+          "peak_listeners": 46982806,
+          "is_touring": true,
+          "daily_change": -49911,
+          "recent_events": 20
+        }
+      ],
+      "support_acts": [],
+      "radius_days": 90
+    },
+    {
+      "id": "1771500661911_tt0j",
+      "createdAt": "2026-02-19T11:31:01.911Z",
+      "artist": "ROSE",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 2,
+      "concert_date": "2026-12-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 170,
+          "count": 20175
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 230,
+          "count": 10088
+        },
+        {
+          "name": "Mid Deck",
+          "price": 280,
+          "count": 10088
+        },
+        {
+          "name": "VIP",
+          "price": 500,
+          "count": 1500
+        },
+        {
+          "name": "VVIP",
+          "price": 950,
+          "count": 200
+        },
+        {
+          "name": "VVVIP",
+          "price": 1500,
+          "count": 50
+        },
+        {
+          "name": "WHALE",
+          "price": 2500,
+          "count": 10
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 355000,
+        "merch_split_pct": 0.3,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 200000
+      },
+      "costs": {
+        "artist_mg": 12000000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 650000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 500000,
+        "blufin_fees": 500000,
+        "insurance_per_show": 0,
+        "mg_mode": "total"
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 10000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 20000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        }
+      ],
+      "deal_stage": "Interest",
+      "tour_cities": [
+        {
+          "id": "tc_legacy_1771500661911_tt0j",
+          "city_name": "Seoul, Korea",
+          "venue_name": "",
+          "capacity": 42111,
+          "num_shows": 2,
+          "concert_date": "2026-12-20",
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 170,
+              "count": 20175
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 230,
+              "count": 10088
+            },
+            {
+              "name": "Mid Deck",
+              "price": 280,
+              "count": 10088
+            },
+            {
+              "name": "VIP",
+              "price": 500,
+              "count": 1500
+            },
+            {
+              "name": "VVIP",
+              "price": 950,
+              "count": 200
+            },
+            {
+              "name": "VVVIP",
+              "price": 1500,
+              "count": 50
+            },
+            {
+              "name": "WHALE",
+              "price": 2500,
+              "count": 10
+            }
+          ],
+          "venue_fee": 650000,
+          "production": 1000000,
+          "hospitality": 150000,
+          "insurance": 0,
+          "fill_rate": 1
+        }
+      ],
+      "festival_mode": true,
+      "festival_artists": [
+        {
+          "id": "fa_1771767534863_07dz",
+          "artist_name": "ROS\u00c3\u0089",
+          "spotify_id": "3eVa5w3URK5duf6eyVDbu9",
+          "role": "Headliner",
+          "mg": 5000000,
+          "monthly_listeners": 31551178,
+          "peak_listeners": 71124800,
+          "is_touring": true,
+          "daily_change": -11374,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771767553480_0q0w",
+          "artist_name": "Olivia Dean",
+          "spotify_id": "00x1fYSGhdqScXBRpSj3DW",
+          "role": "Support",
+          "mg": 5000000,
+          "monthly_listeners": 59406490,
+          "peak_listeners": 59406490,
+          "is_touring": true,
+          "daily_change": 190932,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771767686737_d6or",
+          "artist_name": "Gracie Abrams",
+          "spotify_id": "4tuJ0bMpJh08umKkEXKUI5",
+          "role": "Co-Headliner",
+          "mg": 1000000,
+          "monthly_listeners": 36647252,
+          "peak_listeners": 51497815,
+          "is_touring": true,
+          "daily_change": -40782,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827674219_r7qo",
+          "artist_name": "Madison Beer",
+          "spotify_id": "2kRfqPViCqYdSGhYSM9R0Q",
+          "role": "Headliner",
+          "mg": 2123550,
+          "monthly_listeners": 26320428,
+          "peak_listeners": 26495861,
+          "is_touring": true,
+          "daily_change": -69350,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827725848_bipe",
+          "artist_name": "RAYE",
+          "spotify_id": "5KKpBU5eC2tJDzf0wmlRp2",
+          "role": "Support",
+          "mg": 6435000,
+          "monthly_listeners": 55532106,
+          "peak_listeners": 55532106,
+          "is_touring": true,
+          "daily_change": 15797,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827780810_442j",
+          "artist_name": "Sabrina Claudio",
+          "spotify_id": "",
+          "role": "Support",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771827809635_8mxp",
+          "artist_name": "Alina Baraz",
+          "spotify_id": "",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 0,
+          "peak_listeners": 0,
+          "is_touring": false,
+          "daily_change": 0,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771827900206_slrw",
+          "artist_name": "Nessa Barrett",
+          "spotify_id": "7pwufEBGfggjoI8twqlsmQ",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 6542127,
+          "peak_listeners": 11023137,
+          "is_touring": false,
+          "daily_change": -15912,
+          "recent_events": 0
+        },
+        {
+          "id": "fa_1771827936586_x5vs",
+          "artist_name": "sombr",
+          "spotify_id": "4G9NDjRyZFDlJKMRL8hx3S",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 57967885,
+          "peak_listeners": 59821549,
+          "is_touring": true,
+          "daily_change": 128274,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771828014326_fjd7",
+          "artist_name": "Labrinth",
+          "spotify_id": "2feDdbD5araYcm6JhFHHw7",
+          "role": "Headliner",
+          "mg": 0,
+          "monthly_listeners": 22215457,
+          "peak_listeners": 36829106,
+          "is_touring": true,
+          "daily_change": 32209,
+          "recent_events": 6
+        }
+      ]
+    },
+    {
+      "id": "1771827263770_nszy",
+      "createdAt": "2026-02-23T06:14:23.770Z",
+      "artist": "JENNIE",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 2,
+      "concert_date": "2026-12-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 170,
+          "count": 20175
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 230,
+          "count": 10088
+        },
+        {
+          "name": "Mid Deck",
+          "price": 280,
+          "count": 10088
+        },
+        {
+          "name": "VIP",
+          "price": 500,
+          "count": 1500
+        },
+        {
+          "name": "VVIP",
+          "price": 950,
+          "count": 200
+        },
+        {
+          "name": "VVVIP",
+          "price": 1500,
+          "count": 50
+        },
+        {
+          "name": "WHALE",
+          "price": 2500,
+          "count": 10
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 355000,
+        "merch_split_pct": 0.3,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 200000
+      },
+      "costs": {
+        "artist_mg": 8000000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 650000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 500000,
+        "blufin_fees": 500000,
+        "insurance_per_show": 0,
+        "mg_mode": "total"
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 10000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 20000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        }
+      ],
+      "deal_stage": "Interest",
+      "tour_cities": [
+        {
+          "id": "tc_legacy_1771500661911_tt0j",
+          "city_name": "Seoul, Korea",
+          "venue_name": "",
+          "capacity": 35000,
+          "num_shows": 2,
+          "concert_date": "2026-12-20",
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 170,
+              "count": 16768
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 230,
+              "count": 8385
+            },
+            {
+              "name": "Mid Deck",
+              "price": 280,
+              "count": 8385
+            },
+            {
+              "name": "VIP",
+              "price": 500,
+              "count": 1247
+            },
+            {
+              "name": "VVIP",
+              "price": 950,
+              "count": 166
+            },
+            {
+              "name": "VVVIP",
+              "price": 1500,
+              "count": 42
+            },
+            {
+              "name": "WHALE",
+              "price": 2500,
+              "count": 8
+            }
+          ],
+          "venue_fee": 650000,
+          "production": 1000000,
+          "hospitality": 150000,
+          "insurance": 0,
+          "fill_rate": 1
+        }
+      ],
+      "festival_mode": true,
+      "festival_artists": [
+        {
+          "id": "fa_1771827459074_iuv9",
+          "artist_name": "JENNIE",
+          "spotify_id": "250b0Wlc5Vk0CoUsaCY84M",
+          "role": "Headliner",
+          "mg": 2295975,
+          "monthly_listeners": 42238656,
+          "peak_listeners": 51284235,
+          "is_touring": true,
+          "daily_change": 67388,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827464265_6gre",
+          "artist_name": "Tate McRae",
+          "spotify_id": "45dkTj5sMRSjrmBSBeiHym",
+          "role": "Headliner",
+          "mg": 5123250,
+          "monthly_listeners": 51077097,
+          "peak_listeners": 59945963,
+          "is_touring": true,
+          "daily_change": -103363,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827467461_2oek",
+          "artist_name": "Addison Rae",
+          "spotify_id": "4gvjmrtzydbMpyJaXUtwvP",
+          "role": "Headliner",
+          "mg": 983125,
+          "monthly_listeners": 17513263,
+          "peak_listeners": 17980039,
+          "is_touring": true,
+          "daily_change": 52272,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827473091_3izn",
+          "artist_name": "Charli xcx",
+          "spotify_id": "25uiPmTg16RbhZWAqwLBy5",
+          "role": "Headliner",
+          "mg": 1815000,
+          "monthly_listeners": 30428324,
+          "peak_listeners": 46491335,
+          "is_touring": true,
+          "daily_change": 31888,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771827820491_rc1i",
+          "artist_name": "Troye Sivan",
+          "spotify_id": "3WGpXCj9YhhfX11TToZcXP",
+          "role": "Headliner",
+          "mg": 687500,
+          "monthly_listeners": 18794071,
+          "peak_listeners": 32443596,
+          "is_touring": true,
+          "daily_change": 18009,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771828090122_ytj5",
+          "artist_name": "070 Shake",
+          "spotify_id": "12Zk1DFhCbHY6v3xep2ZjI",
+          "role": "Headliner",
+          "mg": 584375,
+          "monthly_listeners": 13013587,
+          "peak_listeners": 30903161,
+          "is_touring": true,
+          "daily_change": 7422,
+          "recent_events": 20
+        },
+        {
+          "id": "fa_1771828146755_otcz",
+          "artist_name": "Tame Impala",
+          "spotify_id": "5INjqkS1o8h1imAzPqGZBb",
+          "role": "Headliner",
+          "mg": 1000000,
+          "monthly_listeners": 40749083,
+          "peak_listeners": 43511404,
+          "is_touring": true,
+          "daily_change": 143486,
+          "recent_events": 20
+        }
+      ]
+    },
+    {
+      "id": "1771593816338_hwp7",
+      "createdAt": "2026-02-20T13:23:36.338Z",
+      "artist": "Gorillaz",
+      "venue_type": "arena",
+      "city": "Seoul, Korea",
+      "num_shows": 1,
+      "concert_date": "2026-10-20",
+      "venue_capacity": 20000,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 140,
+          "count": 1200
+        },
+        {
+          "name": "Golden Circle (GA)",
+          "price": 200,
+          "count": 240
+        },
+        {
+          "name": "Lower Bowl Stand",
+          "price": 190,
+          "count": 4000
+        },
+        {
+          "name": "Lower Bowl Prime",
+          "price": 260,
+          "count": 3000
+        },
+        {
+          "name": "Mid Deck Prime",
+          "price": 230,
+          "count": 4000
+        },
+        {
+          "name": "Mid Deck",
+          "price": 220,
+          "count": 4500
+        },
+        {
+          "name": "Mid Deck Prime",
+          "price": 300,
+          "count": 2000
+        },
+        {
+          "name": "Club Loge",
+          "price": 450,
+          "count": 250
+        },
+        {
+          "name": "VIP",
+          "price": 400,
+          "count": 500
+        },
+        {
+          "name": "VIP Prime",
+          "price": 700,
+          "count": 250
+        },
+        {
+          "name": "Box",
+          "price": 1500,
+          "count": 50
+        },
+        {
+          "name": "Box Tail",
+          "price": 3000,
+          "count": 10
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 250000,
+        "merch_split_pct": 0.4,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.4,
+        "sponsorship_per_show": 250000
+      },
+      "costs": {
+        "artist_mg": 7500000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 500000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 250000,
+        "blufin_fees": 250000,
+        "insurance_per_show": 0,
+        "mg_mode": "total"
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 7,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 12000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 25000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5
+        }
+      ],
+      "tour_cities": [
+        {
+          "id": "tc_legacy_1771593816338_hwp7",
+          "city_name": "Seoul, Korea",
+          "venue_name": "",
+          "capacity": 20000,
+          "num_shows": 1,
+          "concert_date": "2026-10-20",
+          "venue_fee": 500000,
+          "production": 1000000,
+          "hospitality": 150000,
+          "insurance": 0,
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 140,
+              "count": 1200
+            },
+            {
+              "name": "Golden Circle (GA)",
+              "price": 200,
+              "count": 240
+            },
+            {
+              "name": "Lower Bowl Stand",
+              "price": 190,
+              "count": 4000
+            },
+            {
+              "name": "Lower Bowl Prime",
+              "price": 260,
+              "count": 3000
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 230,
+              "count": 4000
+            },
+            {
+              "name": "Mid Deck",
+              "price": 220,
+              "count": 4500
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 300,
+              "count": 2000
+            },
+            {
+              "name": "Club Loge",
+              "price": 450,
+              "count": 250
+            },
+            {
+              "name": "VIP",
+              "price": 400,
+              "count": 500
+            },
+            {
+              "name": "VIP Prime",
+              "price": 700,
+              "count": 250
+            },
+            {
+              "name": "Box",
+              "price": 1500,
+              "count": 50
+            },
+            {
+              "name": "Box Tail",
+              "price": 3000,
+              "count": 10
+            }
+          ],
+          "fill_rate": 1
+        },
+        {
+          "id": "tc_1771660077325_yncf",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Saitama Super Arena",
+          "capacity": 20000,
+          "num_shows": 1,
+          "concert_date": "2026-10-22",
+          "venue_fee": 500000,
+          "production": 1000000,
+          "hospitality": 150000,
+          "insurance": 16000,
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 140,
+              "count": 1200
+            },
+            {
+              "name": "Golden Circle (GA)",
+              "price": 200,
+              "count": 240
+            },
+            {
+              "name": "Lower Bowl Stand",
+              "price": 190,
+              "count": 4000
+            },
+            {
+              "name": "Lower Bowl Prime",
+              "price": 260,
+              "count": 3000
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 230,
+              "count": 4000
+            },
+            {
+              "name": "Mid Deck",
+              "price": 220,
+              "count": 4500
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 300,
+              "count": 2000
+            },
+            {
+              "name": "Club Loge",
+              "price": 450,
+              "count": 250
+            },
+            {
+              "name": "VIP",
+              "price": 400,
+              "count": 500
+            },
+            {
+              "name": "VIP Prime",
+              "price": 700,
+              "count": 250
+            },
+            {
+              "name": "Box",
+              "price": 1500,
+              "count": 50
+            },
+            {
+              "name": "Box Tail",
+              "price": 3000,
+              "count": 10
+            }
+          ],
+          "fill_rate": 1
+        },
+        {
+          "id": "tc_1771660141037_mlul",
+          "city_name": "Taipei, Taiwan",
+          "venue_name": "Taipei Arena",
+          "capacity": 15000,
+          "num_shows": 1,
+          "concert_date": "",
+          "venue_fee": 500000,
+          "production": 1000000,
+          "hospitality": 150000,
+          "insurance": 9000,
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 140,
+              "count": 1200
+            },
+            {
+              "name": "Golden Circle (GA)",
+              "price": 200,
+              "count": 240
+            },
+            {
+              "name": "Lower Bowl Stand",
+              "price": 190,
+              "count": 4000
+            },
+            {
+              "name": "Lower Bowl Prime",
+              "price": 260,
+              "count": 3000
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 230,
+              "count": 4000
+            },
+            {
+              "name": "Mid Deck",
+              "price": 220,
+              "count": 4500
+            },
+            {
+              "name": "Mid Deck Prime",
+              "price": 300,
+              "count": 2000
+            },
+            {
+              "name": "Club Loge",
+              "price": 450,
+              "count": 250
+            },
+            {
+              "name": "VIP",
+              "price": 400,
+              "count": 500
+            },
+            {
+              "name": "VIP Prime",
+              "price": 700,
+              "count": 250
+            },
+            {
+              "name": "Box",
+              "price": 1500,
+              "count": 50
+            },
+            {
+              "name": "Box Tail",
+              "price": 3000,
+              "count": 10
+            }
+          ],
+          "fill_rate": 1
+        }
+      ],
+      "deal_stage": "Interest"
+    },
+    {
+      "id": "1771660455022_8yyc",
+      "createdAt": "2026-02-21T07:54:15.022Z",
+      "artist": "Kanye West ",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 2,
+      "concert_date": "2026-12-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 190,
+          "count": 23955
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 250,
+          "count": 11978
+        },
+        {
+          "name": "Mid Deck",
+          "price": 290,
+          "count": 11978
+        },
+        {
+          "name": "VIP",
+          "price": 520,
+          "count": 1781
+        },
+        {
+          "name": "VVIP",
+          "price": 975,
+          "count": 237
+        },
+        {
+          "name": "VVVIP",
+          "price": 1500,
+          "count": 59
+        },
+        {
+          "name": "WHALE",
+          "price": 2500,
+          "count": 12
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 600000,
+        "merch_split_pct": 0.3,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 400000
+      },
+      "costs": {
+        "artist_mg": 10000000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 650000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 250000,
+        "blufin_fees": 250000,
+        "insurance_per_show": 0,
+        "mg_mode": "total"
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 10000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 20000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        }
+      ],
+      "tour_cities": [
+        {
+          "id": "tc_1771660474951_28ya",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Tokyo Dome",
+          "capacity": 50000,
+          "num_shows": 2,
+          "concert_date": "2026-08-29",
+          "venue_fee": 750000,
+          "production": 4000000,
+          "hospitality": 250000,
+          "insurance": 0,
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 190,
+              "count": 23955
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 250,
+              "count": 11978
+            },
+            {
+              "name": "Mid Deck",
+              "price": 290,
+              "count": 11978
+            },
+            {
+              "name": "VIP",
+              "price": 520,
+              "count": 1781
+            },
+            {
+              "name": "VVIP",
+              "price": 975,
+              "count": 237
+            },
+            {
+              "name": "VVVIP",
+              "price": 1500,
+              "count": 59
+            },
+            {
+              "name": "WHALE",
+              "price": 2500,
+              "count": 12
+            }
+          ],
+          "fill_rate": 1
+        }
+      ],
+      "deal_stage": "Interest"
+    },
+    {
+      "id": "1771816895296_t3kx",
+      "createdAt": "2026-02-23T03:21:35.296Z",
+      "artist": "Drake",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 2,
+      "concert_date": "2026-12-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 190,
+          "count": 23955
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 250,
+          "count": 11978
+        },
+        {
+          "name": "Mid Deck",
+          "price": 290,
+          "count": 11978
+        },
+        {
+          "name": "VIP",
+          "price": 520,
+          "count": 1781
+        },
+        {
+          "name": "VVIP",
+          "price": 975,
+          "count": 237
+        },
+        {
+          "name": "VVVIP",
+          "price": 1500,
+          "count": 59
+        },
+        {
+          "name": "WHALE",
+          "price": 2500,
+          "count": 12
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 575000,
+        "merch_split_pct": 0.3,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 400000
+      },
+      "costs": {
+        "artist_mg": 10000000,
+        "ticketing_fee_pct": 0.02,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 650000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 250000,
+        "blufin_fees": 250000,
+        "insurance_per_show": 0,
+        "mg_mode": "total",
+        "deal_type": "flat_mg",
+        "backend_deal": {
+          "guarantee": 0,
+          "box_office_pct": 0.1,
+          "split_basis": "gross"
+        },
+        "co_promoter": {
+          "name": "",
+          "split_pct": 0
+        }
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 6000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 12000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        }
+      ],
+      "tour_cities": [
+        {
+          "id": "tc_1771660474951_28ya",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Tokyo Dome",
+          "capacity": 50000,
+          "num_shows": 2,
+          "concert_date": "2026-11-01",
+          "venue_fee": 800000,
+          "production": 2750000,
+          "hospitality": 50000,
+          "insurance": 33000,
+          "seat_categories": [
+            {
+              "name": "GA Standing",
+              "price": 170,
+              "count": 23955
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 230,
+              "count": 11978
+            },
+            {
+              "name": "Mid Deck",
+              "price": 250,
+              "count": 11978
+            },
+            {
+              "name": "VIP",
+              "price": 450,
+              "count": 1781
+            },
+            {
+              "name": "VVIP",
+              "price": 650,
+              "count": 238
+            },
+            {
+              "name": "VVVIP",
+              "price": 1000,
+              "count": 60
+            },
+            {
+              "name": "WHALE",
+              "price": 2500,
+              "count": 10
+            }
+          ],
+          "fill_rate": 1
+        }
+      ],
+      "deal_stage": "Interest",
+      "support_acts": [],
+      "radius_days": 90
+    },
+    {
+      "id": "1771917450951_p9qp",
+      "createdAt": "2026-02-24T07:17:30.951Z",
+      "artist": "YE",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 2,
+      "concert_date": "2026-12-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 174.93,
+          "count": 23955
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 230.18,
+          "count": 11978
+        },
+        {
+          "name": "Mid Deck",
+          "price": 267,
+          "count": 11978
+        },
+        {
+          "name": "VIP",
+          "price": 478.76,
+          "count": 1781
+        },
+        {
+          "name": "VVIP",
+          "price": 897.68,
+          "count": 237
+        },
+        {
+          "name": "VVVIP",
+          "price": 1381.05,
+          "count": 59
+        },
+        {
+          "name": "WHALE",
+          "price": 2301.75,
+          "count": 12
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 600000,
+        "merch_split_pct": 0.3,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 450000
+      },
+      "costs": {
+        "artist_mg": 10000000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 650000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 0,
+        "blufin_fees": 0,
+        "insurance_per_show": 0,
+        "mg_mode": "total",
+        "deal_type": "flat_mg",
+        "backend_deal": {
+          "guarantee": 10000000,
+          "box_office_pct": 0.1,
+          "split_basis": "gross"
+        },
+        "co_promoter": {
+          "name": "",
+          "split_pct": 0
+        }
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 10000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333,
+          "investors": []
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 20000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333,
+          "investors": []
+        }
+      ],
+      "tour_cities": [
+        {
+          "id": "tc_1771660474951_28ya",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Tokyo Dome",
+          "capacity": 54000,
+          "num_shows": 2,
+          "concert_date": "2026-08-29",
+          "venue_fee": 500000,
+          "production": 2000000,
+          "hospitality": 500000,
+          "insurance": 0,
+          "seat_categories": [
+            {
+              "name": "Gold Basic",
+              "price": 101.28,
+              "count": 18000
+            },
+            {
+              "name": "Gold Standard",
+              "price": 138.1,
+              "count": 12000
+            },
+            {
+              "name": "Gold Premium",
+              "price": 170.33,
+              "count": 7500
+            },
+            {
+              "name": "Platinum",
+              "price": 202.55,
+              "count": 5000
+            },
+            {
+              "name": "Super Fan",
+              "price": 267,
+              "count": 4000
+            },
+            {
+              "name": "Lounge",
+              "price": 414.32,
+              "count": 2000
+            },
+            {
+              "name": "Ultra VIP",
+              "price": 626.08,
+              "count": 1000
+            },
+            {
+              "name": "Diamond",
+              "price": 1104.84,
+              "count": 500
+            }
+          ],
+          "fill_rate": 1
+        }
+      ],
+      "deal_stage": "Interest",
+      "support_acts": [],
+      "radius_days": 90
+    },
+    {
+      "id": "1771918139218_h2jx",
+      "createdAt": "2026-02-24T07:28:59.218Z",
+      "artist": "OVO DRAKE",
+      "venue_type": "stadium",
+      "city": "Seoul, Korea",
+      "num_shows": 2,
+      "concert_date": "2026-12-20",
+      "venue_capacity": 42111,
+      "seat_categories": [
+        {
+          "name": "GA Standing",
+          "price": 190,
+          "count": 23955
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 250,
+          "count": 11978
+        },
+        {
+          "name": "Mid Deck",
+          "price": 290,
+          "count": 11978
+        },
+        {
+          "name": "VIP",
+          "price": 520,
+          "count": 1781
+        },
+        {
+          "name": "VVIP",
+          "price": 975,
+          "count": 237
+        },
+        {
+          "name": "VVVIP",
+          "price": 1500,
+          "count": 59
+        },
+        {
+          "name": "WHALE",
+          "price": 2500,
+          "count": 12
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 600000,
+        "merch_split_pct": 0.3,
+        "fnb_per_head": 20,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 450000
+      },
+      "costs": {
+        "artist_mg": 9500000,
+        "ticketing_fee_pct": 0.03,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 8
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 7
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "venue_fee_per_show": 650000,
+        "production_per_show": 1000000,
+        "hospitality_per_show": 150000,
+        "agency_fees": 250000,
+        "blufin_fees": 250000,
+        "insurance_per_show": 0,
+        "mg_mode": "total"
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0.8,
+        "advance_days_before": 120
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 10000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 20000000,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.3333
+        }
+      ],
+      "tour_cities": [
+        {
+          "id": "tc_1771660474951_28ya",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Tokyo Dome",
+          "capacity": 50000,
+          "num_shows": 2,
+          "concert_date": "2026-08-29",
+          "venue_fee": 750000,
+          "production": 2000000,
+          "hospitality": 500000,
+          "insurance": 0,
+          "seat_categories": [
+            {
+              "name": "Gold Basic",
+              "price": 110,
+              "count": 17500
+            },
+            {
+              "name": "Gold Standard",
+              "price": 150,
+              "count": 12500
+            },
+            {
+              "name": "Gold Premium",
+              "price": 185,
+              "count": 7500
+            },
+            {
+              "name": "Platinum",
+              "price": 220,
+              "count": 5000
+            },
+            {
+              "name": "Super Fan",
+              "price": 290,
+              "count": 4000
+            },
+            {
+              "name": "Lounge",
+              "price": 450,
+              "count": 2000
+            },
+            {
+              "name": "Ultra VIP",
+              "price": 680,
+              "count": 1000
+            },
+            {
+              "name": "Diamond",
+              "price": 1200,
+              "count": 500
+            }
+          ],
+          "fill_rate": 1
+        }
+      ],
+      "deal_stage": "Interest"
+    },
+    {
+      "id": "1772104632495_ujur",
+      "createdAt": "2026-02-26T11:17:12.495Z",
+      "artist": "SZA",
+      "venue_type": "arena",
+      "tour_cities": [
+        {
+          "id": "tc_1772104632495_7o8g",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Nippon Budokan",
+          "capacity": 15000,
+          "num_shows": 1,
+          "concert_date": "2026-11-01",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 140,
+              "count": 6046
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 180,
+              "count": 6478
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 220,
+              "count": 2000
+            },
+            {
+              "name": "VIP",
+              "price": 550,
+              "count": 476
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 350000,
+          "production": 800000,
+          "hospitality": 200000,
+          "insurance": 16000
+        },
+        {
+          "id": "tc_1772104979118_n1rs",
+          "city_name": "Seoul, South Korea",
+          "venue_name": "KSPO Dome",
+          "capacity": 15000,
+          "num_shows": 1,
+          "concert_date": "2026-12-03",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 120,
+              "count": 5833
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 200,
+              "count": 6250
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 150,
+              "count": 2500
+            },
+            {
+              "name": "VIP",
+              "price": 400,
+              "count": 417
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 350000,
+          "production": 800000,
+          "hospitality": 150000,
+          "insurance": 16000
+        },
+        {
+          "id": "tc_1772109336570_x4or",
+          "city_name": "Taipei, Taiwan",
+          "venue_name": "Taipei Arena",
+          "capacity": 10000,
+          "num_shows": 1,
+          "concert_date": "2026-12-02",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 140,
+              "count": 4031
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 180,
+              "count": 4319
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 220,
+              "count": 1333
+            },
+            {
+              "name": "VIP",
+              "price": 550,
+              "count": 317
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 250000,
+          "production": 7000000,
+          "hospitality": 200000,
+          "insurance": 9000
+        },
+        {
+          "id": "tc_1772111806565_juqx",
+          "city_name": "Singapore, Singapore",
+          "venue_name": "Singapore Indoor Stadium",
+          "capacity": 15000,
+          "num_shows": 1,
+          "concert_date": "",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 140,
+              "count": 7558
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 180,
+              "count": 8098
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 220,
+              "count": 2500
+            },
+            {
+              "name": "VIP",
+              "price": 550,
+              "count": 595
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 80000,
+          "production": 180000,
+          "hospitality": 200000,
+          "insurance": 12000
+        },
+        {
+          "id": "tc_1772112012872_kk93",
+          "city_name": "Jakarta, Indonesia",
+          "venue_name": "Indonesia Arena",
+          "capacity": 16523,
+          "num_shows": 1,
+          "concert_date": "",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 140,
+              "count": 6046
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 180,
+              "count": 6478
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 220,
+              "count": 2000
+            },
+            {
+              "name": "VIP",
+              "price": 550,
+              "count": 476
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 150000,
+          "production": 700000,
+          "hospitality": 200000,
+          "insurance": 9000
+        },
+        {
+          "id": "tc_1772112059447_xocz",
+          "city_name": "Macau SAR",
+          "venue_name": "",
+          "capacity": 18000,
+          "num_shows": 1,
+          "concert_date": "",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 140,
+              "count": 7255
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 180,
+              "count": 7774
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 220,
+              "count": 2400
+            },
+            {
+              "name": "VIP",
+              "price": 550,
+              "count": 571
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 350000,
+          "production": 700000,
+          "hospitality": 200000,
+          "insurance": 16000
+        },
+        {
+          "id": "tc_1772112131997_y3y9",
+          "city_name": "Manila, Philippines",
+          "venue_name": "Mall of Asia Arena",
+          "capacity": 20000,
+          "num_shows": 1,
+          "concert_date": "2026-12-05",
+          "seat_categories": [
+            {
+              "name": "Floor GA",
+              "price": 140,
+              "count": 6046
+            },
+            {
+              "name": "Lower Bowl",
+              "price": 180,
+              "count": 6478
+            },
+            {
+              "name": "Upper Bowl",
+              "price": 220,
+              "count": 2000
+            },
+            {
+              "name": "VIP",
+              "price": 550,
+              "count": 476
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 200000,
+          "production": 700000,
+          "hospitality": 200000,
+          "insurance": 12000
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 200000,
+        "merch_split_pct": 0.2,
+        "fnb_per_head": 15,
+        "fnb_buyer_pct": 0.2,
+        "sponsorship_per_show": 250000
+      },
+      "costs": {
+        "artist_mg": 1500000,
+        "ticketing_fee_pct": 0.08,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.1,
+            "months_before": 7
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.4,
+            "months_before": 6
+          },
+          {
+            "label": "Last Payment",
+            "pct": 0.5,
+            "months_before": 2
+          }
+        ],
+        "agency_fees": 0,
+        "blufin_fees": 0
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0,
+        "advance_days_before": 0
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 0,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 0,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5
+        }
+      ],
+      "deal_stage": "Interest",
+      "festival_mode": false,
+      "festival_artists": [],
+      "venue_capacity": 18000,
+      "seat_categories": [
+        {
+          "name": "Floor GA",
+          "price": 120,
+          "count": 6000
+        },
+        {
+          "name": "Lower Bowl",
+          "price": 200,
+          "count": 8000
+        },
+        {
+          "name": "Upper Bowl",
+          "price": 150,
+          "count": 3500
+        },
+        {
+          "name": "VIP",
+          "price": 400,
+          "count": 500
+        }
+      ]
+    },
+    {
+      "id": "1772676992160_ad17",
+      "createdAt": "2026-03-05T02:16:32.161Z",
+      "artist": "Ken Carson",
+      "venue_type": "theater",
+      "tour_cities": [
+        {
+          "id": "tc_1772676992161_kspa",
+          "city_name": "Tokyo, Japan",
+          "venue_name": "Toyosu Pit",
+          "capacity": 6000,
+          "num_shows": 1,
+          "concert_date": "2026-08-18",
+          "seat_categories": [
+            {
+              "name": "General",
+              "price": 80,
+              "count": 1500
+            },
+            {
+              "name": "Premium",
+              "price": 120,
+              "count": 600
+            },
+            {
+              "name": "VIP",
+              "price": 250,
+              "count": 150
+            }
+          ],
+          "fill_rate": 1,
+          "venue_fee": 50000,
+          "production": 50000,
+          "hospitality": 13000,
+          "insurance": 7000
+        }
+      ],
+      "additional_revenue": {
+        "merch_per_show": 120000,
+        "merch_split_pct": 0.2,
+        "fnb_per_head": 0,
+        "fnb_buyer_pct": 0,
+        "sponsorship_per_show": 150000
+      },
+      "costs": {
+        "artist_mg": 175000,
+        "ticketing_fee_pct": 0.05,
+        "mg_schedule": [
+          {
+            "label": "1st Payment",
+            "pct": 0.2,
+            "months_before": 7
+          },
+          {
+            "label": "2nd Payment",
+            "pct": 0.8,
+            "months_before": 2
+          }
+        ],
+        "agency_fees": 0,
+        "blufin_fees": 0,
+        "deal_type": "flat_mg",
+        "backend_deal": {
+          "guarantee": 0,
+          "box_office_pct": 0.1,
+          "split_basis": "gross"
+        },
+        "co_promoter": {
+          "name": "",
+          "split_pct": 0
+        }
+      },
+      "ticketing_settlement": {
+        "company": "ticketmaster",
+        "days_after_show": 5,
+        "advance_pct": 0,
+        "advance_days_before": 0
+      },
+      "investor_scenarios": [
+        {
+          "id": "scen_a",
+          "label": "Scenario A",
+          "equity": 0,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5
+        },
+        {
+          "id": "scen_b",
+          "label": "Scenario B",
+          "equity": 0,
+          "hurdle_rate": 0.2,
+          "above_hurdle_investor_pct": 0.5
+        }
+      ],
+      "deal_stage": "Interest",
+      "festival_mode": false,
+      "festival_artists": [],
+      "support_acts": [],
+      "venue_capacity": 3000,
+      "seat_categories": [
+        {
+          "name": "General",
+          "price": 80,
+          "count": 2000
+        },
+        {
+          "name": "Premium",
+          "price": 150,
+          "count": 800
+        },
+        {
+          "name": "VIP",
+          "price": 300,
+          "count": 200
+        }
+      ]
+    }
+  ],
   "watchlist": {},
   "contacts": {}
 }
