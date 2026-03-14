@@ -8171,36 +8171,35 @@ async function doLogout() {
 function _lsProfilesKey() { return 'fd-profiles:' + (currentUser?.username || '_'); }
 
 async function loadUserData() {
+  // 1. Load from localStorage immediately (profiles appear before server responds)
+  try {
+    const raw = localStorage.getItem(_lsProfilesKey());
+    if (raw) {
+      const backed = JSON.parse(raw);
+      if (Array.isArray(backed) && backed.length > 0) fdState.profiles = backed;
+    }
+  } catch(e) {}
+
+  // 2. Sync with server
   try {
     const res = await fetch('/api/user-data');
-    if (!res.ok) return;
-    const data = await res.json();
-    const serverProfiles = data.profiles || [];
-    if (serverProfiles.length === 0) {
-      // Server is empty — check localStorage for a backup (survives Railway redeploys)
-      try {
-        const raw = localStorage.getItem(_lsProfilesKey());
-        if (raw) {
-          const backed = JSON.parse(raw);
-          if (Array.isArray(backed) && backed.length > 0) {
-            fdState.profiles = backed;
-            // Re-save to server so it's restored
-            await saveUserData();
-          } else {
-            fdState.profiles = [];
-          }
-        } else {
-          fdState.profiles = [];
-        }
-      } catch(e) { fdState.profiles = []; }
-    } else {
-      fdState.profiles = serverProfiles;
+    if (res.ok) {
+      const data = await res.json();
+      const serverProfiles = data.profiles || [];
+      if (serverProfiles.length > 0) {
+        // Server has profiles — use them as authoritative and refresh localStorage
+        fdState.profiles = serverProfiles;
+        try { localStorage.setItem(_lsProfilesKey(), JSON.stringify(serverProfiles)); } catch(e) {}
+      } else if (fdState.profiles.length > 0) {
+        // Server is empty but localStorage had profiles — restore to server
+        await saveUserData();
+      }
+      watchlist = data.watchlist || {};
+      contacts = data.contacts || {};
     }
-    watchlist = data.watchlist || {};
-    contacts = data.contacts || {};
-    finBuilderLoaded = false; // force re-render on next visit
   } catch(e) {}
-  // Run dashboard data fetch after user data is loaded
+
+  finBuilderLoaded = false;
   initDashboardData();
 }
 
