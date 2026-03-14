@@ -517,6 +517,15 @@
   class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
   ⊞ Compare
 </button>
+          <button onclick="fdBackupProfiles()" class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors" title="Download all profiles as JSON backup">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Backup
+          </button>
+          <label class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors cursor-pointer" title="Restore profiles from JSON backup">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l4-4m0 0l4 4m-4-4v12"/></svg>
+            Import
+            <input type="file" accept=".json" class="hidden" onchange="fdImportProfiles(event)">
+          </label>
           <button onclick="fdBatchExport()" class="flex items-center gap-2 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/20 text-emerald-400 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
   Export All
@@ -3735,6 +3744,37 @@ function fdLoad() {
 }
 function fdSave() { localStorage.setItem(FD_KEY, JSON.stringify(fdState.profiles)); }
 function fdGenId() { return Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
+
+function fdBackupProfiles() {
+  if (!fdState.profiles.length) { alert('No profiles to back up.'); return; }
+  const blob = new Blob([JSON.stringify(fdState.profiles, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'fin-profiles-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function fdImportProfiles(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (!Array.isArray(imported)) { alert('Invalid backup file.'); return; }
+      const existing = fdState.profiles.map(p => p.id);
+      let added = 0;
+      imported.forEach(p => {
+        if (!existing.includes(p.id)) { fdState.profiles.push(p); added++; }
+      });
+      fdSave();
+      fdRender();
+      alert(`Imported ${added} profile(s). ${imported.length - added} already existed and were skipped.`);
+    } catch(err) { alert('Failed to read backup file: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
 function fdToast(msg, ms) {
   const t = document.createElement('div');
   t.textContent = msg;
