@@ -6,16 +6,16 @@
 <title>Artist Intelligence Dashboard</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  * { font-family: 'Inter', sans-serif; }
-  body { background: #0a0a0f; color: #e2e8f0; }
-  .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(20px); }
-  .kpi-card { background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%); border: 1px solid rgba(255,255,255,0.08); }
-  .kpi-card:hover { border-color: rgba(139,92,246,0.4); transform: translateY(-2px); }
-  .accent-glow { box-shadow: 0 0 30px rgba(139,92,246,0.15); }
-  .sidebar-link.active { background: rgba(139,92,246,0.15); border-left: 3px solid #a78bfa; }
-  .sidebar-link:hover { background: rgba(255,255,255,0.05); }
+  * { font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.02em; }
+  body { background: #000000; color: #ffffff; }
+  .glass { background: #0d0d0d; border: 1px solid rgba(220,38,38,0.15); }
+  .kpi-card { background: #0d0d0d; border: 1px solid rgba(220,38,38,0.15); }
+  .kpi-card:hover { border-color: rgba(220,38,38,0.5); transform: translateY(-2px); }
+  .accent-glow { box-shadow: 0 0 30px rgba(220,38,38,0.15); }
+  .sidebar-link.active { background: rgba(220,38,38,0.12); border-left: 3px solid #ef4444; }
+  .sidebar-link:hover { background: rgba(255,255,255,0.04); }
   .badge-green { background: rgba(34,197,94,0.15); color: #4ade80; }
   .badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
   .badge-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
@@ -23,23 +23,23 @@
   .chart-container { position: relative; }
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
-  .tab-btn.active { color: #a78bfa; border-color: #a78bfa; }
+  ::-webkit-scrollbar-thumb { background: rgba(220,38,38,0.2); border-radius: 3px; }
+  .tab-btn.active { color: #ef4444; border-color: #ef4444; }
   .page { display: none; }
   .page.active { display: block; }
   #page-finbuilder.active { display: flex; flex-direction: column; }
-  .artist-row:hover { background: rgba(139,92,246,0.08); }
+  .artist-row:hover { background: rgba(220,38,38,0.06); }
   .pulse-dot { animation: pulse 2s infinite; }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   .trend-up { color: #4ade80; }
   .trend-down { color: #f87171; }
-  #login-gate { position:fixed; inset:0; background:#0a0a0f; z-index:9999; display:flex; align-items:center; justify-content:center; }
+  #login-gate { position:fixed; inset:0; background:#000000; z-index:9999; display:flex; align-items:center; justify-content:center; }
   #login-gate.hidden { display:none; }
   @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
   .shake { animation: shake 0.4s ease; }
-  .fd-card-drag-over-top    { border-top: 2px solid #a78bfa !important; }
-  .fd-card-drag-over-bottom { border-bottom: 2px solid #a78bfa !important; }
+  .fd-card-drag-over-top    { border-top: 2px solid #ef4444 !important; }
+  .fd-card-drag-over-bottom { border-bottom: 2px solid #ef4444 !important; }
   .fd-card-dragging         { opacity: 0.4; }
   [data-profile-id] .fd-drag-handle { opacity: 0; transition: opacity 0.15s; cursor: grab; }
   [data-profile-id]:hover .fd-drag-handle { opacity: 1; }
@@ -51,28 +51,28 @@
 <div id="login-gate">
   <div class="w-full max-w-sm px-4">
     <div class="text-center mb-8">
-      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-500/30">
+      <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/30">
         <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
       </div>
       <h1 class="text-2xl font-bold text-white mb-1">Artist Intel</h1>
       <p class="text-sm text-slate-500">Sign in to access your dashboard</p>
     </div>
-    <div id="login-form-wrap" class="glass rounded-2xl p-6" style="border-color:rgba(255,255,255,0.08);">
+    <div id="login-form-wrap" class="glass rounded-2xl p-6" style="border-color:rgba(220,38,38,0.2);">
       <div class="space-y-4">
         <div>
           <label class="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wider">Username</label>
           <input id="login-user" type="text" autocomplete="username" placeholder="Enter username"
-            class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/60 transition-colors"
             onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
         </div>
         <div>
           <label class="block text-xs text-slate-400 font-medium mb-1.5 uppercase tracking-wider">Password</label>
           <input id="login-pass" type="password" autocomplete="current-password" placeholder="Enter password"
-            class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            class="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/60 transition-colors"
             onkeydown="if(event.key==='Enter')doLogin()">
         </div>
         <p id="login-err" class="text-xs text-red-400 hidden">Incorrect username or password.</p>
-        <button onclick="doLogin()" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-lg shadow-violet-500/20 mt-1">
+        <button onclick="doLogin()" class="w-full bg-gradient-to-r from-red-600 to-red-600 hover:from-red-500 hover:to-red-500 text-white text-sm font-semibold py-2.5 rounded-lg transition-all shadow-lg shadow-red-500/20 mt-1">
           Sign In
         </button>
       </div>
@@ -83,10 +83,10 @@
 <div class="flex h-screen overflow-hidden" id="app-shell" style="display:none!important">
 
   <!-- Sidebar -->
-  <aside class="w-64 flex-shrink-0 border-r border-white/5 flex flex-col" style="background: rgba(255,255,255,0.02);">
+  <aside class="w-64 flex-shrink-0 border-r border-white/5 flex flex-col" style="background: #080808;">
     <div class="p-5 border-b border-white/5">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"/></svg>
         </div>
         <div>
@@ -130,7 +130,7 @@
         <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
           <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
           Alerts
-          <span class="ml-auto bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded-full" id="alert-count">0</span>
+          <span class="ml-auto bg-red-500/20 text-red-300 text-[10px] px-1.5 py-0.5 rounded-full" id="alert-count">0</span>
         </a>
         <a href="#" onclick="showPage('settings')" id="nav-settings" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
           <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -140,7 +140,7 @@
     </nav>
     <div class="p-4 border-t border-white/5">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white" id="user-avatar-initial">?</div>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-red-400 to-red-500 flex items-center justify-center text-xs font-bold text-white" id="user-avatar-initial">?</div>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium text-white" id="user-display-name">—</div>
           <div class="text-[10px] text-slate-500" id="user-display-role">—</div>
@@ -154,7 +154,7 @@
 
   <!-- Main Content -->
   <main class="flex-1 overflow-y-auto">
-    <header class="sticky top-0 z-10 border-b border-white/5 px-6 py-3 flex items-center justify-between" style="background: rgba(10,10,15,0.85); backdrop-filter: blur(20px);">
+    <header class="sticky top-0 z-10 border-b border-white/5 px-6 py-3 flex items-center justify-between" style="background: rgba(0,0,0,0.92); border-bottom-color: rgba(220,38,38,0.2);">
       <div>
         <h1 class="text-lg font-semibold text-white" id="page-title">Dashboard</h1>
         <div class="flex items-center gap-2">
@@ -169,14 +169,14 @@
         <div class="relative" id="search-wrapper">
           <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <input type="text" placeholder="Find an artist..." id="global-search" autocomplete="off"
-            class="bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-72"
+            class="bg-white/5 border border-white/10 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50 w-72"
             oninput="artistSearch(this.value)"
             onkeydown="artistSearchKey(event)"
             onfocus="if(this.value.trim()) artistSearch(this.value)">
           <button id="search-clear" onclick="clearArtistSearch()" class="absolute right-2.5 top-2 text-slate-600 hover:text-slate-400 hidden">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
           </button>
-          <div id="search-dropdown" class="hidden absolute top-full left-0 mt-1 w-96 bg-[#12121a] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden"></div>
+          <div id="search-dropdown" class="hidden absolute top-full left-0 mt-1 w-96 bg-[#0d0d0d] border border-red-900/30 rounded-xl shadow-2xl z-50 overflow-hidden"></div>
         </div>
       </div>
     </header>
@@ -214,7 +214,7 @@
             <div class="flex items-center gap-2">
               <button id="notif-btn" onclick="requestNotifPermission()"
                 title="Enable browser notifications for threshold alerts"
-                class="text-[9px] text-slate-500 hover:text-violet-300 transition-colors border border-white/10 rounded px-1.5 py-0.5">🔔 Notify</button>
+                class="text-[9px] text-slate-500 hover:text-red-300 transition-colors border border-white/10 rounded px-1.5 py-0.5">🔔 Notify</button>
               <span id="alerts-badge" class="text-[9px] text-amber-400 font-medium bg-amber-500/10 px-1.5 py-0.5 rounded">FPO DATA</span>
             </div>
           </div>
@@ -236,7 +236,7 @@
             <h3 class="font-semibold text-white text-sm">Momentum Leaderboard</h3>
             <div class="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
               <button id="mtab-gain" onclick="setMomentumTab('gain')"
-                class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all bg-violet-600/30 text-violet-300">Gaining</button>
+                class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all bg-red-600/30 text-red-300">Gaining</button>
               <button id="mtab-lose" onclick="setMomentumTab('lose')"
                 class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all text-slate-500 hover:text-slate-300">Losing</button>
             </div>
@@ -254,7 +254,7 @@
           <h3 class="font-semibold text-white text-sm">Artist Portfolio</h3>
           <div class="flex items-center gap-2">
             <div class="relative">
-              <input type="text" id="table-search" placeholder="Filter table..." class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-44" oninput="currentPage=1;renderArtistTable()">
+              <input type="text" id="table-search" placeholder="Filter table..." class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50 w-44" oninput="currentPage=1;renderArtistTable()">
               <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
             <select id="filter-touring" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-1.5 focus:outline-none" onchange="renderArtistTable()">
@@ -353,7 +353,7 @@
               <option value="3">Tier 3 (Emerging)</option>
             </select>
             <div class="relative">
-              <input type="text" placeholder="Search cities..." id="city-search" class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 w-48" oninput="renderCityTable()">
+              <input type="text" placeholder="Search cities..." id="city-search" class="bg-white/5 border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50 w-48" oninput="renderCityTable()">
               <svg class="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
             </div>
           </div>
@@ -412,7 +412,7 @@
       <div class="glass rounded-xl p-4 space-y-3">
         <div class="flex items-center gap-3 flex-wrap">
           <div class="relative flex-1 min-w-48">
-            <input type="text" placeholder="Search artist or venue..." id="cal-search" class="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50" oninput="renderCalendar()">
+            <input type="text" placeholder="Search artist or venue..." id="cal-search" class="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50" oninput="renderCalendar()">
             <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           </div>
           <select id="cal-range" class="bg-white/5 border border-white/10 rounded-lg text-xs text-slate-400 px-3 py-2 focus:outline-none" onchange="renderCalendar()">
@@ -426,7 +426,7 @@
             <option value="artist">Sort: Artist</option>
           </select>
           <span id="cal-status" class="text-[11px] text-slate-500"></span>
-          <button id="cal-refresh-btn" onclick="startRefresh()" class="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 text-violet-300 text-xs font-medium transition-colors">
+          <button id="cal-refresh-btn" onclick="startRefresh()" class="ml-auto flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-300 text-xs font-medium transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             Fetch All Events
           </button>
@@ -440,7 +440,7 @@
         <!-- Progress bar (hidden until refresh starts) -->
         <div id="cal-progress-wrap" class="hidden">
           <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-            <div id="cal-progress-bar" class="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-400 transition-all duration-500" style="width:0%"></div>
+            <div id="cal-progress-bar" class="h-full rounded-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-500" style="width:0%"></div>
           </div>
         </div>
       </div>
@@ -466,7 +466,7 @@
               <p class="text-[11px] text-slate-500">Revenue assumptions, seat pricing, cost breakdown &amp; P&amp;L</p>
             </div>
           </div>
-          <select id="fin-artist-select" class="bg-white/5 border border-white/10 rounded-lg text-sm text-white px-4 py-2 focus:outline-none focus:border-violet-500/50" onchange="loadFinancialModel(this.value)">
+          <select id="fin-artist-select" class="bg-white/5 border border-white/10 rounded-lg text-sm text-white px-4 py-2 focus:outline-none focus:border-red-500/50" onchange="loadFinancialModel(this.value)">
             <option value="">Select an artist...</option>
           </select>
         </div>
@@ -482,8 +482,8 @@
     <div id="page-findetail" class="page p-6 space-y-6">
       <div class="glass rounded-xl p-5">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center">
-            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <div class="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           </div>
           <div>
             <h3 class="font-semibold text-white text-sm">Project Justin — Korea 3 Shows</h3>
@@ -507,10 +507,10 @@
     <!-- FINANCIAL MODEL BUILDER PAGE -->
     <div id="page-finbuilder" class="page" style="height:calc(100vh - 57px);overflow:hidden;">
       <!-- Top bar -->
-      <div class="flex items-center justify-between px-5 py-3 border-b border-white/5 flex-shrink-0" style="background:rgba(255,255,255,0.02);">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-white/5 flex-shrink-0" style="background:#080808;">
         <div class="flex items-center gap-3">
-          <div class="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
-            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <div class="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           </div>
           <span class="text-sm font-semibold text-white">Financial Model Builder</span>
         </div>
@@ -536,7 +536,7 @@
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
             Duplicate
           </button>
-          <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+          <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             Add New Artist Profile
           </button>
@@ -544,7 +544,7 @@
       </div>
       <!-- Two-column body -->
       <div class="flex flex-1 overflow-hidden">
-        <div id="fd-sidebar" class="w-60 flex-shrink-0 border-r border-white/5 overflow-y-auto p-3 space-y-2" style="background:rgba(255,255,255,0.02);"></div>
+        <div id="fd-sidebar" class="w-60 flex-shrink-0 border-r border-white/5 overflow-y-auto p-3 space-y-2" style="background:#080808;"></div>
         <div id="fd-main" class="flex-1 overflow-y-auto"></div>
       </div>
     </div>
@@ -573,7 +573,7 @@ const FMB_STAGES = [
   { v: 'Interest',               l: 'Interest',               c: 'bg-slate-500/20 text-slate-300 border-slate-400' },
   { v: 'Offer Sent',             l: 'Offer Sent',             c: 'bg-sky-500/20 text-sky-300 border-sky-500' },
   { v: 'Binder Sent',            l: 'Binder Sent',            c: 'bg-blue-500/20 text-blue-300 border-blue-500' },
-  { v: 'Offer Accepted',         l: 'Offer Accepted',         c: 'bg-violet-500/20 text-violet-300 border-violet-500' },
+  { v: 'Offer Accepted',         l: 'Offer Accepted',         c: 'bg-red-500/20 text-red-300 border-red-500' },
   { v: 'Show in Pre-production', l: 'Show in Pre-production', c: 'bg-amber-500/20 text-amber-300 border-amber-500' },
   { v: 'Tickets Live',           l: 'Tickets Live',           c: 'bg-cyan-500/20 text-cyan-300 border-cyan-500' },
   { v: 'Completed',              l: 'Completed',              c: 'bg-emerald-500/20 text-emerald-300 border-emerald-500' },
@@ -636,9 +636,9 @@ function initials(name) { return name.split(' ').map(w => w[0]).join('').slice(0
 function hashColor(str) {
   const colors = [
     'from-sky-400 to-blue-600','from-pink-400 to-rose-600','from-red-400 to-orange-500',
-    'from-purple-400 to-indigo-600','from-teal-400 to-emerald-600','from-amber-400 to-orange-600',
+    'from-purple-400 to-red-600','from-teal-400 to-emerald-600','from-amber-400 to-orange-600',
     'from-cyan-400 to-blue-500','from-fuchsia-400 to-purple-600','from-lime-400 to-green-600',
-    'from-violet-400 to-indigo-500'
+    'from-red-400 to-red-500'
   ];
   let h = 0; for (let c of str) h = ((h << 5) - h) + c.charCodeAt(0);
   return colors[Math.abs(h) % colors.length];
@@ -664,7 +664,7 @@ function relDate(dateStr) {
   return dateStr;
 }
 function tierBadge(tier) {
-  const cls = tier === 1 ? 'bg-violet-500/15 text-violet-300' : tier === 2 ? 'bg-cyan-500/15 text-cyan-300' : 'bg-slate-500/15 text-slate-400';
+  const cls = tier === 1 ? 'bg-red-500/15 text-red-300' : tier === 2 ? 'bg-cyan-500/15 text-cyan-300' : 'bg-slate-500/15 text-slate-400';
   return `<span class="${cls} text-[10px] px-2 py-0.5 rounded-full font-medium">Tier ${tier}</span>`;
 }
 
@@ -691,7 +691,7 @@ const DEAL_STAGES = [
   { label: 'Interest',               active: 'bg-slate-500/20 border-slate-400 text-slate-300' },
   { label: 'Offer Sent',             active: 'bg-sky-500/20 border-sky-500 text-sky-300' },
   { label: 'Binder Sent',            active: 'bg-blue-500/20 border-blue-500 text-blue-300' },
-  { label: 'Offer Accepted',         active: 'bg-violet-500/20 border-violet-500 text-violet-300' },
+  { label: 'Offer Accepted',         active: 'bg-red-500/20 border-red-500 text-red-300' },
   { label: 'Show in Pre-production', active: 'bg-amber-500/20 border-amber-500 text-amber-300' },
   { label: 'Tickets Live',           active: 'bg-cyan-500/20 border-cyan-500 text-cyan-300' },
   { label: 'Completed',              active: 'bg-emerald-500/20 border-emerald-500 text-emerald-300' },
@@ -841,11 +841,11 @@ function updateNotifBtn() {
   if (p === 'granted') {
     btn.textContent = '🔔 On';
     btn.title = 'Notifications enabled';
-    btn.className = btn.className.replace('text-slate-500 hover:text-violet-300', 'text-violet-400');
+    btn.className = btn.className.replace('text-slate-500 hover:text-red-300', 'text-red-400');
   } else if (p === 'denied') {
     btn.textContent = '🔕 Blocked';
     btn.title = 'Notifications blocked — change in browser settings';
-    btn.className = btn.className.replace('text-slate-500 hover:text-violet-300', 'text-red-500');
+    btn.className = btn.className.replace('text-slate-500 hover:text-red-300', 'text-red-500');
   }
 }
 
@@ -1005,7 +1005,7 @@ function setMomentumTab(tab) {
   const gainBtn = document.getElementById('mtab-gain');
   const loseBtn = document.getElementById('mtab-lose');
   if (gainBtn) gainBtn.className = 'text-[10px] px-2.5 py-1 rounded-md font-medium transition-all ' +
-    (tab==='gain' ? 'bg-violet-600/30 text-violet-300' : 'text-slate-500 hover:text-slate-300');
+    (tab==='gain' ? 'bg-red-600/30 text-red-300' : 'text-slate-500 hover:text-slate-300');
   if (loseBtn) loseBtn.className = 'text-[10px] px-2.5 py-1 rounded-md font-medium transition-all ' +
     (tab==='lose' ? 'bg-red-600/30 text-red-300' : 'text-slate-500 hover:text-slate-300');
   renderMomentumLeaderboard();
@@ -1116,8 +1116,8 @@ function renderDashboard() {
     <div class="kpi-card rounded-xl p-5 transition-all duration-300">
       <div class="flex items-center justify-between mb-3">
         <span class="text-xs text-slate-500 uppercase tracking-wider">Tracked Artists</span>
-        <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-          <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
         </div>
       </div>
       <div class="text-3xl font-bold text-white">${fmtFull(artists.length)}</div>
@@ -1164,8 +1164,8 @@ function renderDashboard() {
       labels: top10.map(a => a.name),
       datasets: [{
         data: top10.map(a => a.monthly_listeners),
-        backgroundColor: top10.map(a => a.daily_change >= 0 ? 'rgba(167,139,250,0.5)' : 'rgba(248,113,113,0.4)'),
-        borderColor: top10.map(a => a.daily_change >= 0 ? '#a78bfa' : '#f87171'),
+        backgroundColor: top10.map(a => a.daily_change >= 0 ? 'rgba(239,68,68,0.5)' : 'rgba(248,113,113,0.4)'),
+        borderColor: top10.map(a => a.daily_change >= 0 ? '#ef4444' : '#f87171'),
         borderWidth: 1, borderRadius: 4, barPercentage: 0.65
       }]
     },
@@ -1403,14 +1403,14 @@ function renderArtistTable() {
         <td class="py-3 text-center">${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}${gapBadge}</td>
         <td class="py-3 text-right text-sm text-slate-300">${t ? t.recent_event_count : '—'}</td>
         <td class="py-3 text-right text-sm text-slate-400">${t ? relDate(t.last_event_date) : '—'}</td>
-        <td class="py-3 text-right pr-3"><button class="text-violet-400 hover:text-violet-300 text-xs">View</button></td>
+        <td class="py-3 text-right pr-3"><button class="text-red-400 hover:text-red-300 text-xs">View</button></td>
       </tr>`;
   }).join('');
 
   document.getElementById('table-count').textContent = `Showing ${slice.length} of ${total} artists`;
   const pagBtns = [];
   for (let i = 1; i <= Math.min(pages, 5); i++) {
-    pagBtns.push(`<button onclick="currentPage=${i};renderArtistTable()" class="${i===currentPage ? 'bg-violet-600/20 border-violet-500/30 text-violet-300' : 'bg-white/5 border-white/10 text-slate-400'} border text-xs px-3 py-1 rounded-md">${i}</button>`);
+    pagBtns.push(`<button onclick="currentPage=${i};renderArtistTable()" class="${i===currentPage ? 'bg-red-600/20 border-red-500/30 text-red-300' : 'bg-white/5 border-white/10 text-slate-400'} border text-xs px-3 py-1 rounded-md">${i}</button>`);
   }
   if (pages > 5) pagBtns.push(`<span class="text-xs text-slate-500 px-1">...${pages}</span>`);
   document.getElementById('table-pagination').innerHTML = pagBtns.join('');
@@ -1433,7 +1433,7 @@ function artistSearch(val) {
   }
   dd.innerHTML = matches.map((a, i) => {
     const t = touringMap[a.spotify_id];
-    const nameHL = a.name.replace(new RegExp('(' + val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'i'), '<span class="text-violet-300 font-semibold">$1</span>');
+    const nameHL = a.name.replace(new RegExp('(' + val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'i'), '<span class="text-red-300 font-semibold">$1</span>');
     return `<div class="search-item flex items-center gap-3 px-4 py-2.5 hover:bg-white/8 cursor-pointer transition-colors" data-id="${a.spotify_id}" data-idx="${i}" onmousedown="pickArtist('${a.spotify_id}')">
       <div class="w-7 h-7 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0">${initials(a.name)}</div>
       <div class="flex-1 min-w-0">
@@ -1494,8 +1494,8 @@ function fpoTag() { return '<span class="text-[9px] text-amber-400 font-medium b
 
 function inferVenueCapacity(venueName) {
   const v = (venueName || '').toLowerCase();
-  if (v.includes('stadium') || v.includes('metlife') || v.includes('allegiant') || v.includes('sofi') || v.includes('at&t') || v.includes('wembley')) return { cap: 65000, tier: 'Stadium', color: 'text-violet-400', bg: 'bg-violet-500/15' };
-  if (v.includes('dome') || v.includes('olympic') || v.includes('national stadium')) return { cap: 55000, tier: 'Stadium', color: 'text-violet-400', bg: 'bg-violet-500/15' };
+  if (v.includes('stadium') || v.includes('metlife') || v.includes('allegiant') || v.includes('sofi') || v.includes('at&t') || v.includes('wembley')) return { cap: 65000, tier: 'Stadium', color: 'text-red-400', bg: 'bg-red-500/15' };
+  if (v.includes('dome') || v.includes('olympic') || v.includes('national stadium')) return { cap: 55000, tier: 'Stadium', color: 'text-red-400', bg: 'bg-red-500/15' };
   if (v.includes('arena') || v.includes('centre') || v.includes('center') || v.includes('garden') || v.includes('palacio') || v.includes('hall of fame')) return { cap: 18000, tier: 'Arena', color: 'text-cyan-400', bg: 'bg-cyan-500/15' };
   if (v.includes('amphitheater') || v.includes('amphitheatre') || v.includes('pavilion') || v.includes('shed')) return { cap: 12000, tier: 'Amphitheater', color: 'text-blue-400', bg: 'bg-blue-500/15' };
   if (v.includes('theatre') || v.includes('theater') || v.includes('auditorium') || v.includes('opera') || v.includes('concert hall')) return { cap: 3500, tier: 'Theater', color: 'text-green-400', bg: 'bg-green-500/15' };
@@ -1530,7 +1530,7 @@ function computeArtistDemand(ml, peak, isTouring, dailyChange, recentEvents, ven
   if (ml >= 80000000) {
     tier = 'mega-stadium'; tierLabel = 'Mega Stadium'; capMin = 60000; capMax = 120000; capDisplay = '60K\u2013120K'; tierColor = 'text-fuchsia-400 bg-fuchsia-500/15 border-fuchsia-500/20';
   } else if (ml >= 45000000) {
-    tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 70000; capDisplay = '35K\u201370K'; tierColor = 'text-violet-400 bg-violet-500/15 border-violet-500/20';
+    tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 70000; capDisplay = '35K\u201370K'; tierColor = 'text-red-400 bg-red-500/15 border-red-500/20';
   } else if (ml >= 25000000) {
     tier = 'large-arena'; tierLabel = 'Large Arena'; capMin = 18000; capMax = 35000; capDisplay = '18K\u201335K'; tierColor = 'text-cyan-400 bg-cyan-500/15 border-cyan-500/20';
   } else if (ml >= 12000000) {
@@ -1552,7 +1552,7 @@ function computeArtistDemand(ml, peak, isTouring, dailyChange, recentEvents, ven
     }).length;
     const pctStadium = stadiumCount / venueEventsArr.length;
     if (pctStadium >= 0.4 && tier === 'large-arena') {
-      tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 70000; capDisplay = '35K\u201370K'; tierColor = 'text-violet-400 bg-violet-500/15 border-violet-500/20';
+      tier = 'stadium'; tierLabel = 'Stadium'; capMin = 35000; capMax = 70000; capDisplay = '35K\u201370K'; tierColor = 'text-red-400 bg-red-500/15 border-red-500/20';
     } else if (pctStadium >= 0.4 && tier === 'arena') {
       tier = 'large-arena'; tierLabel = 'Large Arena'; capMin = 18000; capMax = 35000; capDisplay = '18K\u201335K'; tierColor = 'text-cyan-400 bg-cyan-500/15 border-cyan-500/20';
     }
@@ -1873,7 +1873,7 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
           </div>
           <div class="flex flex-wrap gap-1.5 mb-3">
             ${mb && mb.genres && mb.genres.length
-              ? mb.genres.slice(0,6).map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 font-medium">${g}</span>`).join('')
+              ? mb.genres.slice(0,6).map(g => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-300 font-medium">${g}</span>`).join('')
               : `<span class="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-600 italic">Genre data not in MusicBrainz</span>`}
           </div>
           <div class="grid grid-cols-4 gap-4">
@@ -2055,7 +2055,7 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
                 </td>
                 <td class="py-3 max-w-[200px]">
                   ${ev.url
-                    ? `<a href="${ev.url}" target="_blank" rel="noopener" class="text-sm text-white hover:text-violet-300 transition-colors">${ev.venueName}</a>`
+                    ? `<a href="${ev.url}" target="_blank" rel="noopener" class="text-sm text-white hover:text-red-300 transition-colors">${ev.venueName}</a>`
                     : `<span class="text-sm text-white">${ev.venueName}</span>`}
                 </td>
                 <td class="py-3 text-sm text-slate-300">${ev.city}</td>
@@ -2089,8 +2089,8 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
       <!-- Header row -->
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-lg bg-violet-500/15 flex items-center justify-center flex-shrink-0">
-            <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <div class="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
           </div>
           <div>
             <h3 class="font-semibold text-white text-sm">Market Demand Analysis</h3>
@@ -2163,14 +2163,14 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
         <div class="text-[10px] text-slate-500 font-medium mb-2 uppercase tracking-wider">Festival Run Pairings</div>
         <div class="space-y-1.5">
           ${festivalPairings.map(fp => {
-            const roleColor = fp.role === 'Co-Headliner' ? 'text-violet-400 bg-violet-500/15' : fp.role === 'Direct Support' ? 'text-cyan-400 bg-cyan-500/15' : 'text-amber-400 bg-amber-500/15';
+            const roleColor = fp.role === 'Co-Headliner' ? 'text-red-400 bg-red-500/15' : fp.role === 'Direct Support' ? 'text-cyan-400 bg-cyan-500/15' : 'text-amber-400 bg-amber-500/15';
             const genreList = (fp.mb && fp.mb.genres ? fp.mb.genres.slice(0,2).join(', ') : '') || '\u2014';
             return (
               '<div class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-0">' +
               '<div class="w-6 h-6 rounded-full bg-gradient-to-br ' + hashColor(fp.artist.name) + ' flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">' + fp.artist.name.charAt(0) + '</div>' +
               '<div class="flex-1 min-w-0">' +
                 '<div class="flex items-center gap-2">' +
-                  '<span class="text-xs font-semibold text-white truncate cursor-pointer hover:text-violet-300 transition-colors" onclick="selectArtist(\'' + fp.artist.spotify_id + '\')">' + fp.artist.name + '</span>' +
+                  '<span class="text-xs font-semibold text-white truncate cursor-pointer hover:text-red-300 transition-colors" onclick="selectArtist(\'' + fp.artist.spotify_id + '\')">' + fp.artist.name + '</span>' +
                   '<span class="text-[9px] px-1.5 py-0.5 rounded-full font-medium ' + roleColor + '">' + fp.role + '</span>' +
                 '</div>' +
                 '<div class="text-[10px] text-slate-500">' + fmt(fp.artist.monthly_listeners) + ' listeners \u00b7 ' + genreList + '</div>' +
@@ -2345,7 +2345,7 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
           <a href="${n.url}" target="_blank" rel="noopener" class="flex items-start gap-3 p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group">
             <div class="w-1.5 h-1.5 rounded-full bg-green-400 mt-2 flex-shrink-0"></div>
             <div class="flex-1 min-w-0">
-              <div class="text-sm text-white group-hover:text-violet-300 transition-colors leading-snug">${n.title}</div>
+              <div class="text-sm text-white group-hover:text-red-300 transition-colors leading-snug">${n.title}</div>
               <div class="flex items-center gap-2 mt-1">
                 <span class="text-[11px] text-slate-500 font-medium">${n.source}</span>
                 <span class="text-[11px] text-slate-600">\u00b7</span>
@@ -2432,9 +2432,9 @@ function populatePeerTable(spotifyId, tableId) {
     const pct = pa.peak_listeners ? Math.round((pa.monthly_listeners / pa.peak_listeners) * 100) : null;
     const aUp = pa.daily_change >= 0;
     return `
-      <tr class="${isSelf ? 'bg-violet-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${pa.spotify_id}')">
-        <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-violet-300 font-bold' : 'text-slate-500'}">${pa.rank}</td>
-        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(pa.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(pa.name)}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${pa.name}</span>${isSelf ? '<span class="bg-violet-500/20 text-violet-300 text-[9px] px-1.5 py-0.5 rounded font-medium ml-1">You</span>' : ''}</div></td>
+      <tr class="${isSelf ? 'bg-red-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${pa.spotify_id}')">
+        <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-red-300 font-bold' : 'text-slate-500'}">${pa.rank}</td>
+        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(pa.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(pa.name)}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${pa.name}</span>${isSelf ? '<span class="bg-red-500/20 text-red-300 text-[9px] px-1.5 py-0.5 rounded font-medium ml-1">You</span>' : ''}</div></td>
         <td class="py-2.5 text-right text-sm text-white">${fmt(pa.monthly_listeners)}</td>
         <td class="py-2.5 text-right text-sm ${aUp ? 'trend-up' : 'trend-down'} font-medium">${aUp?'+':''}${fmt(pa.daily_change)}</td>
         <td class="py-2.5 text-right text-sm text-slate-400">${fmt(pa.peak_listeners)}</td>
@@ -2458,7 +2458,7 @@ function renderPeerSetEditor(sid) {
       ${customPeers.map(p=>`<span class="text-[9px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 flex items-center gap-1">${p.name}<button onclick="psRemove('${sid}','${p.spotify_id}')" class="text-slate-600 hover:text-red-400">×</button></span>`).join('')}
       ${!custom ? '<span class="text-[9px] text-slate-600">Using rank-adjacent peers</span>' : ''}
     </div>
-    <input type="text" id="peer-add-input-${sid}" placeholder="Add artist by name..." class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50" oninput="peerAddSuggest('${sid}',this.value)" autocomplete="off">
+    <input type="text" id="peer-add-input-${sid}" placeholder="Add artist by name..." class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50" oninput="peerAddSuggest('${sid}',this.value)" autocomplete="off">
     <div id="peer-add-dropdown-${sid}" class="mt-1"></div>
   </div>`;
 }
@@ -2533,7 +2533,7 @@ function showArtistList() {
       '<div class="relative flex-1 max-w-sm">' +
         '<svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' +
         '<input type="text" id="artist-list-search" placeholder="Search artists…" ' +
-          'class="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50" ' +
+          'class="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50" ' +
           'oninput="renderArtistGrid(this.value)">' +
       '</div>' +
       '<span id="artist-grid-count" class="text-xs text-slate-500 flex-shrink-0">' + artists.length.toLocaleString() + ' artists</span>' +
@@ -2543,7 +2543,7 @@ function showArtistList() {
       filterTabs +
       '<div class="ml-auto flex items-center gap-2">' +
         '<button id="compare-toggle-btn" onclick="toggleCompareMode()" class="text-xs px-3 py-1.5 rounded-lg border transition-all ' + (compareMode ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10') + '">\u21c4 Compare</button>' +
-        '<button onclick="toggleBulkMode()" class="text-xs px-3 py-1.5 rounded-lg border transition-all ' + (bulkMode ? 'bg-violet-500/20 border-violet-500/40 text-violet-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10') + '">' + (bulkMode ? '\u2715 Cancel' : 'Select') + '</button>' +
+        '<button onclick="toggleBulkMode()" class="text-xs px-3 py-1.5 rounded-lg border transition-all ' + (bulkMode ? 'bg-red-500/20 border-red-500/40 text-red-300' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10') + '">' + (bulkMode ? '\u2715 Cancel' : 'Select') + '</button>' +
       '</div>' +
     '</div>' +
     '<div id="compare-panel" class="mb-4"></div>' +
@@ -2767,15 +2767,15 @@ function renderArtistGrid(query) {
     const cardCls = compareMode
       ? ('glass rounded-xl p-3.5 cursor-pointer border transition-all relative ' + (isCmpSelected ? 'border-cyan-500 ring-2 ring-cyan-500 bg-cyan-500/5' : 'border-white/5 hover:border-white/20'))
       : bulkMode
-        ? ('glass rounded-xl p-3.5 cursor-pointer border transition-all relative ' + (isSelected ? 'border-violet-500 ring-2 ring-violet-500 bg-violet-500/5' : 'border-white/5 hover:border-white/20'))
-        : 'glass rounded-xl p-3.5 cursor-pointer hover:bg-white/8 border border-white/5 hover:border-violet-500/20 transition-all group';
+        ? ('glass rounded-xl p-3.5 cursor-pointer border transition-all relative ' + (isSelected ? 'border-red-500 ring-2 ring-red-500 bg-red-500/5' : 'border-white/5 hover:border-white/20'))
+        : 'glass rounded-xl p-3.5 cursor-pointer hover:bg-white/8 border border-white/5 hover:border-red-500/20 transition-all group';
     const hoverAttrs = (!compareMode && !bulkMode) ? ' onmouseenter="showDemandCard(event,\'' + a.spotify_id + '\')" onmouseleave="hideDemandCard()"' : '';
     const onClickAttr = compareMode ? 'toggleCompareSelect(\'' + a.spotify_id + '\')' : (bulkMode ? 'toggleBulkSelect(\'' + a.spotify_id + '\')' : 'selectArtist(\'' + a.spotify_id + '\')');
     const checkboxOverlay = compareMode
       ? '<div class="absolute top-2 left-2 w-4 h-4 rounded border flex items-center justify-center ' + (isCmpSelected ? 'bg-cyan-500 border-cyan-500' : 'border-white/30 bg-black/20') + '">'
         + (isCmpSelected ? '<svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : '') + '</div>'
       : bulkMode
-        ? '<div class="absolute top-2 left-2 w-4 h-4 rounded border flex items-center justify-center ' + (isSelected ? 'bg-violet-500 border-violet-500' : 'border-white/30 bg-black/20') + '">'
+        ? '<div class="absolute top-2 left-2 w-4 h-4 rounded border flex items-center justify-center ' + (isSelected ? 'bg-red-500 border-red-500' : 'border-white/30 bg-black/20') + '">'
           + (isSelected ? '<svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>' : '') + '</div>'
         : '';
     const touringBadge = t
@@ -2796,7 +2796,7 @@ function renderArtistGrid(query) {
           '</div>' +
           '<div class="min-w-0 flex-1">' +
             '<div class="flex items-start justify-between gap-1">' +
-              '<div class="text-xs font-semibold text-white truncate group-hover:text-violet-300 transition-colors leading-tight">' + a.name + '</div>' +
+              '<div class="text-xs font-semibold text-white truncate group-hover:text-red-300 transition-colors leading-tight">' + a.name + '</div>' +
               (hasCon ? '<span id="contact-dot-' + a.spotify_id + '" class="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0 mt-0.5" title="Has contacts"></span>' : '<span id="contact-dot-' + a.spotify_id + '" class="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0 mt-0.5 hidden" title="Has contacts"></span>') +
             '</div>' +
             (country ? '<div class="text-[9px] text-slate-600 mt-0.5">' + country + '</div>' : '') +
@@ -2978,7 +2978,7 @@ function renderVenuesPage() {
     data: {
       labels: regions,
       datasets: [
-        { label: 'Tier 1', data: regions.map(r => regionData[r]?.[1]||0), backgroundColor: '#a78bfa', borderRadius: 3, barPercentage: 0.7 },
+        { label: 'Tier 1', data: regions.map(r => regionData[r]?.[1]||0), backgroundColor: '#ef4444', borderRadius: 3, barPercentage: 0.7 },
         { label: 'Tier 2', data: regions.map(r => regionData[r]?.[2]||0), backgroundColor: '#22d3ee', borderRadius: 3, barPercentage: 0.7 },
         { label: 'Tier 3', data: regions.map(r => regionData[r]?.[3]||0), backgroundColor: '#475569', borderRadius: 3, barPercentage: 0.7 }
       ]
@@ -2992,7 +2992,7 @@ function renderVenuesPage() {
 
   // Venue type donut
   const typeLabels = Object.keys(typeCounts);
-  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#a78bfa', outdoor: '#4ade80' };
+  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#ef4444', outdoor: '#4ade80' };
   if (chartInstances.venueType) chartInstances.venueType.destroy();
   chartInstances.venueType = new Chart(document.getElementById('venueTypeChart'), {
     type: 'doughnut',
@@ -3046,7 +3046,7 @@ function renderMarketSizing() {
         <canvas id="marketSizingChart"></canvas>
       </div>
     </div>`;
-  const tierColors = { 1: '#a78bfa', 2: '#22d3ee', 3: '#475569' };
+  const tierColors = { 1: '#ef4444', 2: '#22d3ee', 3: '#475569' };
   if (chartInstances.marketSizing) chartInstances.marketSizing.destroy();
   chartInstances.marketSizing = new Chart(document.getElementById('marketSizingChart'), {
     type: 'bar',
@@ -3083,8 +3083,8 @@ function renderCapacityLadder() {
   }
   const sorted = [...city.venues].sort((a,b) => b.capacity - a.capacity);
   const maxCap = sorted[0].capacity;
-  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#a78bfa', outdoor: '#4ade80' };
-  const typeBg = { stadium: 'bg-red-500/15 text-red-300', arena: 'bg-amber-500/15 text-amber-300', theater: 'bg-cyan-500/15 text-cyan-300', club: 'bg-violet-500/15 text-violet-300', outdoor: 'bg-green-500/15 text-green-300' };
+  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#ef4444', outdoor: '#4ade80' };
+  const typeBg = { stadium: 'bg-red-500/15 text-red-300', arena: 'bg-amber-500/15 text-amber-300', theater: 'bg-cyan-500/15 text-cyan-300', club: 'bg-red-500/15 text-red-300', outdoor: 'bg-green-500/15 text-green-300' };
   const tierCls = { A: 'bg-amber-500/15 text-amber-400', B: 'bg-cyan-500/15 text-cyan-400', C: 'bg-slate-500/15 text-slate-400' };
 
   container.innerHTML = `
@@ -3152,7 +3152,7 @@ function renderCityTable() {
   document.getElementById('city-table-count').textContent = `Showing ${slice.length} of ${total} cities`;
   const pagBtns = [];
   for (let i = 1; i <= Math.min(pages, 5); i++) {
-    pagBtns.push(`<button onclick="cityPage=${i};renderCityTable()" class="${i===cityPage ? 'bg-violet-600/20 border-violet-500/30 text-violet-300' : 'bg-white/5 border-white/10 text-slate-400'} border text-xs px-3 py-1 rounded-md">${i}</button>`);
+    pagBtns.push(`<button onclick="cityPage=${i};renderCityTable()" class="${i===cityPage ? 'bg-red-600/20 border-red-500/30 text-red-300' : 'bg-white/5 border-white/10 text-slate-400'} border text-xs px-3 py-1 rounded-md">${i}</button>`);
   }
   if (pages > 5) pagBtns.push(`<span class="text-xs text-slate-500 px-1">...${pages}</span>`);
   document.getElementById('city-pagination').innerHTML = pagBtns.join('');
@@ -3172,12 +3172,12 @@ function showCityDetail(rank) {
     <div class="glass rounded-xl p-5 accent-glow">
       <div class="flex items-center justify-between mb-5">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white">${city.city.slice(0,2).toUpperCase()}</div>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-sm font-bold text-white">${city.city.slice(0,2).toUpperCase()}</div>
           <div>
             <h3 class="font-semibold text-white text-lg">${city.city}, ${city.country}</h3>
             <div class="flex items-center gap-3 text-[11px] text-slate-400">
               <span>${city.region}</span><span>&middot;</span>
-              <span class="text-violet-400">Tier ${city.city_tier} Market</span><span>&middot;</span>
+              <span class="text-red-400">Tier ${city.city_tier} Market</span><span>&middot;</span>
               <span>${city.venues.length} venues tracked</span>
             </div>
           </div>
@@ -3279,8 +3279,8 @@ function renderCalendarKPIs(events) {
     <div class="kpi-card rounded-xl p-5 transition-all duration-300">
       <div class="flex items-center justify-between mb-3">
         <span class="text-xs text-slate-500 uppercase tracking-wider">Total Shows Found</span>
-        <div class="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center">
-          <svg class="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <div class="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+          <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         </div>
       </div>
       <div class="text-3xl font-bold text-white">${events.length}</div>
@@ -3400,7 +3400,7 @@ function calEventCard(e) {
     : null;
 
   return `
-    <div class="glass rounded-xl p-4 flex items-center gap-4 hover:border-violet-500/20 transition-colors">
+    <div class="glass rounded-xl p-4 flex items-center gap-4 hover:border-red-500/20 transition-colors">
       <div class="w-14 text-center flex-shrink-0">
         <div class="text-[10px] text-slate-500 uppercase">${d ? d.toLocaleDateString('en-US',{month:'short'}) : ''}</div>
         <div class="text-2xl font-bold text-white leading-none">${d ? d.getDate() : '?'}</div>
@@ -3409,14 +3409,14 @@ function calEventCard(e) {
       <div class="w-px h-10 bg-white/10 flex-shrink-0"></div>
       <div class="w-9 h-9 rounded-full bg-gradient-to-br ${hashColor(e.artistName)} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0">${initials(e.artistName)}</div>
       <div class="flex-1 min-w-0">
-        <div class="text-sm font-semibold text-white truncate cursor-pointer hover:text-violet-300 transition-colors" onclick="selectArtist('${e.spotifyId}')">${e.artistName}</div>
+        <div class="text-sm font-semibold text-white truncate cursor-pointer hover:text-red-300 transition-colors" onclick="selectArtist('${e.spotifyId}')">${e.artistName}</div>
         <div class="text-xs text-slate-400 truncate">${e.venueName}</div>
         <div class="text-[11px] text-slate-500">${[e.city, e.country].filter(Boolean).join(', ')}</div>
       </div>
       <div class="text-right flex-shrink-0">
         ${price ? `<div class="text-sm font-semibold text-white">${price}</div>` : '<div class="text-xs text-slate-500">Price TBD</div>'}
         <a href="${e.url}" target="_blank" rel="noopener"
-           class="mt-1 inline-block text-[10px] font-medium px-2.5 py-1 rounded-lg bg-violet-600/20 text-violet-300 hover:bg-violet-600/40 transition-colors">
+           class="mt-1 inline-block text-[10px] font-medium px-2.5 py-1 rounded-lg bg-red-600/20 text-red-300 hover:bg-red-600/40 transition-colors">
           Buy Tickets
         </a>
       </div>
@@ -3703,7 +3703,7 @@ function renderFinancials(d) {
     type: 'doughnut',
     data: {
       labels: namedCosts.map(x => x.label),
-      datasets: [{ data: namedCosts.map(x => x.value), backgroundColor: ['#6366f1','#8b5cf6','#a78bfa','#4ade80','#f59e0b','#ef4444','#06b6d4','#84cc16'], borderWidth: 0 }]
+      datasets: [{ data: namedCosts.map(x => x.value), backgroundColor: ['#dc2626','#ef4444','#ef4444','#4ade80','#f59e0b','#ef4444','#06b6d4','#84cc16'], borderWidth: 0 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '60%',
@@ -3784,7 +3784,7 @@ function fdImportProfiles(event) {
 function fdToast(msg, ms) {
   const t = document.createElement('div');
   t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e1b2e;border:1px solid rgba(139,92,246,0.4);color:#e2e8f0;padding:8px 18px;border-radius:8px;font-size:12px;z-index:9999;pointer-events:none;transition:opacity 0.3s';
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0d0d0d;border:1px solid rgba(220,38,38,0.4);color:#e2e8f0;padding:8px 18px;border-radius:8px;font-size:12px;z-index:9999;pointer-events:none;transition:opacity 0.3s';
   document.body.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms || 2000);
 }
@@ -4064,8 +4064,8 @@ function renderFinDetail(d) {
     <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Ticket Revenue</div><div class="text-2xl font-bold text-white">${fmtDollar(totalTicket)}</div><div class="text-[11px] text-slate-400 mt-1">${fmtNum(rev.grand_total.total_capacity)} seats · ${rev.total_shows || d.total_shows} shows</div></div>
     <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Total Gross Revenue</div><div class="text-2xl font-bold text-emerald-400">${fmtDollar(totalGross)}</div><div class="text-[11px] text-slate-400 mt-1">incl. merch + sponsorship</div></div>
     <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">Artist MG</div><div class="text-2xl font-bold text-red-400">${fmtDollar(mg)}</div><div class="text-[11px] text-slate-400 mt-1">Justin · payment schedule</div></div>
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI (Scen. A $12M)</div><div class="text-2xl font-bold text-violet-400">${scenA.absolute_return != null ? (scenA.absolute_return*100).toFixed(1)+'%' : '—'}</div><div class="text-[11px] text-slate-400 mt-1">${scenA.moic ? scenA.moic.toFixed(2)+'x MOIC' : ''}</div></div>
-    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI (Scen. B $25M)</div><div class="text-2xl font-bold text-violet-300">${scenB.absolute_return != null ? (scenB.absolute_return*100).toFixed(1)+'%' : '—'}</div><div class="text-[11px] text-slate-400 mt-1">${scenB.moic ? scenB.moic.toFixed(2)+'x MOIC' : ''}</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI (Scen. A $12M)</div><div class="text-2xl font-bold text-red-400">${scenA.absolute_return != null ? (scenA.absolute_return*100).toFixed(1)+'%' : '—'}</div><div class="text-[11px] text-slate-400 mt-1">${scenA.moic ? scenA.moic.toFixed(2)+'x MOIC' : ''}</div></div>
+    <div class="kpi-card rounded-xl p-5"><div class="text-[10px] text-slate-500 uppercase tracking-wider mb-2">ROI (Scen. B $25M)</div><div class="text-2xl font-bold text-red-300">${scenB.absolute_return != null ? (scenB.absolute_return*100).toFixed(1)+'%' : '—'}</div><div class="text-[11px] text-slate-400 mt-1">${scenB.moic ? scenB.moic.toFixed(2)+'x MOIC' : ''}</div></div>
   </div>`;
 
   const showRows = rev.shows.map((show,i) => `
@@ -4167,7 +4167,7 @@ function renderFinDetail(d) {
 
   const scenRows = scenarios.filter(s => s.moic).map(s => `
     <div class="glass rounded-xl p-5 flex-1">
-      <div class="text-[11px] text-violet-400 font-semibold uppercase tracking-wider mb-3">${s.label}</div>
+      <div class="text-[11px] text-red-400 font-semibold uppercase tracking-wider mb-3">${s.label}</div>
       <div class="space-y-2.5">
         <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Equity Invested</span><span class="text-sm font-semibold text-white">${fmtDollar(s.equity)}</span></div>
         <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Agency Fees</span><span class="text-sm text-white">${fmtDollar(s.agency_fees)}</span></div>
@@ -4177,8 +4177,8 @@ function renderFinDetail(d) {
         <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Dist. after Hurdle — BluFin</span><span class="text-sm text-white">${fmtDollar(s.distribution_after_hurdle?.blufin)}</span></div>
         <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Total Investor Return</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(s.total_investor_return)}</span></div>
         <div class="flex justify-between py-1.5 border-b border-white/5"><span class="text-sm text-slate-400">Investor Profit</span><span class="text-sm font-bold text-emerald-400">${fmtDollar(s.investor_profit)}</span></div>
-        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3 mt-2"><span class="text-sm font-bold text-white">MOIC</span><span class="text-sm font-bold text-violet-400">${s.moic.toFixed(2)}x</span></div>
-        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Absolute Return</span><span class="text-sm font-bold text-violet-400">${(s.absolute_return*100).toFixed(1)}%</span></div>
+        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3 mt-2"><span class="text-sm font-bold text-white">MOIC</span><span class="text-sm font-bold text-red-400">${s.moic.toFixed(2)}x</span></div>
+        <div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-bold text-white">Absolute Return</span><span class="text-sm font-bold text-red-400">${(s.absolute_return*100).toFixed(1)}%</span></div>
       </div>
     </div>`).join('');
   const scenSection = `<div>
@@ -4188,7 +4188,7 @@ function renderFinDetail(d) {
 
   const cfScen = scenarios.filter(s => s.cash_flow);
   const cfMonths = cfScen.length ? Object.keys(cfScen[0].cash_flow) : [];
-  const cfHeaders = cfScen.map(s => `<th class="text-right pb-3 text-violet-300">${s.label.split(' — ')[0]}</th>`).join('');
+  const cfHeaders = cfScen.map(s => `<th class="text-right pb-3 text-red-300">${s.label.split(' — ')[0]}</th>`).join('');
   const cfRows = cfMonths.map(month => {
     const cells = cfScen.map(s => {
       const v = s.cash_flow[month].total;
@@ -4237,7 +4237,7 @@ function renderFinDetail(d) {
 
 function initFinBuilder() { finBuilderLoaded = true; fdLoad(); fdRender(); }
 
-const FD_INPUT = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50';
+const FD_INPUT = 'w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50';
 const FD_LABEL = 'block text-[10px] text-slate-500 uppercase tracking-wider mb-1';
 
 function fdMigrateProfile(p) {
@@ -4327,7 +4327,7 @@ function fdCompareHTML() {
     const scens = (p.investor_scenarios||[]).filter(s => Number(s.equity)>0);
     const scenHTML = scens.map(scen => {
       const s = computeScenario(c, scen);
-      const mc = s.moic >= 1 ? 'text-violet-400' : 'text-red-400';
+      const mc = s.moic >= 1 ? 'text-red-400' : 'text-red-400';
       return `<div class="pt-2 border-t border-white/5 mt-2">
         <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">${scen.label||'Investor'}</div>
         <div class="flex justify-between text-xs mb-0.5"><span class="text-slate-500">Equity</span><span class="text-white">${fmtDollar(s.equity)}</span></div>
@@ -4349,7 +4349,7 @@ function fdCompareHTML() {
       <div class="text-[10px] text-slate-500 uppercase tracking-wider pt-1 border-t border-white/5 mb-1">P&amp;L</div>
       ${fdPLSummaryHTML(p, c)}
       ${scenHTML}
-      <button onclick="fdSelectProfile('${p.id}');fdToggleCompare();" class="mt-auto w-full text-center text-xs text-violet-400 hover:text-violet-300 py-2 border border-violet-500/20 rounded-lg transition-colors">Open &amp; Edit →</button>
+      <button onclick="fdSelectProfile('${p.id}');fdToggleCompare();" class="mt-auto w-full text-center text-xs text-red-400 hover:text-red-300 py-2 border border-red-500/20 rounded-lg transition-colors">Open &amp; Edit →</button>
     </div>`;
   }).join('');
   const gridClass = profiles.length === 1 ? 'max-w-md' : profiles.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
@@ -4412,8 +4412,8 @@ function fdMGDealSectionHTML(p) {
   const isBackend = co.deal_type === 'backend';
   const c  = computeProfile(p);
   return `<div class="flex gap-2 mb-3">
-    <button onclick="fdPatchDealType('flat_mg')" class="flex-1 text-xs py-1.5 rounded-lg border transition-all ${!isBackend?'bg-violet-600/30 border-violet-500/50 text-violet-300':'border-white/10 text-slate-500 hover:text-white'}">Flat MG</button>
-    <button onclick="fdPatchDealType('backend')" class="flex-1 text-xs py-1.5 rounded-lg border transition-all ${isBackend?'bg-violet-600/30 border-violet-500/50 text-violet-300':'border-white/10 text-slate-500 hover:text-white'}">Backend Deal (%)</button>
+    <button onclick="fdPatchDealType('flat_mg')" class="flex-1 text-xs py-1.5 rounded-lg border transition-all ${!isBackend?'bg-red-600/30 border-red-500/50 text-red-300':'border-white/10 text-slate-500 hover:text-white'}">Flat MG</button>
+    <button onclick="fdPatchDealType('backend')" class="flex-1 text-xs py-1.5 rounded-lg border transition-all ${isBackend?'bg-red-600/30 border-red-500/50 text-red-300':'border-white/10 text-slate-500 hover:text-white'}">Backend Deal (%)</button>
   </div>
   ${isBackend ? `<div class="space-y-2">
     <div class="text-[9px] text-slate-500 mb-1">Artist receives: guarantee + X% of box office above guarantee</div>
@@ -4516,7 +4516,7 @@ function fdRender() {
       const isActive = fdState.activeId === p.id;
       const isSelected = fdState.compareIds.includes(p.id);
       const roiColor = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
-      const vbg = p.venue_type==='stadium' ? 'bg-violet-500/15 text-violet-300' : p.venue_type==='arena' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300';
+      const vbg = p.venue_type==='stadium' ? 'bg-red-500/15 text-red-300' : p.venue_type==='arena' ? 'bg-cyan-500/15 text-cyan-300' : 'bg-amber-500/15 text-amber-300';
       const totalShows = (p.tour_cities && p.tour_cities.length) ? p.tour_cities.reduce((s,tc) => s+(Number(tc.num_shows)||1),0) : (p.num_shows||1);
       const numCities = (p.tour_cities && p.tour_cities.length) || 1;
       const firstCity = (p.tour_cities && p.tour_cities[0]?.city_name) || p.city || '—';
@@ -4525,10 +4525,10 @@ function fdRender() {
         ? `onclick="fdToggleCompareSelect('${p.id}')"`
         : `onclick="fdSelectProfile('${p.id}')"`;
       const borderClass = fdState.compareMode
-        ? (isSelected ? 'bg-violet-500/15 border-violet-500/40' : 'glass border-transparent hover:bg-white/5')
-        : (isActive ? 'bg-violet-500/10 border-violet-500/30' : 'glass border-transparent hover:bg-white/5');
+        ? (isSelected ? 'bg-red-500/15 border-red-500/40' : 'glass border-transparent hover:bg-white/5')
+        : (isActive ? 'bg-red-500/10 border-red-500/30' : 'glass border-transparent hover:bg-white/5');
       return `<div ${cardClick} draggable="true" data-profile-id="${p.id}" class="rounded-xl p-3 cursor-pointer transition-all border ${borderClass}">
-        ${fdState.compareMode && isSelected ? '<div class="text-[9px] text-violet-400 font-semibold mb-1">✓ Selected</div>' : ''}
+        ${fdState.compareMode && isSelected ? '<div class="text-[9px] text-red-400 font-semibold mb-1">✓ Selected</div>' : ''}
         <div class="flex items-start justify-between gap-1 mb-1">
           <div class="flex items-center gap-1.5 min-w-0">
             <span class="fd-drag-handle flex-shrink-0 text-slate-600" title="Drag to reorder">
@@ -4617,12 +4617,12 @@ function fdBindSidebarDrag() {
 
 function fdEmptyState() {
   return `<div class="flex flex-col items-center justify-center h-full text-center p-12">
-    <div class="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mb-4">
-      <svg class="w-8 h-8 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+    <div class="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mb-4">
+      <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
     </div>
     <h3 class="text-base font-semibold text-white mb-2">No Profile Selected</h3>
     <p class="text-sm text-slate-500 mb-6 max-w-xs">Create a new artist financial profile or select one from the left.</p>
-    <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+    <button onclick="fdStartCreate()" class="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
       Add New Artist Profile
     </button>
@@ -4751,7 +4751,7 @@ async function fdExportExcel() {
 
   // ── Color palette (ARGB) ──────────────────────────────────────────────────
   const C = {
-    purple:'FF4C1D95', dark:'FF0F172A', navy:'FF1E3A5F', teal:'FF0F766E',
+    purple:'FFDC2626', dark:'FF0F172A', navy:'FF1E3A5F', teal:'FF0F766E',
     rose:'FFBE123C',  white:'FFFFFFFF', gray:'FF64748B',  dgray:'FF334155',
     inputY:'FFFFFDE7', calcB:'FFE8F0FE', totG:'FFECFDF5', totR:'FFFEF2F2',
     bgLt:'FFF8FAFC',  green:'FF065F46', red:'FF991B1B',   redLight:'FFFCA5A5',
@@ -5615,7 +5615,7 @@ async function fdBatchExport() {
   }
 
   const C = {
-    purple:'FF4C1D95', dark:'FF0F172A', navy:'FF1E3A5F', teal:'FF0F766E',
+    purple:'FFDC2626', dark:'FF0F172A', navy:'FF1E3A5F', teal:'FF0F766E',
     rose:'FFBE123C',  white:'FFFFFFFF', gray:'FF64748B', dgray:'FF334155',
     inputY:'FFFFFDE7', calcB:'FFE8F0FE', totG:'FFECFDF5', totR:'FFFEF2F2',
     bgLt:'FFF8FAFC',  green:'FF065F46', red:'FF991B1B', redLight:'FFFCA5A5',
@@ -5865,7 +5865,7 @@ function fdExportPDF() {
                 <td class="num">${retPct}%</td>
                 <td class="num" style="color:#92400e">${obl>0?'('+currency(obl)+')':'—'}</td>
                 <td class="num">${currency(dist)}</td>
-                <td class="num" style="font-weight:700;color:${moic>=1?'#7c3aed':'#dc2626'}">${eqAmt>0?moic.toFixed(2)+'x':'—'}</td>
+                <td class="num" style="font-weight:700;color:${moic>=1?'#ef4444':'#dc2626'}">${eqAmt>0?moic.toFixed(2)+'x':'—'}</td>
               </tr>`;
             }).join('')}
             <tr style="border-top:2px solid #d1d5db;background:#f0fdf4">
@@ -5875,17 +5875,17 @@ function fdExportPDF() {
               <td class="num"></td>
               <td class="num" style="color:#92400e"><strong>${scenObligation>0?'('+currency(scenObligation)+')':'—'}</strong></td>
               <td class="num"><strong>${currency(sv.investor_dist)}</strong></td>
-              <td class="num" style="font-weight:700;color:${sv.moic>=1?'#7c3aed':'#dc2626'}">${sv.moic.toFixed(2)}x</td>
+              <td class="num" style="font-weight:700;color:${sv.moic>=1?'#ef4444':'#dc2626'}">${sv.moic.toFixed(2)}x</td>
             </tr>
             ${Math.abs(sumPct-100)>0.01?`<tr><td colspan="7" style="color:#b45309;font-size:9px;font-style:italic">⚠ Stakes sum to ${sumPct.toFixed(1)}% — returns distributed proportionally</td></tr>`:''}
           </tbody>
         </table>
       </div>` : '';
 
-    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#7c3aed':'#e5e7eb'};border-radius:8px;background:${s.use_for_roi?'#faf5ff':'#fafafa'};">
+    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#ef4444':'#e5e7eb'};border-radius:8px;background:${s.use_for_roi?'#faf5ff':'#fafafa'};">
       <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
         ${s.label||'Scenario'}
-        ${s.use_for_roi ? '<span style="font-size:9px;font-weight:600;background:#7c3aed;color:white;padding:2px 6px;border-radius:4px;">USE FOR ROI</span>' : ''}
+        ${s.use_for_roi ? '<span style="font-size:9px;font-weight:600;background:#dc2626;color:white;padding:2px 6px;border-radius:4px;">USE FOR ROI</span>' : ''}
       </div>
       <table>
         <tbody>
@@ -5896,10 +5896,10 @@ function fdExportPDF() {
           <tr><td>Investor Distribution</td><td class="num">${currency(sv.investor_dist)}</td></tr>
           <tr><td>BluFin Distribution</td><td class="num">${currency(sv.blufin_dist)}</td></tr>
           <tr><td>Total Investor Return</td><td class="num">${currency(sv.total_inv_return)}</td></tr>
-          <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#7c3aed':'#dc2626'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
+          <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#ef4444':'#dc2626'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
           <tr><td>Absolute Return</td><td class="num">${sv.abs_return>0?pct(sv.abs_return):'—'}</td></tr>
           ${s.use_for_roi && scenObligation > 0 ? `<tr style="background:#fef3c7"><td style="color:#92400e;font-weight:600">Total Investor Obligation</td><td class="num" style="color:#92400e;font-weight:600">(${currency(scenObligation)})</td></tr>` : ''}
-          ${scenAdjRoi !== null ? `<tr style="background:#ede9fe"><td style="color:#6d28d9;font-weight:700">Adjusted Promoter ROI</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#6d28d9':'#dc2626'}">${pct(scenAdjRoi)}</td></tr>` : ''}
+          ${scenAdjRoi !== null ? `<tr style="background:#1a0000"><td style="color:#ef4444;font-weight:700">Adjusted Promoter ROI</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#ef4444':'#dc2626'}">${pct(scenAdjRoi)}</td></tr>` : ''}
         </tbody>
       </table>
       ${invTable}
@@ -5920,7 +5920,7 @@ function fdExportPDF() {
   .kpi-value.green { color: #059669; }
   .kpi-value.red { color: #dc2626; }
   .kpi-value.blue { color: #2563eb; }
-  .kpi-value.purple { color: #7c3aed; }
+  .kpi-value.purple { color: #ef4444; }
   section { margin-bottom: 24px; }
   h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
@@ -6145,7 +6145,7 @@ function fdKPIStripHTML(c, p) {
   const numCities = c.num_cities || 1;
   const scens = (p?.investor_scenarios || []).filter(s => Number(s.equity) > 0);
   const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(c, s).moic)) : 0;
-  const mc = bestMoic >= 1 ? 'text-violet-400' : 'text-slate-400';
+  const mc = bestMoic >= 1 ? 'text-red-400' : 'text-slate-400';
   const adjRoi = fdSensAdjustedROI(c, p);
   const roiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
   const roiLabel = (p?.investor_scenarios || []).some(s => s.use_for_roi && Number(s.equity) > 0) ? 'ROI (adj.)' : 'ROI';
@@ -6237,11 +6237,11 @@ function fdPLSummaryHTML(p, c) {
           return investors.map(inv => {
             const invEquity = Number(activeInvScen.equity) * (inv.pct || 0) / 100;
             const obl = invEquity * ((inv.expected_return_pct || 0) / 100);
-            return `<div class="flex justify-between py-0.5 pl-4 text-[10px]"><span class="text-violet-400/70">↳ ${inv.name || 'Investor'} (${(inv.pct||0).toFixed(1)}% stake × ${(inv.expected_return_pct||0)}% return)</span><span class="text-amber-400/80">(${fmtDollar(obl)})</span></div>`;
+            return `<div class="flex justify-between py-0.5 pl-4 text-[10px]"><span class="text-red-400/70">↳ ${inv.name || 'Investor'} (${(inv.pct||0).toFixed(1)}% stake × ${(inv.expected_return_pct||0)}% return)</span><span class="text-amber-400/80">(${fmtDollar(obl)})</span></div>`;
           }).join('');
         } else {
           const obl = Number(activeInvScen.equity) * ((activeInvScen.expected_return_pct || 0) / 100);
-          return `<div class="flex justify-between py-0.5 pl-4 text-[10px]"><span class="text-violet-400/70">↳ investor obligation (${activeInvScen.label || activeInvScen.id}, ${(activeInvScen.expected_return_pct||0)}% return)</span><span class="text-amber-400/80">(${fmtDollar(obl)})</span></div>`;
+          return `<div class="flex justify-between py-0.5 pl-4 text-[10px]"><span class="text-red-400/70">↳ investor obligation (${activeInvScen.label || activeInvScen.id}, ${(activeInvScen.expected_return_pct||0)}% return)</span><span class="text-amber-400/80">(${fmtDollar(obl)})</span></div>`;
         }
       })() : '';
       return `<div class="flex justify-between py-2 bg-white/5 rounded-lg px-3"><span class="text-sm font-semibold text-slate-300">${roiLbl}</span><span class="text-sm font-bold ${adjRoiColor}">${(adjRoi*100).toFixed(2)}%</span></div>
@@ -6254,7 +6254,7 @@ function fdPLSummaryHTML(p, c) {
 function fdScenResultHTML(c, scen) {
   const s = computeScenario(c, scen);
   if (!s.equity) return `<div class="text-[10px] text-slate-600 text-center py-4">Enter equity to see returns</div>`;
-  const mc = s.moic >= 1 ? 'text-violet-400' : 'text-red-400';
+  const mc = s.moic >= 1 ? 'text-red-400' : 'text-red-400';
   const wfNote = c.net_profit <= s.hurdle_amount ? '(all profit ≤ hurdle, 100% to investor)' : '';
   let html = `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Hurdle amount (${(s.hurdle_rate*100).toFixed(0)}%)</span><span class="text-[10px] text-white">${fmtDollar(s.hurdle_amount)}</span></div>
@@ -6273,7 +6273,7 @@ function fdScenResultHTML(c, scen) {
       const dist = sumPct > 0 ? s.investor_dist * (inv.pct / sumPct) : 0;
       const total_return = equity_amount + dist;
       const moic = equity_amount > 0 ? total_return / equity_amount : 0;
-      const invMc = moic >= 1 ? 'text-violet-400' : 'text-red-400';
+      const invMc = moic >= 1 ? 'text-red-400' : 'text-red-400';
       return `<tr class="border-b border-white/5">
         <td class="py-1 pr-2 text-[10px] text-slate-300 truncate max-w-[80px]">${inv.name || '—'}</td>
         <td class="py-1 px-1 text-[10px] text-slate-400 text-right">${(inv.pct || 0).toFixed(1)}%</td>
@@ -6553,7 +6553,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
       </div>
       <div class="flex items-center gap-2">
         ${actionBtns}
-        <button onclick="fdToggleSens()" class="text-[10px] text-violet-400 hover:text-violet-300 border border-violet-500/30 rounded px-2 py-0.5 transition-colors">▲ Open Sliders</button>
+        <button onclick="fdToggleSens()" class="text-[10px] text-red-400 hover:text-red-300 border border-red-500/30 rounded px-2 py-0.5 transition-colors">▲ Open Sliders</button>
       </div>
     </div>`;
   }
@@ -6575,7 +6575,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
         </div>
         <input id="fd-sens-tp-slider" type="range" min="70" max="130" step="1" value="${Math.round(ticketPriceMult * 100)}"
           oninput="fdSensApply('ticketPriceMult', this.value/100)"
-          class="w-full accent-violet-500 cursor-pointer" style="height:4px">
+          class="w-full accent-red-500 cursor-pointer" style="height:4px">
         <div class="text-[9px] text-slate-600 mt-1.5 text-center">±30% range</div>
       </div>
       <div>
@@ -6584,7 +6584,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
         </div>
         <input id="fd-sens-mg-slider" type="range" min="50" max="150" step="1" value="${Math.round(mgMult * 100)}"
           oninput="fdSensApply('mgMult', this.value/100)"
-          class="w-full accent-violet-500 cursor-pointer" style="height:4px">
+          class="w-full accent-red-500 cursor-pointer" style="height:4px">
         <div class="text-[9px] text-slate-600 mt-1.5 text-center">±50% range</div>
       </div>
       <div>
@@ -6595,7 +6595,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
             <label class="flex items-center gap-1 cursor-pointer">
               <input type="checkbox" ${fillRateEnabled ? 'checked' : ''}
                 onchange="fdSensApply('fillEnabled', this.checked)"
-                class="w-3 h-3 accent-violet-500">
+                class="w-3 h-3 accent-red-500">
               <span class="text-[9px] text-slate-500">Enable</span>
             </label>
           </span>
@@ -6603,7 +6603,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
         <input id="fd-sens-fr-slider" type="range" min="0" max="100" step="1" value="${fillRatePct}"
           oninput="fdSensApply('fillRatePct', this.value)"
           ${fillRateEnabled ? '' : 'disabled'}
-          class="w-full cursor-pointer" style="height:4px;accent-color:${fillRateEnabled ? '#8b5cf6' : '#475569'}">
+          class="w-full cursor-pointer" style="height:4px;accent-color:${fillRateEnabled ? '#ef4444' : '#475569'}">
         <div id="fd-sens-fr-hint" class="text-[9px] text-slate-600 mt-1.5 text-center">${fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates'}</div>
       </div>
     </div>
@@ -6634,7 +6634,7 @@ function fdUpdateSens() {
     const frDisp = g('fd-sens-fr-display');
     if (frDisp) frDisp.innerHTML = fillRateEnabled ? '<span class="text-cyan-400">' + fillRatePct + '%</span>' : '<span class="text-slate-600">Off</span>';
     const frSlider = g('fd-sens-fr-slider');
-    if (frSlider) { frSlider.disabled = !fillRateEnabled; frSlider.style.accentColor = fillRateEnabled ? '#8b5cf6' : '#475569'; frSlider.value = fillRatePct; }
+    if (frSlider) { frSlider.disabled = !fillRateEnabled; frSlider.style.accentColor = fillRateEnabled ? '#ef4444' : '#475569'; frSlider.value = fillRatePct; }
     const frHint = g('fd-sens-fr-hint');
     if (frHint) frHint.textContent = fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates';
     const badgeEl = g('fd-sens-badge');
@@ -6746,11 +6746,11 @@ function fdRenderLive(p) {
     return `
     <div class="glass rounded-xl p-4 flex-1 min-w-0">
       <div class="flex items-center justify-between mb-3">
-        <input type="text" class="bg-transparent border-b border-white/10 text-[11px] font-semibold text-violet-300 uppercase tracking-wider w-28 focus:outline-none focus:border-violet-500/50 pb-0.5" value="${(scen.label||'').replace(/"/g,'&quot;')}" oninput="fdPatchScenLabel('${scen.id}',this.value)">
+        <input type="text" class="bg-transparent border-b border-white/10 text-[11px] font-semibold text-red-300 uppercase tracking-wider w-28 focus:outline-none focus:border-red-500/50 pb-0.5" value="${(scen.label||'').replace(/"/g,'&quot;')}" oninput="fdPatchScenLabel('${scen.id}',this.value)">
         <div class="flex items-center gap-2">
           <label class="flex items-center gap-1 cursor-pointer" title="Factor this scenario's investor obligations into the promoter ROI">
-            <input type="checkbox" ${scen.use_for_roi ? 'checked' : ''} onchange="fdSetRoiScen('${scen.id}')" class="w-3 h-3 accent-violet-500">
-            <span class="text-[9px] ${scen.use_for_roi ? 'text-violet-400' : 'text-slate-500'}">Use for ROI</span>
+            <input type="checkbox" ${scen.use_for_roi ? 'checked' : ''} onchange="fdSetRoiScen('${scen.id}')" class="w-3 h-3 accent-red-500">
+            <span class="text-[9px] ${scen.use_for_roi ? 'text-red-400' : 'text-slate-500'}">Use for ROI</span>
           </label>
           ${i >= 2 ? `<button onclick="fdRemoveScenario('${scen.id}')" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>` : '<div class="w-5"></div>'}
         </div>
@@ -6765,7 +6765,7 @@ function fdRenderLive(p) {
       <div class="mt-3 pt-3 border-t border-white/5">
         <div class="flex items-center justify-between mb-2">
           <span class="text-[9px] text-slate-500 tracking-wider">─── Investors ─────</span>
-          <button onclick="fdAddInvestorToScen('${scen.id}')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ Add Investor</button>
+          <button onclick="fdAddInvestorToScen('${scen.id}')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">+ Add Investor</button>
         </div>
         <div id="fd-scen-${scen.id}-inv-table">${fdScenInvTableHTML(scen)}</div>
       </div>
@@ -6778,11 +6778,11 @@ function fdRenderLive(p) {
     <div class="flex items-start justify-between gap-4">
       <div class="flex-1 min-w-0">
         <div class="relative mb-2">
-          <input type="text" id="fd-artist-input" class="w-full bg-transparent border-b border-white/10 text-xl font-bold text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 pb-1" placeholder="Search artist name…" value="${(p.artist||'').replace(/"/g,'&quot;')}" oninput="fdArtistSearch(this.value)" onblur="setTimeout(()=>{const d=document.getElementById('fd-artist-dropdown');if(d)d.classList.add('hidden');},150)" autocomplete="off">
+          <input type="text" id="fd-artist-input" class="w-full bg-transparent border-b border-white/10 text-xl font-bold text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 pb-1" placeholder="Search artist name…" value="${(p.artist||'').replace(/"/g,'&quot;')}" oninput="fdArtistSearch(this.value)" onblur="setTimeout(()=>{const d=document.getElementById('fd-artist-dropdown');if(d)d.classList.add('hidden');},150)" autocomplete="off">
           <div id="fd-artist-dropdown" class="hidden fixed bg-slate-900 border border-white/10 rounded-lg shadow-2xl z-[9999] max-h-52 overflow-y-auto"></div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <select class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50" onchange="fdPatchVenueType(this.value)">
+          <select class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-red-500/50" onchange="fdPatchVenueType(this.value)">
             <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (seat preset)</option>
             <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (seat preset)</option>
             <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (seat preset)</option>
@@ -6793,7 +6793,7 @@ function fdRenderLive(p) {
         </div>
       </div>
       <div class="flex gap-2 flex-shrink-0">
-        <button onclick="fdSaveProfile()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">${isNew ? 'Save Profile' : 'Save Changes'}</button>
+        <button onclick="fdSaveProfile()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">${isNew ? 'Save Profile' : 'Save Changes'}</button>
         ${!isNew ? `<button onclick="fdDeleteProfile('${p.id}')" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-3 py-2 rounded-lg transition-colors">Delete</button>` : ''}
         <button onclick="fdExportExcel()" class="flex items-center gap-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 text-xs font-medium px-3 py-2 rounded-lg transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
@@ -6887,7 +6887,7 @@ function fdRenderLive(p) {
       </div>
       <div class="flex items-center justify-between mb-2 mt-4 pt-4 border-t border-white/5">
         <span class="text-[10px] text-slate-500 uppercase tracking-wider">Payment Schedule</span>
-        <button onclick="fdAddMGSchedule()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Payment</button>
+        <button onclick="fdAddMGSchedule()" class="text-xs text-red-400 hover:text-red-300 transition-colors">+ Add Payment</button>
       </div>
       <table class="w-full">
         <thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider border-b border-white/5">
@@ -6902,7 +6902,7 @@ function fdRenderLive(p) {
     <div class="glass rounded-xl p-4">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-xs font-semibold text-white uppercase tracking-wider">2 — Tour Cities &amp; Venues</h3>
-        <button onclick="fdAddCity()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add City</button>
+        <button onclick="fdAddCity()" class="text-xs text-red-400 hover:text-red-300 transition-colors">+ Add City</button>
       </div>
       <div class="text-[9px] text-slate-500 mb-3">Type a city name to search venues from 100 major markets. Selecting a venue auto-fills capacity &amp; estimated costs.</div>
       <div id="fd-tour-cities-list" class="space-y-4">
@@ -6984,7 +6984,7 @@ function fdRenderLive(p) {
                   '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Seat Categories</span>' +
                   '<div class="flex items-center gap-2">' +
                     '<button onclick="fdSuggestCityPrices(\'' + tc.id + '\')" class="text-[10px] text-amber-400 hover:text-amber-300 transition-colors">\uD83D\uDCA1 Suggest</button>' +
-                    '<button onclick="fdAddCityCategory(\'' + tc.id + '\')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ Category</button>' +
+                    '<button onclick="fdAddCityCategory(\'' + tc.id + '\')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">+ Category</button>' +
                   '</div>' +
                 '</div>' +
                 '<table class="w-full">' +
@@ -7025,7 +7025,7 @@ function fdRenderLive(p) {
                     '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Capacity Fill Rate</span>' +
                     '<span id="fd-city-fillrate-pct-' + tc.id + '" class="text-[11px] font-semibold ' + col + '">' + pct + '% Sell-Through</span>' +
                   '</div>' +
-                  '<input type="range" min="40" max="100" step="5" value="' + pct + '" class="w-full h-1.5 accent-violet-500 cursor-pointer" ' +
+                  '<input type="range" min="40" max="100" step="5" value="' + pct + '" class="w-full h-1.5 accent-red-500 cursor-pointer" ' +
                     'oninput="fdPatchCity(\'' + tc.id + '\',\'fill_rate\',this.value/100);\n' +
                       'var pct=Math.round(this.value),el=document.getElementById(\'fd-city-fillrate-pct-' + tc.id + '\');\n' +
                       'if(el){el.textContent=pct+\'% Sell-Through\';el.className=\'text-[11px] font-semibold \'+(pct<80?\'text-amber-400\':pct<100?\'text-cyan-300\':\'text-emerald-400\');}\n' +
@@ -7091,7 +7091,7 @@ function fdRenderLive(p) {
     <div class="glass rounded-xl p-4">
       <div class="flex items-center justify-between mb-2">
         <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Co-Headliner &amp; Support Acts</h3>
-        <button onclick="fdAddSupportAct()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Act</button>
+        <button onclick="fdAddSupportAct()" class="text-xs text-red-400 hover:text-red-300 transition-colors">+ Add Act</button>
       </div>
       <div class="text-[9px] text-slate-500 mb-3">Each act's MG is added to total deal costs. Separate from the headline artist MG above.</div>
       <div id="fd-support-acts-section">${fdSupportActsHTML(p.support_acts||[])}</div>
@@ -7139,7 +7139,7 @@ function fdRenderLive(p) {
     <div class="glass rounded-xl p-4">
       <div class="flex items-center justify-between mb-2">
         <h3 class="text-xs font-semibold text-white uppercase tracking-wider">6 — Investor Scenarios</h3>
-        <button onclick="fdAddScenario()" class="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add Scenario</button>
+        <button onclick="fdAddScenario()" class="text-xs text-red-400 hover:text-red-300 transition-colors">+ Add Scenario</button>
       </div>
       <div class="text-[9px] text-slate-500 mb-3 leading-relaxed">Waterfall: ① Return of capital → ② Preferred return (100% investor up to hurdle) → ③ Above hurdle: investor % / (100% − investor %) BluFin</div>
       <div class="flex gap-3 flex-wrap">${scenCards}</div>
@@ -7236,11 +7236,11 @@ function fdFestivalLineupHTML(p) {
     tableHTML +
     '<div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/5">' +
       '<div class="relative flex-1">' +
-        '<input type="text" id="fd-festival-search" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50" placeholder="Search artists..." oninput="fdFestivalSearch()" autocomplete="off">' +
+        '<input type="text" id="fd-festival-search" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50" placeholder="Search artists..." oninput="fdFestivalSearch()" autocomplete="off">' +
         '<div id="fd-festival-dropdown" class="hidden fixed bg-slate-900 border border-white/10 rounded-lg shadow-xl z-[9999] max-h-48 overflow-y-auto"></div>' +
       '</div>' +
       '<select id="fd-festival-role" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none">' + roleAddOpts + '</select>' +
-      '<button onclick="fdAddFestivalArtist()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">+ Add</button>' +
+      '<button onclick="fdAddFestivalArtist()" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">+ Add</button>' +
     '</div>' +
   '</div>';
 }
@@ -7470,7 +7470,7 @@ function fdCitySuggest(tcId, query) {
   const results = fdGetVenueSuggestions(query);
   _fdVenueCache[tcId] = results;
   if (!results.length || !query.trim()) { box.classList.add('hidden'); return; }
-  const typeColor = { stadium:'text-violet-300', arena:'text-cyan-300', theater:'text-amber-300', club:'text-slate-300' };
+  const typeColor = { stadium:'text-red-300', arena:'text-cyan-300', theater:'text-amber-300', club:'text-slate-300' };
   box.innerHTML = results.map((r, idx) =>
     '<button type="button" onmousedown="fdSelectCityVenue(\'' + tcId + '\',' + idx + ')" class="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0">' +
       '<div class="text-[11px] font-medium text-white truncate">' + r.venue_name + '</div>' +
@@ -7921,7 +7921,7 @@ function rpDealCard(x) {
   const ds = p.deal_stage ? DEAL_STAGES.find(d => d.label === p.deal_stage) : null;
   const stageTxt = ds ? ds.label : (p.deal_stage || '\u2014');
   const stageCls = ds ? ds.active : 'text-slate-600 border-white/8';
-  return `<div class="bg-white/3 hover:bg-white/6 border border-white/8 hover:border-violet-500/30 rounded-lg p-2.5 transition-all">
+  return `<div class="bg-white/3 hover:bg-white/6 border border-white/8 hover:border-red-500/30 rounded-lg p-2.5 transition-all">
     <div onclick="rpOpenDeal('${p.id}')" class="cursor-pointer">
       <div class="flex items-start justify-between gap-1 mb-1">
         <div class="text-xs font-semibold text-white truncate leading-tight">${p.artist || 'Unnamed'}</div>
@@ -7955,7 +7955,7 @@ function rpPipelineBoard(computed) {
     return `<div class="flex-1 min-w-[150px]"><div class="mb-2.5"><div class="flex items-center justify-between mb-1"><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full border ${ds.active}">${ds.label}</span><span class="text-[9px] text-slate-600">${deals.length||''}</span></div>${stageMG>0?`<div class="text-[9px] text-slate-600">${fmtDollar(stageMG)}</div>`:''}</div><div class="space-y-2">${deals.length?deals.map(x=>rpDealCard(x)).join(''):`<div class="border border-dashed border-white/6 rounded-lg py-5 text-center text-[9px] text-slate-700">\u2014</div>`}</div></div>`;
   }).join('<div class="w-px bg-white/5 flex-shrink-0"></div>');
   const unassignedHTML = unassigned.length ? `<div class="mt-5 pt-4 border-t border-white/5"><div class="text-[9px] text-slate-600 uppercase tracking-wider mb-2">No Stage Set (${unassigned.length})</div><div class="flex flex-wrap gap-2">${unassigned.map(x=>rpDealCard(x)).join('')}</div></div>` : '';
-  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Deal Pipeline</h3><button onclick="showPage('finbuilder')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors">+ New Model \u2192</button></div><div class="flex gap-3 overflow-x-auto pb-2">${colsHTML}</div>${unassignedHTML}</div>`;
+  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Deal Pipeline</h3><button onclick="showPage('finbuilder')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">+ New Model \u2192</button></div><div class="flex gap-3 overflow-x-auto pb-2">${colsHTML}</div>${unassignedHTML}</div>`;
 }
 function rpPLComparison(computed) {
   if (!computed.length) return '';
@@ -8021,10 +8021,10 @@ function rpCommitmentExposure(computed) {
     return { ds, deals, mg };
   }).filter(x=>x.deals.length>0);
   if (!stageData.length) return '';
-  const stageColorMap = { 'Interest':'#94a3b8','Offer Sent':'#38bdf8','Binder Sent':'#60a5fa','Offer Accepted':'#a78bfa','Show in Pre-production':'#fbbf24','Tickets Live':'#22d3ee','Completed':'#34d399' };
+  const stageColorMap = { 'Interest':'#94a3b8','Offer Sent':'#38bdf8','Binder Sent':'#60a5fa','Offer Accepted':'#ef4444','Show in Pre-production':'#fbbf24','Tickets Live':'#22d3ee','Completed':'#34d399' };
   const rows = stageData.map(({ds,deals,mg}) => {
     const pct = totalMG>0?mg/totalMG:0;
-    const color = stageColorMap[ds.label]||'#a78bfa';
+    const color = stageColorMap[ds.label]||'#ef4444';
     return `<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0"><span class="text-[9px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 w-40 text-center ${ds.active}">${ds.label}</span><div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${(pct*100).toFixed(1)}%;background:${color};opacity:0.6"></div></div><span class="text-[9px] text-slate-500 w-8 text-center flex-shrink-0">${deals.length}</span><span class="text-[10px] font-semibold text-red-400 w-24 text-right flex-shrink-0">${fmtDollar(mg)}</span><span class="text-[9px] text-slate-600 w-10 text-right flex-shrink-0">${(pct*100).toFixed(0)}%</span></div>`;
   }).join('');
   return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Commitment Exposure by Stage</h3><div class="text-[10px] text-slate-400">Total MG on the table: <span class="text-red-400 font-semibold">${fmtDollar(totalMG)}</span></div></div><div class="flex text-[9px] text-slate-600 uppercase tracking-wider pb-1.5 border-b border-white/5 mb-1"><span class="w-40 flex-shrink-0">Stage</span><span class="flex-1 pl-3">Share of MG</span><span class="w-8 text-center flex-shrink-0">Deals</span><span class="w-24 text-right flex-shrink-0">MG Amount</span><span class="w-10 text-right flex-shrink-0">%</span></div>${rows}</div>`;
@@ -8059,18 +8059,18 @@ function rpCompetitorBoard() {
   return `<div class="glass rounded-xl p-5 mt-4">
     <div class="flex items-center justify-between mb-4">
       <h3 class="text-xs font-semibold text-white uppercase tracking-wider">Competitor Intel</h3>
-      <button onclick="document.getElementById('cs-form').classList.toggle('hidden')" class="text-[10px] text-violet-400 hover:text-violet-300 transition-colors border border-violet-500/20 px-2.5 py-1 rounded-lg">+ Add Show</button>
+      <button onclick="document.getElementById('cs-form').classList.toggle('hidden')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors border border-red-500/20 px-2.5 py-1 rounded-lg">+ Add Show</button>
     </div>
     ${tableHTML}
     <div id="cs-form" class="hidden border-t border-white/5 pt-3">
       <div class="grid grid-cols-5 gap-2 mb-2">
-        <input id="cs-artist" type="text" placeholder="Artist *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
-        <input id="cs-city" type="text" placeholder="City *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
-        <input id="cs-venue" type="text" placeholder="Venue" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
-        <input id="cs-date" type="date" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-violet-500/50 transition-colors">
-        <button onclick="csAdd()" class="bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium rounded-lg px-3 py-2 transition-colors">Add</button>
+        <input id="cs-artist" type="text" placeholder="Artist *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 transition-colors">
+        <input id="cs-city" type="text" placeholder="City *" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 transition-colors">
+        <input id="cs-venue" type="text" placeholder="Venue" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 transition-colors">
+        <input id="cs-date" type="date" class="bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-red-500/50 transition-colors">
+        <button onclick="csAdd()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg px-3 py-2 transition-colors">Add</button>
       </div>
-      <input id="cs-notes" type="text" placeholder="Notes\u2026" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors">
+      <input id="cs-notes" type="text" placeholder="Notes\u2026" class="w-full bg-white/5 border border-white/10 rounded-lg px-2.5 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 transition-colors">
     </div>
   </div>`;
 }
@@ -8080,7 +8080,7 @@ function renderReports() {
   if (!el) return;
   const profiles = fdState.profiles || [];
   const profilesHTML = !profiles.length
-    ? `<div class="flex flex-col items-center justify-center py-24 gap-4"><div class="w-14 h-14 rounded-2xl bg-violet-500/10 flex items-center justify-center"><svg class="w-7 h-7 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="text-center"><div class="text-white font-semibold text-sm mb-1">No models yet</div><div class="text-slate-500 text-xs">Create a financial model to start tracking your deal pipeline.</div></div><button onclick="showPage('finbuilder')" class="mt-2 bg-violet-600 hover:bg-violet-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">Open Financial Model Builder \u2192</button></div>`
+    ? `<div class="flex flex-col items-center justify-center py-24 gap-4"><div class="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center"><svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="text-center"><div class="text-white font-semibold text-sm mb-1">No models yet</div><div class="text-slate-500 text-xs">Create a financial model to start tracking your deal pipeline.</div></div><button onclick="showPage('finbuilder')" class="mt-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">Open Financial Model Builder \u2192</button></div>`
     : (() => {
         const computed = profiles.map(p => ({ p, c: computeProfile(p) }));
         return [rpKPIBar(computed),rpPipelineBoard(computed),rpPLComparison(computed),rpPaymentCalendar(computed),rpCommitmentExposure(computed)].join('');
@@ -8225,14 +8225,14 @@ function renderSettingsPage() {
     <div class="glass rounded-xl p-5 max-w-2xl space-y-5">
       <div>
         <h2 class="text-sm font-semibold text-white mb-1">Account</h2>
-        <p class="text-xs text-slate-400">Signed in as <span class="text-white font-medium">${currentUser.username}</span> &middot; <span class="text-violet-400">${currentUser.role}</span></p>
+        <p class="text-xs text-slate-400">Signed in as <span class="text-white font-medium">${currentUser.username}</span> &middot; <span class="text-red-400">${currentUser.role}</span></p>
       </div>
       <div class="border-t border-white/5 pt-4 space-y-3">
         <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Change Username</h3>
         <div class="flex items-center gap-2">
           <input id="acct-new-username" type="text" placeholder="New username" value="${currentUser.username}"
-            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
-          <button onclick="accountChangeUsername()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded-lg transition-colors">Update</button>
+            class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 w-56">
+          <button onclick="accountChangeUsername()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg transition-colors">Update</button>
         </div>
         <div id="acct-username-msg" class="text-xs"></div>
       </div>
@@ -8240,12 +8240,12 @@ function renderSettingsPage() {
         <h3 class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Change Password</h3>
         <div class="space-y-2">
           <input id="acct-cur-password" type="password" placeholder="Current password"
-            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
+            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 w-56">
           <input id="acct-new-password" type="password" placeholder="New password"
-            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
+            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 w-56">
           <input id="acct-confirm-password" type="password" placeholder="Confirm new password"
-            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50 w-56">
-          <button onclick="accountChangePassword()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-2 rounded-lg transition-colors">Update Password</button>
+            class="block bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50 w-56">
+          <button onclick="accountChangePassword()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg transition-colors">Update Password</button>
         </div>
         <div id="acct-password-msg" class="text-xs"></div>
       </div>
@@ -8257,28 +8257,28 @@ function renderSettingsPage() {
     <div class="glass rounded-xl p-5 max-w-2xl" id="settings-users-panel">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-sm font-semibold text-white">User Management</h2>
-        <button onclick="settingsToggleCreateForm()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg transition-colors">+ New User</button>
+        <button onclick="settingsToggleCreateForm()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg transition-colors">+ New User</button>
       </div>
       <div id="settings-create-form" class="hidden mb-4 p-4 bg-white/3 rounded-lg border border-white/8 space-y-3">
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 block">Username</label>
-            <input id="new-user-username" type="text" placeholder="username" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50">
+            <input id="new-user-username" type="text" placeholder="username" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50">
           </div>
           <div>
             <label class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 block">Password</label>
-            <input id="new-user-password" type="password" placeholder="password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50">
+            <input id="new-user-password" type="password" placeholder="password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-red-500/50">
           </div>
         </div>
         <div>
           <label class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 block">Role</label>
-          <select id="new-user-role" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/50">
+          <select id="new-user-role" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500/50">
             <option value="user">User</option>
             <option value="admin">Admin</option>
           </select>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="settingsCreateUser()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg transition-colors">Create User</button>
+          <button onclick="settingsCreateUser()" class="text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg transition-colors">Create User</button>
           <button onclick="settingsToggleCreateForm()" class="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1.5">Cancel</button>
           <span id="settings-create-error" class="text-xs text-red-400"></span>
         </div>
@@ -8305,7 +8305,7 @@ async function settingsLoadUsers() {
       <th class="text-left pb-3">Username</th><th class="text-left pb-3">Role</th><th class="text-right pb-3">Actions</th>
     </tr></thead><tbody>${users.map(u => `
       <tr class="border-b border-white/5">
-        <td class="py-2.5 text-sm text-white">${u.username}${u.username === currentUser.username ? ' <span class="text-[10px] text-violet-400">(you)</span>' : ''}</td>
+        <td class="py-2.5 text-sm text-white">${u.username}${u.username === currentUser.username ? ' <span class="text-[10px] text-red-400">(you)</span>' : ''}</td>
         <td class="py-2.5 text-xs text-slate-400">${u.role}</td>
         <td class="py-2.5 text-right">${u.username !== currentUser.username ? `<button onclick="settingsDeleteUser('${u.username}')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors px-2 py-1 rounded hover:bg-red-500/10">Delete</button>` : ''}</td>
       </tr>`).join('')}</tbody></table>`;
