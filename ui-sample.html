@@ -6611,6 +6611,7 @@ function fdSensAdjustedROI(c, p) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 let fdROIThreshold = 0.05; // default 5%, adjustable per profile
+let fdROI_lastSuggestions = []; // cached so fdROIApply() can look up apply functions
 
 const FD_BENCHMARKS = {
   venue: {
@@ -6792,6 +6793,7 @@ function fdROI_suggestions(c, p) {
     });
     sugs.push({
       id:'venue_downsize', rank:1, cat:'Venue', impact:'HIGH', icon:'🏟',
+      apply: cl => { for (const tc of cl.tour_cities||[]) for (const cat of tc.seat_categories||[]) cat.count=Math.max(1,Math.round((Number(cat.count)||0)*sf)); for (const cat of cl.seat_categories||[]) cat.count=Math.max(1,Math.round((Number(cat.count)||0)*sf)); },
       title:`Right-size venue capacity to ${Math.round(sf*100)}% of current`,
       why:`At ${(fill*100).toFixed(0)}% fill you're well below the ${(vb.avg_fill*100).toFixed(0)}% industry average for ${p.venue_type||'arena'} shows (Pollstar 2024 benchmark). Partially-filled venues signal demand weakness, suppress secondary market pricing, and damage artist brand. Research from Live Nation and AEG consistently shows promoters achieve superior ROI in 88%-filled smaller rooms vs. 65%-filled larger ones — the operational cost savings alone (per-show fixed allocation drops) improve margin by 6–12 points. Right-sizing also concentrates the audience atmosphere, improving fan experience and future demand.`,
       data:`Pollstar benchmark: ${(vb.avg_fill*100).toFixed(0)}% avg fill for ${p.venue_type||'arena'} shows`,
@@ -6811,6 +6813,7 @@ function fdROI_suggestions(c, p) {
     });
     sugs.push({
       id:'fill_rate', rank:2, cat:'Demand', impact: fill<0.72?'HIGH':'MEDIUM', icon:'📣',
+      apply: cl => { for (const tc of cl.tour_cities||[]) tc.fill_rate=Math.min(1,(Number(tc.fill_rate)||1)+lift*0.65); },
       title:`Structured presale + dynamic pricing → ${(fill*100).toFixed(0)}% → ${(targetFill*100).toFixed(0)}% fill`,
       why:`Critical structural insight: Eventbrite Music Edit 2024 found 57% of all tickets are now sold in the final week before the show — the industry has shifted to short-window buying. Average time from purchase to show is down 26% since 2022. This means long on-sale windows matter less; concentrated 4–6 week push before show date matters more. Key levers: (1) Fan club presale 72h before public on-sale — captures super-fans at face value; (2) Platform presale (Spotify Fan First, Amex, Citi) — 15–25% of inventory; (3) TikTok/Instagram countdown campaigns in the 4-week window; (4) Hold 10–15% of floor/premium inventory for day-of dynamic pricing at 1.5–2× face value on near-sellout shows. Luminate benchmarks genre presale lift at +${(lift*100).toFixed(0)}% for ${gd?.genre||'pop'}. Dynamic pricing adds +${(dynLift*100).toFixed(0)}% avg revenue (Ticketmaster data; Live Nation: 8% conversion lift from all-in pricing, 9,000 shows, 2024).${sentiment.label==='positive' ? ' Strong press coverage supports aggressive on-sale push.' : sentiment.label==='negative' ? ' Note: negative press requires PR groundwork before on-sale.' : ''}`,
       data:`57% of tickets sold in final week (Eventbrite Music Edit 2024) | Presale lift (${gd?.genre||'pop'}): +${(lift*100).toFixed(0)}% fill (Luminate) | Dynamic pricing: +${(dynLift*100).toFixed(0)}% revenue (Ticketmaster)`,
@@ -6832,6 +6835,7 @@ function fdROI_suggestions(c, p) {
     });
     sugs.push({
       id:'vip_tier', rank:3, cat:'Pricing', impact:'HIGH', icon:'💎',
+      apply: cl => { const vC={name:'VIP / Premium',count:vipCnt,price:vipPrc}; for (const tc of cl.tour_cities||[]) { if(!tc.seat_categories) tc.seat_categories=[]; if(!tc.seat_categories.some(c=>(c.name||'').toLowerCase().includes('vip'))) tc.seat_categories.unshift({...vC}); } if(cl.seat_categories && !cl.seat_categories.some(c=>(c.name||'').toLowerCase().includes('vip'))) cl.seat_categories.unshift({...vC}); },
       title:`Add VIP/Premium tier — ${vipCnt.toLocaleString()} seats × $${vipPrc.toLocaleString()}`,
       why:`No premium tier is modeled. VIP packages (${(vipConv*100).toFixed(0)}–12% of capacity) are consistently the highest-margin revenue line in live events — near-zero incremental cost of goods. Standard packages include: meet & greet, pit/floor access, dedicated entry, merch bundle, and early access. At $${vipPrc.toLocaleString()} (3.5× avg ticket × ${wtp.toFixed(2)} WTP index for ${geo?.city||'this market'}), conversion rate of ${(vipConv*100).toFixed(0)}% is conservative for ${gd?.genre||'pop'}.${gd?.genre==='k-pop' ? ' K-pop fan demographics show 18% VIP conversion rates — among the highest of any genre globally.' : gd?.genre==='country' ? ' Country fans show strong VIP/fan club package uptake (10% conversion norm).' : ''} Total incremental revenue at these assumptions: $${(vipCnt * vipPrc * c.n).toLocaleString()}.`,
       data:`VIP conversion benchmark (${gd?.genre||'pop'}): ${(vipConv*100).toFixed(0)}% of capacity (Pollstar/Luminate)`,
@@ -6851,6 +6855,7 @@ function fdROI_suggestions(c, p) {
     });
     sugs.push({
       id:'ticket_price', rank:4, cat:'Pricing', impact:'MEDIUM', icon:'🎟',
+      apply: cl => { for (const tc of cl.tour_cities||[]) for (const cat of tc.seat_categories||[]) cat.price=Math.round((Number(cat.price)||0)*(1+pctUp)); for (const cat of cl.seat_categories||[]) cat.price=Math.round((Number(cat.price)||0)*(1+pctUp)); },
       title:`Raise ticket prices ~13% ($${avgTP.toFixed(0)} → $${Math.round(avgTP*1.13).toLocaleString()})`,
       why:`Average ticket price of $${avgTP.toFixed(0)} sits ${Math.round((1-avgTP/benchTP)*100)}% below the ${p.venue_type||'arena'} benchmark of $${Math.round(benchTP)} for ${geo?.city||'this market'} (Pollstar regional data, WTP index: ${wtp.toFixed(2)}). Price elasticity research on concert tickets shows -0.3 to -0.5 elasticity in the $60–$150 range — a 13% price increase typically results in <4% demand reduction, yielding a net revenue gain of 9–12%. The strongest validation signal is secondary market pricing: if StubHub/Vivid Seats show 30%+ above face value, GA is definitively underpriced.`,
       data:`${p.venue_type||'arena'} avg ticket (${geo?.city||'this market'}): $${Math.round(benchTP)} | Price elasticity: -0.3 to -0.5 (academic consensus)`,
@@ -6869,6 +6874,7 @@ function fdROI_suggestions(c, p) {
     const p5 = proj(cl=>{ if(!cl.additional_revenue) cl.additional_revenue={}; cl.additional_revenue.fnb_per_head=sugFnb; if((Number(cl.additional_revenue.fnb_buyer_pct)||0)<0.40) cl.additional_revenue.fnb_buyer_pct=sugBuyPct; });
     sugs.push({
       id:'fnb', rank:5, cat:'Revenue', impact:'MEDIUM', icon:'🍺',
+      apply: cl => { if(!cl.additional_revenue) cl.additional_revenue={}; cl.additional_revenue.fnb_per_head=sugFnb; if((Number(cl.additional_revenue.fnb_buyer_pct)||0)<0.40) cl.additional_revenue.fnb_buyer_pct=sugBuyPct; },
       title:`Optimize F&B — target $${sugFnb}/head (currently $${effFnbPH.toFixed(0)}/head effective)`,
       why:`F&B is typically a 50–70% gross margin line in large venues. ⚠️ Critical: In Live Nation/AEG-operated venues, the promoter typically receives little or no F&B revenue — the venue operator captures it. Verify your venue agreement. If you do have F&B participation, your effective yield ($${effFnbPH.toFixed(0)}/head) is ${Math.round((1-effFnbPH/benchFnb)*100)}% below the $${Math.round(benchFnb)} benchmark${geo?.city ? ` for ${geo.city}` : ''} (Live Nation 2023 annual report: sheds averaged $40+/fan; arena $20–$35/fan). Optimization levers: (1) Cashless payment systems reduce transaction friction, increasing spend ~30% per venue operator data; (2) Premium bar packages with pre-loaded credits at checkout; (3) Strategic concession placement per foot traffic; (4) Show-specific themed items drive incremental intent.`,
       data:`F&B benchmark: $${Math.round(benchFnb)}/head for ${p.venue_type||'arena'} (Live Nation 2023 filings) | ⚠️ Confirm promoter receives F&B participation in venue contract`,
@@ -6889,6 +6895,7 @@ function fdROI_suggestions(c, p) {
       : 'Merch activation: (1) 3–5 exclusive show-specific items create urgency; (2) Artist presence near table lifts revenue 15–30%; (3) Pre-sale bundled ticket+merch packages pre-convert revenue; (4) Card-only payment increases avg transaction; (5) Multiple price points ($10 → $65 → $200 signed items).';
     sugs.push({
       id:'merch', rank:6, cat:'Revenue', impact: curMerchPH<benchMerchPH*0.35?'HIGH':'MEDIUM', icon:'👕',
+      apply: cl => { if(!cl.additional_revenue) cl.additional_revenue={}; cl.additional_revenue.merch_per_show=sugMPS; },
       title:`Increase merch yield — $${curMerchPH.toFixed(0)}/head → $${Math.round(benchMerchPH*0.80)}/head`,
       why:`Merch at $${curMerchPH.toFixed(0)}/head is ${Math.round((1-curMerchPH/benchMerchPH)*100)}% below benchmark ($${Math.round(benchMerchPH)}/head for ${gd?.genre||p.venue_type}${geo?.city ? `, ${geo.city} merch index: ${merchIdx.toFixed(2)}×` : ''}). ${genreNote} Promoter's contractual merch split (${(Number(ar.merch_split_pct||0.20)*100).toFixed(0)}% of gross) means this is direct bottom-line improvement.`,
       data:`Merch benchmark: $${Math.round(benchMerchPH)}/head for ${gd?.genre||p.venue_type} (Luminate Music 360 2024)`,
@@ -6905,6 +6912,7 @@ function fdROI_suggestions(c, p) {
     const p7 = proj(cl=>{ if(!cl.additional_revenue) cl.additional_revenue={}; cl.additional_revenue.sponsorship_per_show=sugSPS; });
     sugs.push({
       id:'sponsorship', rank:7, cat:'Revenue', impact:'MEDIUM', icon:'🤝',
+      apply: cl => { if(!cl.additional_revenue) cl.additional_revenue={}; cl.additional_revenue.sponsorship_per_show=sugSPS; },
       title:`Activate tour sponsorship — target $${sugSPS.toLocaleString()}/show ($${(sugSPS*c.n).toLocaleString()} total)`,
       why:`Sponsorship revenue is largely uncaptured ($${(sponsorPS*c.n).toLocaleString()} vs $${Math.round(benchSponsor).toLocaleString()} benchmark). ${p.venue_type==='stadium' ? 'Stadium tours command premium brand integration: stage naming rights, drink category exclusivity, activation zones, and digital integration across show screens.' : 'Arena/theater tours attract category-exclusive deals in beverage, automotive, tech, and lifestyle — typically 5–8% of gross.'} ${geo ? `${geo.city} has a ${(geo.sponsor*100).toFixed(0)}% relative sponsorship market (vs North American baseline).` : ''} Key categories by deal size: (1) Beverage/alcohol exclusivity; (2) Streaming platform integration; (3) Automotive; (4) Financial services/credit card presale tie-ins; (5) Lifestyle/fashion.`,
       data:`Sponsorship benchmark: ${(vb.sponsor_pct*100).toFixed(0)}% of gross revenue for ${p.venue_type||'arena'} (Pollstar)${geo ? ` | ${geo.city} sponsor index: ${sponsIdx.toFixed(2)}×` : ''}`,
@@ -6920,6 +6928,7 @@ function fdROI_suggestions(c, p) {
     const p8 = proj(cl=>{ for (const a of cl.support_acts||[]) a.mg=Math.round((Number(a.mg)||0)*0.80); });
     sugs.push({
       id:'support_act', rank:8, cat:'Costs', impact:'LOW', icon:'🎸',
+      apply: cl => { for (const a of cl.support_acts||[]) a.mg=Math.round((Number(a.mg)||0)*0.80); },
       title:`Reduce support act fees 20% — save $${(c.support_act_total-reduced).toLocaleString()}`,
       why:`Support act MGs total $${c.support_act_total.toLocaleString()} (${(c.support_act_total/c.artist_mg_cost*100).toFixed(0)}% of headline MG), above the 5–12% industry norm (Pollstar deal benchmarks). Support acts routinely accept lower flat fees in exchange for high-profile tour exposure, especially when the headliner's streaming numbers drive discovery value. Alternative structure: propose backend participation (small % of box office above breakeven) instead of a flat MG — this aligns incentives and reduces promoter upfront exposure.`,
       data:`Support act MG norm: 5–12% of headline MG (Pollstar)`,
@@ -6935,6 +6944,7 @@ function fdROI_suggestions(c, p) {
     const p9 = proj(cl=>{ if(cl.costs?.co_promoter) cl.costs.co_promoter.split_pct=targetPct; });
     sugs.push({
       id:'co_promoter', rank:9, cat:'Structure', impact:'MEDIUM', icon:'📋',
+      apply: cl => { if(cl.costs?.co_promoter) cl.costs.co_promoter.split_pct=targetPct; },
       title:`Renegotiate co-promoter split: ${(c.co_prom_pct*100).toFixed(0)}% → 22%`,
       why:`Your co-promoter split of ${(c.co_prom_pct*100).toFixed(0)}% exceeds the 15–25% industry range for standard co-pro arrangements. At this margin level, each percentage point recovered is worth ~$${Math.round(Math.abs(c.net_profit)*0.01).toLocaleString()} in net profit. Review the value-add being provided by the co-promoter (local relationships, radio, marketing spend) against the split. If the co-promoter's role can be partially replaced by a venue guarantee + local buy-on, a restructure is warranted.`,
       data:`Co-promoter split norm: 15–25% of net profit (industry standard)`,
@@ -6950,6 +6960,7 @@ function fdROI_suggestions(c, p) {
     const p10 = proj(cl=>{ cl.costs.artist_mg=reducedMG; });
     sugs.push({
       id:'mg_negotiation', rank:10, cat:'MG ⚠️', impact:'HIGH', icon:'⚠️',
+      apply: cl => { if(cl.costs) cl.costs.artist_mg=reducedMG; },
       title:`Renegotiate artist MG 10% reduction ($${(Number(p.costs.artist_mg)||0).toLocaleString()} → $${reducedMG.toLocaleString()})`,
       why:`MG renegotiation is a last resort and should only be pursued after applying all revenue-side levers above. That said, at sub-${(fdROIThreshold*100).toFixed(0)}% ROI, the promoter has legitimate grounds for a restructured offer. Best practice: (1) Bring the full financial model with projections — data changes the conversation; (2) Offer backend upside in exchange for the lower guarantee (e.g., 85/15 split above breakeven — artist still earns well on a sold-out show); (3) Frame as protecting the artist-promoter relationship long-term — a loss-making show damages both parties. Only ~15% of MG renegotiations succeed without compelling market evidence (Pollstar practitioner survey).`,
       data:`MG renegotiation success rate without data case: ~15% (Pollstar practitioner survey)`,
@@ -6959,7 +6970,8 @@ function fdROI_suggestions(c, p) {
     });
   }
 
-  return sugs.filter(s => s.projROI !== undefined && s.projROI !== null);
+  fdROI_lastSuggestions = sugs.filter(s => s.projROI !== undefined && s.projROI !== null);
+  return fdROI_lastSuggestions;
 }
 
 // ── ROI Gauge SVG: shows current → projected vs threshold ────────────────────
@@ -7030,6 +7042,9 @@ function fdROIOverlayHTML(c, p) {
         <div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#ef4444'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
       </div>
       ${s.projROI !== null && s.projROI !== undefined ? `<div style="margin-top:8px;">${fdROIGaugeSVG(s.currentROI, s.projROI, fdROIThreshold)}</div>` : ''}
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;">
+        <button onclick="fdROIApply('${s.id}')" style="background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.30);color:#10b981;font-size:9px;font-weight:700;letter-spacing:0.1em;padding:5px 16px;border-radius:3px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(16,185,129,0.22)'" onmouseout="this.style.background='rgba(16,185,129,0.10)'">→ APPLY TO PROFILE</button>
+      </div>
     </div>`;
   }).join('');
 
@@ -7121,6 +7136,7 @@ function fdROIRefreshSuggestions() {
         ${s.projROI !== null && s.projROI !== undefined ? `<div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">PROJECTED ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.projROI)};font-family:'DM Mono',monospace;">${(s.projROI*100).toFixed(2)}%</div></div><div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#ef4444'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
       </div>
       ${s.projROI !== null && s.projROI !== undefined ? `<div style="margin-top:8px;">${fdROIGaugeSVG(s.currentROI, s.projROI, fdROIThreshold)}</div>` : ''}
+      <div style="margin-top:10px;display:flex;justify-content:flex-end;"><button onclick="fdROIApply('${s.id}')" style="background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.30);color:#10b981;font-size:9px;font-weight:700;letter-spacing:0.1em;padding:5px 16px;border-radius:3px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(16,185,129,0.22)'" onmouseout="this.style.background='rgba(16,185,129,0.10)'">→ APPLY TO PROFILE</button></div>
     </div>`;
   }).join('');
   body.innerHTML = `<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:14px;">${sugs.length} Suggestion${sugs.length!==1?'s':''} — ordered by impact, MG renegotiation always last</div>${sugs.length ? sugCards : '<div style="text-align:center;padding:60px 0;color:#4b5563;font-size:13px;">No actionable suggestions — deal is well-structured.</div>'}<div style="height:40px;"></div>`;
@@ -7131,6 +7147,27 @@ function fdHideROIOptimizer() {
   if (!overlay) return;
   overlay.style.opacity = '0';
   setTimeout(()=>{ overlay.style.display='none'; }, 200);
+}
+
+function fdROIApply(id) {
+  const sug = fdROI_lastSuggestions.find(s => s.id === id);
+  if (!sug || !sug.apply || !fdState.draftProfile) return;
+  try {
+    sug.apply(fdState.draftProfile);
+  } catch(e) { console.warn('fdROIApply error:', e); return; }
+  fdUpdateLive();
+  fdSave();
+  // Re-render overlay with updated numbers
+  const c = computeProfile(fdState.draftProfile);
+  const content = document.getElementById('roi-overlay-content');
+  if (content) content.innerHTML = fdROIOverlayHTML(c, fdState.draftProfile);
+  // Toast notification
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.08em;padding:9px 22px;border-radius:4px;z-index:10001;opacity:0;transition:opacity 0.2s;pointer-events:none;';
+  toast.textContent = '✓ Applied to profile — saved';
+  document.body.appendChild(toast);
+  setTimeout(()=>{ toast.style.opacity='1'; }, 10);
+  setTimeout(()=>{ toast.style.opacity='0'; setTimeout(()=>toast.remove(), 250); }, 2800);
 }
 
 function fdSensComputeProfile(p) {
