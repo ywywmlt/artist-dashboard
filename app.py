@@ -1,12 +1,113 @@
-from flask import Flask, send_file, jsonify, request
+import os
+import json
+import secrets
+from functools import wraps
+from pathlib import Path
+from flask import Flask, send_file, jsonify, request, session
+from werkzeug.security import generate_password_hash, check_password_hash
 import requests as http_requests
 import threading
 from datetime import datetime
 from config import TICKETMASTER_API_KEY
 
+SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
+
 app = Flask(__name__, static_folder="data", static_url_path="/data")
+app.secret_key = SECRET_KEY
 
 TICKETMASTER_BASE = "https://app.ticketmaster.com/discovery/v2/events.json"
+
+# ── Data paths ─────────────────────────────────────────────────────────────────
+DATA_DIR = Path(__file__).parent / "data"
+USERS_FILE = DATA_DIR / "users.json"
+USERS_DATA_DIR = DATA_DIR / "users"
+
+
+def _ensure_dirs():
+    DATA_DIR.mkdir(exist_ok=True)
+    USERS_DATA_DIR.mkdir(exist_ok=True)
+
+
+def _load_users():
+    _ensure_dirs()
+    if not USERS_FILE.exists():
+        return []
+    try:
+        return json.loads(USERS_FILE.read_text())
+    except Exception:
+        return []
+
+
+def _save_users(users):
+    _ensure_dirs()
+    USERS_FILE.write_text(json.dumps(users, indent=2))
+
+
+def _get_user(username):
+    return next((u for u in _load_users() if u["username"] == username), None)
+
+
+def _user_data_path(username):
+    user_dir = USERS_DATA_DIR / username
+    user_dir.mkdir(exist_ok=True)
+    return user_dir / "data.json"
+
+
+def _load_user_data(username):
+    p = _user_data_path(username)
+    if not p.exists():
+        return {"profiles": [], "watchlist": {}, "contacts": {}}
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return {"profiles": [], "watchlist": {}, "contacts": {}}
+
+
+def _save_user_data(username, data):
+    p = _user_data_path(username)
+    p.write_text(json.dumps(data, indent=2))
+
+
+def _seed_admin():
+    users = _load_users()
+    if users:
+        return
+    admin_username = os.getenv("ADMIN_USERNAME", "admin")
+    admin_password = os.getenv("ADMIN_PASSWORD", "changeme123")
+    users = [{
+        "username": admin_username,
+        "password_hash": generate_password_hash(admin_password, method="pbkdf2:sha256"),
+        "role": "admin"
+    }]
+    _save_users(users)
+
+
+# Seed admin on startup
+_seed_admin()
+
+
+# ── Auth decorators ────────────────────────────────────────────────────────────
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "username" not in session:
+            return jsonify({"error": "Authentication required"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if "username" not in session:
+            return jsonify({"error": "Authentication required"}), 401
+        user = _get_user(session["username"])
+        if not user or user.get("role") != "admin":
+            return jsonify({"error": "Admin access required"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
 
 # ── Refresh job state ──────────────────────────────────────────────────────────
 _refresh = {
@@ -98,6 +199,118 @@ def refresh_events():
 @app.route("/api/events/refresh/status")
 def refresh_status():
     return jsonify(_refresh)
+
+
+# ── Auth routes ────────────────────────────────────────────────────────────────
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+    user = _get_user(username)
+    if not user or not check_password_hash(user["password_hash"], password):
+        return jsonify({"error": "Invalid credentials"}), 401
+    session["username"] = username
+    session["role"] = user["role"]
+    return jsonify({"username": username, "role": user["role"]}), 200
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.clear()
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/api/me")
+def api_me():
+    if "username" not in session:
+        return jsonify({"error": "Not authenticated"}), 401
+    return jsonify({"username": session["username"], "role": session["role"]}), 200
+
+
+@app.route("/api/user-data")
+@login_required
+def api_get_user_data():
+    data = _load_user_data(session["username"])
+    return jsonify(data), 200
+
+
+@app.route("/api/user-data", methods=["POST"])
+@login_required
+def api_save_user_data():
+    data = request.get_json(force=True) or {}
+    # Only persist known keys
+    safe = {
+        "profiles": data.get("profiles", []),
+        "watchlist": data.get("watchlist", {}),
+        "contacts": data.get("contacts", {}),
+    }
+    _save_user_data(session["username"], safe)
+    return jsonify({"ok": True}), 200
+
+
+# ── User management routes (admin only) ───────────────────────────────────────
+
+@app.route("/api/users")
+@admin_required
+def api_list_users():
+    users = _load_users()
+    return jsonify([{"username": u["username"], "role": u["role"]} for u in users]), 200
+
+
+@app.route("/api/users", methods=["POST"])
+@admin_required
+def api_create_user():
+    data = request.get_json(force=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    role = data.get("role", "user")
+    if not username or not password:
+        return jsonify({"error": "Username and password required"}), 400
+    if role not in ("admin", "user"):
+        return jsonify({"error": "Role must be 'admin' or 'user'"}), 400
+    users = _load_users()
+    if any(u["username"] == username for u in users):
+        return jsonify({"error": "Username already exists"}), 409
+    users.append({
+        "username": username,
+        "password_hash": generate_password_hash(password, method="pbkdf2:sha256"),
+        "role": role,
+    })
+    _save_users(users)
+    return jsonify({"username": username, "role": role}), 201
+
+
+@app.route("/api/users/<username>", methods=["DELETE"])
+@admin_required
+def api_delete_user(username):
+    if username == session["username"]:
+        return jsonify({"error": "Cannot delete yourself"}), 400
+    users = _load_users()
+    new_users = [u for u in users if u["username"] != username]
+    if len(new_users) == len(users):
+        return jsonify({"error": "User not found"}), 404
+    _save_users(new_users)
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/api/users/<username>/password", methods=["POST"])
+@admin_required
+def api_reset_password(username):
+    data = request.get_json(force=True) or {}
+    password = data.get("password") or ""
+    if not password:
+        return jsonify({"error": "Password required"}), 400
+    users = _load_users()
+    user = next((u for u in users if u["username"] == username), None)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    user["password_hash"] = generate_password_hash(password, method="pbkdf2:sha256")
+    _save_users(users)
+    return jsonify({"ok": True}), 200
 
 
 if __name__ == "__main__":

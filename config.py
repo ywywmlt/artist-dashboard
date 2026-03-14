@@ -19,6 +19,9 @@ SETLISTFM_API_KEY = os.getenv("SETLISTFM_API_KEY", "")
 # Ticketmaster
 TICKETMASTER_API_KEY = os.getenv("TICKETMASTER_API_KEY", "")
 
+# Auth
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+
 # MusicBrainz
 MUSICBRAINZ_APP_NAME = os.getenv("MUSICBRAINZ_APP_NAME", "ArtistDashboard")
 MUSICBRAINZ_APP_VERSION = os.getenv("MUSICBRAINZ_APP_VERSION", "0.1")

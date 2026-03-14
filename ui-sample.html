@@ -127,7 +127,7 @@
           Alerts
           <span class="ml-auto bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded-full" id="alert-count">0</span>
         </a>
-        <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
+        <a href="#" onclick="showPage('settings')" id="nav-settings" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all">
           <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           Settings
         </a>
@@ -135,10 +135,10 @@
     </nav>
     <div class="p-4 border-t border-white/5">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white">G</div>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 flex items-center justify-center text-xs font-bold text-white" id="user-avatar-initial">?</div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium text-white">gatekeep</div>
-          <div class="text-[10px] text-slate-500">Admin</div>
+          <div class="text-sm font-medium text-white" id="user-display-name">—</div>
+          <div class="text-[10px] text-slate-500" id="user-display-role">—</div>
         </div>
         <button onclick="doLogout()" title="Sign out" class="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
@@ -544,6 +544,9 @@
       </div>
     </div>
 
+    <!-- SETTINGS PAGE -->
+    <div id="page-settings" class="page p-6 space-y-6"></div>
+
   </main>
 </div>
 
@@ -661,10 +664,10 @@ function tierBadge(tier) {
 
 // ─── Watchlist ───
 function watchlistLoad() {
-  try { watchlist = JSON.parse(localStorage.getItem('artist-dashboard-watchlist') || '{}'); } catch(e) { watchlist = {}; }
+  // no-op: data loaded by loadUserData() from server
 }
 function watchlistSave() {
-  localStorage.setItem('artist-dashboard-watchlist', JSON.stringify(watchlist));
+  saveUserData();
 }
 const WL_TAGS = [
   { label: 'Target',        base: 'text-sky-400 border-sky-500/40',        active: 'bg-sky-500/20 border-sky-500 text-sky-300' },
@@ -756,10 +759,10 @@ function setWlFilter(tag) {
 
 // ─── Contacts ───
 function contactsLoad() {
-  try { contacts = JSON.parse(localStorage.getItem('artist-dashboard-contacts') || '{}'); } catch(e) { contacts = {}; }
+  // no-op: data loaded by loadUserData() from server
 }
 function contactsSave() {
-  localStorage.setItem('artist-dashboard-contacts', JSON.stringify(contacts));
+  saveUserData();
 }
 function saveContact(sid, field, val) {
   if (!contacts[sid]) contacts[sid] = {};
@@ -922,7 +925,7 @@ function showPage(page) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.getElementById('nav-' + page)?.classList.add('active');
-  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder', reports: 'Reports' };
+  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder', reports: 'Reports', settings: 'Settings' };
   document.getElementById('page-title').textContent = titles[page] || page;
   // Reset scroll position for clean page transitions (FMB scrolls via its own fd-main/fd-sidebar)
   const mainEl = document.querySelector('main');
@@ -932,6 +935,7 @@ function showPage(page) {
   if (page === 'findetail' && !finDetailLoaded) initFinDetail();
   if (page === 'finbuilder' && !finBuilderLoaded) initFinBuilder();
   if (page === 'reports') renderReports();
+  if (page === 'settings') renderSettingsPage();
 }
 
 // ─── Data Loading ───
@@ -3736,10 +3740,9 @@ const TICKETING_CO_PRESETS = {
 };
 
 function fdLoad() {
-  try { fdState.profiles = JSON.parse(localStorage.getItem(FD_KEY) || '[]'); }
-  catch(e) { fdState.profiles = []; }
+  // no-op: profiles loaded from server via loadUserData()
 }
-function fdSave() { localStorage.setItem(FD_KEY, JSON.stringify(fdState.profiles)); }
+function fdSave() { saveUserData(); }
 function fdGenId() { return Date.now() + '_' + Math.random().toString(36).slice(2, 6); }
 
 function fdBackupProfiles() {
@@ -8024,28 +8027,77 @@ function renderReports() {
 }
 
 
-const _U = 'gatekeep', _P = 'admin', _KEY = 'aidash_auth';
+// ─── Auth & User State ───────────────────────────────────────────────────────
+let currentUser = null;
 
-function doLogin() {
-  const u = document.getElementById('login-user').value.trim();
-  const p = document.getElementById('login-pass').value;
-  if (u === _U && p === _P) {
-    sessionStorage.setItem(_KEY, '1');
-    document.getElementById('login-gate').classList.add('hidden');
-    document.getElementById('app-shell').style.removeProperty('display');
-    document.getElementById('login-err').classList.add('hidden');
-  } else {
-    const wrap = document.getElementById('login-form-wrap');
-    document.getElementById('login-err').classList.remove('hidden');
-    document.getElementById('login-pass').value = '';
-    wrap.classList.remove('shake');
-    void wrap.offsetWidth; // force reflow to restart animation
-    wrap.classList.add('shake');
+async function initAuth() {
+  try {
+    const res = await fetch('/api/me');
+    if (res.ok) {
+      currentUser = await res.json();
+      document.getElementById('login-gate').classList.add('hidden');
+      document.getElementById('app-shell').style.removeProperty('display');
+      document.getElementById('user-avatar-initial').textContent = currentUser.username[0].toUpperCase();
+      document.getElementById('user-display-name').textContent = currentUser.username;
+      document.getElementById('user-display-role').textContent = currentUser.role === 'admin' ? 'Admin' : 'User';
+      await loadUserData();
+    } else {
+      document.getElementById('login-gate').classList.remove('hidden');
+      document.getElementById('app-shell').style.setProperty('display', 'none', 'important');
+      setTimeout(() => document.getElementById('login-user').focus(), 50);
+    }
+  } catch(e) {
+    document.getElementById('login-gate').classList.remove('hidden');
+    document.getElementById('app-shell').style.setProperty('display', 'none', 'important');
+    setTimeout(() => document.getElementById('login-user').focus(), 50);
   }
 }
 
-function doLogout() {
-  sessionStorage.removeItem(_KEY);
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  const wrap = document.getElementById('login-form-wrap');
+  const btn = document.querySelector('#login-gate button[onclick="doLogin()"]');
+  errEl.classList.add('hidden');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password})
+    });
+    const data = await res.json();
+    if (res.ok) {
+      currentUser = data;
+      document.getElementById('login-gate').classList.add('hidden');
+      document.getElementById('app-shell').style.removeProperty('display');
+      document.getElementById('user-avatar-initial').textContent = data.username[0].toUpperCase();
+      document.getElementById('user-display-name').textContent = data.username;
+      document.getElementById('user-display-role').textContent = data.role === 'admin' ? 'Admin' : 'User';
+      await loadUserData();
+    } else {
+      errEl.textContent = data.error || 'Invalid credentials';
+      errEl.classList.remove('hidden');
+      document.getElementById('login-pass').value = '';
+      wrap.classList.remove('shake');
+      void wrap.offsetWidth;
+      wrap.classList.add('shake');
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error';
+    errEl.classList.remove('hidden');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+  }
+}
+
+async function doLogout() {
+  await fetch('/api/logout', {method: 'POST'});
+  currentUser = null;
+  fdState.profiles = [];
+  watchlist = {};
+  contacts = {};
   document.getElementById('login-user').value = '';
   document.getElementById('login-pass').value = '';
   document.getElementById('login-err').classList.add('hidden');
@@ -8054,12 +8106,130 @@ function doLogout() {
   setTimeout(() => document.getElementById('login-user').focus(), 50);
 }
 
-// Check session on load
-if (sessionStorage.getItem(_KEY) === '1') {
-  document.getElementById('login-gate').classList.add('hidden');
-  document.getElementById('app-shell').style.removeProperty('display');
-} else {
-  setTimeout(() => document.getElementById('login-user').focus(), 50);
+async function loadUserData() {
+  try {
+    const res = await fetch('/api/user-data');
+    if (!res.ok) return;
+    const data = await res.json();
+    fdState.profiles = data.profiles || [];
+    watchlist = data.watchlist || {};
+    contacts = data.contacts || {};
+    finBuilderLoaded = false; // force re-render on next visit
+  } catch(e) {}
+  // Run dashboard data fetch after user data is loaded
+  initDashboardData();
+}
+
+async function saveUserData() {
+  if (!currentUser) return;
+  try {
+    await fetch('/api/user-data', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({profiles: fdState.profiles, watchlist, contacts})
+    });
+  } catch(e) {}
+}
+
+// ─── Settings Page ───────────────────────────────────────────────────────────
+function renderSettingsPage() {
+  const el = document.getElementById('page-settings');
+  if (!el || !currentUser) return;
+  const isAdmin = currentUser.role === 'admin';
+  el.innerHTML = `
+    <div class="glass rounded-xl p-5 max-w-2xl">
+      <h2 class="text-sm font-semibold text-white mb-1">Account</h2>
+      <p class="text-xs text-slate-400 mb-4">Signed in as <span class="text-white font-medium">${currentUser.username}</span> &middot; <span class="text-violet-400">${currentUser.role}</span></p>
+      <button onclick="doLogout()" class="text-xs bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 px-3 py-1.5 rounded-lg transition-colors">Sign Out</button>
+    </div>
+    ${isAdmin ? `
+    <div class="glass rounded-xl p-5 max-w-2xl" id="settings-users-panel">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-white">User Management</h2>
+        <button onclick="settingsToggleCreateForm()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg transition-colors">+ New User</button>
+      </div>
+      <div id="settings-create-form" class="hidden mb-4 p-4 bg-white/3 rounded-lg border border-white/8 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 block">Username</label>
+            <input id="new-user-username" type="text" placeholder="username" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 block">Password</label>
+            <input id="new-user-password" type="password" placeholder="password" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-violet-500/50">
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] text-slate-400 uppercase tracking-wider mb-1 block">Role</label>
+          <select id="new-user-role" class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500/50">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="settingsCreateUser()" class="text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg transition-colors">Create User</button>
+          <button onclick="settingsToggleCreateForm()" class="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1.5">Cancel</button>
+          <span id="settings-create-error" class="text-xs text-red-400"></span>
+        </div>
+      </div>
+      <div id="settings-user-list"><div class="text-xs text-slate-500 py-4 text-center">Loading users...</div></div>
+    </div>` : ''}
+  `;
+  if (isAdmin) settingsLoadUsers();
+}
+
+function settingsToggleCreateForm() {
+  const f = document.getElementById('settings-create-form');
+  if (f) f.classList.toggle('hidden');
+}
+
+async function settingsLoadUsers() {
+  const el = document.getElementById('settings-user-list');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/users');
+    const users = await res.json();
+    if (!users.length) { el.innerHTML = '<div class="text-xs text-slate-500 py-4 text-center">No users yet.</div>'; return; }
+    el.innerHTML = `<table class="w-full"><thead><tr class="text-[10px] text-slate-500 uppercase tracking-wider border-b border-white/5">
+      <th class="text-left pb-3">Username</th><th class="text-left pb-3">Role</th><th class="text-right pb-3">Actions</th>
+    </tr></thead><tbody>${users.map(u => `
+      <tr class="border-b border-white/5">
+        <td class="py-2.5 text-sm text-white">${u.username}${u.username === currentUser.username ? ' <span class="text-[10px] text-violet-400">(you)</span>' : ''}</td>
+        <td class="py-2.5 text-xs text-slate-400">${u.role}</td>
+        <td class="py-2.5 text-right">${u.username !== currentUser.username ? `<button onclick="settingsDeleteUser('${u.username}')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors px-2 py-1 rounded hover:bg-red-500/10">Delete</button>` : ''}</td>
+      </tr>`).join('')}</tbody></table>`;
+  } catch(e) { el.innerHTML = '<div class="text-xs text-red-400 py-4 text-center">Failed to load users.</div>'; }
+}
+
+async function settingsCreateUser() {
+  const username = document.getElementById('new-user-username')?.value.trim();
+  const password = document.getElementById('new-user-password')?.value;
+  const role = document.getElementById('new-user-role')?.value;
+  const errEl = document.getElementById('settings-create-error');
+  if (!username || !password) { if(errEl) errEl.textContent = 'Username and password required'; return; }
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username, password, role})
+    });
+    const data = await res.json();
+    if (res.ok) {
+      document.getElementById('settings-create-form').classList.add('hidden');
+      if(document.getElementById('new-user-username')) document.getElementById('new-user-username').value = '';
+      if(document.getElementById('new-user-password')) document.getElementById('new-user-password').value = '';
+      settingsLoadUsers();
+    } else { if(errEl) errEl.textContent = data.error || 'Failed to create user'; }
+  } catch(e) { if(errEl) errEl.textContent = 'Connection error'; }
+}
+
+async function settingsDeleteUser(username) {
+  if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+  try {
+    const res = await fetch('/api/users/' + username, {method: 'DELETE'});
+    if (res.ok) settingsLoadUsers();
+    else { const d = await res.json(); alert(d.error || 'Failed to delete'); }
+  } catch(e) { alert('Connection error'); }
 }
 
 // ─── Refresh ────────────────────────────────────────────────────────────────
@@ -8106,7 +8276,11 @@ function _refreshDone(label) {
 }
 
 // ─── Init ───
-loadData();
+function initDashboardData() {
+  loadData();
+}
+
+document.addEventListener('DOMContentLoaded', () => { initAuth(); });
 </script>
 
 </div><!-- /app-shell -->
