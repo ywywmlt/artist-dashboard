@@ -3,40 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Artist Intelligence Dashboard</title>
+<title>GATEKEEP — Artist Intelligence</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500&family=Barlow+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #000000;
-    --surface: #0c0c0c;
-    --surface-2: #141414;
-    --border: rgba(239,68,68,0.12);
-    --border-mid: rgba(239,68,68,0.28);
-    --border-hot: rgba(239,68,68,0.55);
-    --red: #ef4444;
-    --red-dim: #b91c1c;
+    --bg: #0a0a0a;
+    --surface: #0f0f0f;
+    --surface-2: #161616;
+    --border: rgba(255,255,255,0.07);
+    --border-mid: rgba(255,255,255,0.12);
+    --border-hot: rgba(204,100,55,0.5);
+    --accent: #cc6437;
+    --accent-dim: rgba(204,100,55,0.12);
+    --accent-glow: rgba(204,100,55,0.22);
     --text: #f5f5f5;
     --muted: #6b7280;
-    --dim: #2d2d2d;
+    --dim: #2a2a2a;
+    --nav-h: 56px;
+    --ease-smooth: cubic-bezier(.76,0,.24,1);
+    --ease-expo: cubic-bezier(.87,0,.13,1);
   }
   *, *::before, *::after { box-sizing: border-box; }
-  * { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; letter-spacing: 0.015em; }
-  .mono, td.num, .num { font-family: 'DM Mono', monospace; letter-spacing: -0.02em; }
-  body { background: var(--bg); color: var(--text); }
+  * { font-family: 'Roboto Mono', 'DM Mono', monospace; letter-spacing: 0.01em; }
+  body { background: var(--bg); color: var(--text); overflow-x: hidden; }
 
-  /* Grain overlay — editorial texture */
+  /* Grain overlay */
   body::after {
     content: '';
     position: fixed; inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
-    opacity: 0.028;
+    opacity: 0.025;
     pointer-events: none;
     z-index: 99997;
   }
 
-  /* Cards */
+  /* ── CARDS ─────────────────────────────────────── */
   .glass {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -44,8 +47,8 @@
   .kpi-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-top: 1px solid var(--border-mid);
-    transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+    border-top: 1px solid rgba(204,100,55,0.2);
+    transition: border-color 0.25s var(--ease-smooth), transform 0.25s var(--ease-smooth), box-shadow 0.25s var(--ease-smooth);
     position: relative;
     overflow: hidden;
   }
@@ -53,85 +56,351 @@
     content: '';
     position: absolute; top: 0; left: 0; right: 0;
     height: 1px;
-    background: linear-gradient(90deg, var(--red) 0%, transparent 60%);
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 70%);
     opacity: 0;
-    transition: opacity 0.18s ease;
+    transition: opacity 0.25s ease;
   }
-  .kpi-card:hover { border-color: var(--border-mid); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+  .kpi-card:hover { border-color: rgba(204,100,55,0.3); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
   .kpi-card:hover::before { opacity: 1; }
+  .accent-glow { box-shadow: 0 0 40px rgba(204,100,55,0.08); }
 
-  .accent-glow { box-shadow: 0 0 40px rgba(239,68,68,0.08); }
-
-  /* Sidebar nav */
-  .sidebar-link {
-    transition: background 0.12s, color 0.12s, padding-left 0.12s;
-    border-left: 2px solid transparent;
-    
-    
+  /* ── LANDING PAGE ──────────────────────────────── */
+  #login-gate {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
   }
-  .sidebar-link.active {
-    background: rgba(239,68,68,0.08);
-    border-left-color: var(--red);
-    color: #fff;
-  }
-  .sidebar-link:hover:not(.active) { background: rgba(255,255,255,0.03); color: #fff; }
+  #login-gate.hidden { display: none; }
 
-  /* Badges */
+  #gk-canvas {
+    position: absolute; inset: 0; z-index: 0;
+  }
+  .gk-noise {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.04;
+  }
+
+  #gk-landing-content {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 28px; text-align: center;
+    animation: gkFadeIn 1.2s var(--ease-smooth) forwards;
+  }
+  #gk-landing-content img { height: 52px; width: auto; }
+  .gk-tagline {
+    font-size: 9px; font-weight: 400; letter-spacing: 0.28em;
+    text-transform: uppercase; color: #4b5563;
+    font-family: 'Roboto Mono', monospace;
+    margin-top: -12px;
+  }
+  .gk-start-btn {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--accent);
+    background: transparent;
+    border: 1px solid rgba(204,100,55,0.35);
+    padding: 13px 36px;
+    border-radius: 100px;
+    cursor: pointer;
+    transition: all 0.35s var(--ease-smooth);
+    margin-top: 8px;
+  }
+  .gk-start-btn:hover {
+    background: rgba(204,100,55,0.07);
+    border-color: rgba(204,100,55,0.7);
+    box-shadow: 0 0 24px rgba(204,100,55,0.18), inset 0 0 20px rgba(204,100,55,0.04);
+    letter-spacing: 0.28em;
+  }
+
+  #gk-login-panel {
+    position: relative; z-index: 2;
+    display: none; flex-direction: column; align-items: center;
+    gap: 0; width: 100%; max-width: 360px;
+    animation: gkSlideUp 0.6s var(--ease-smooth) forwards;
+  }
+  .gk-login-back {
+    align-self: flex-start;
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); background: none; border: none; cursor: pointer;
+    font-family: 'Roboto Mono', monospace;
+    margin-bottom: 28px;
+    transition: color 0.2s;
+  }
+  .gk-login-back:hover { color: var(--text); }
+  .gk-login-logo { height: 28px; width: auto; margin-bottom: 32px; align-self: center; }
+  .gk-login-form {
+    width: 100%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 32px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  .gk-field-label {
+    font-size: 8px; font-weight: 500; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px; display: block;
+  }
+  .gk-input {
+    width: 100%; background: #000;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 10px 14px;
+    font-size: 13px; font-family: 'Roboto Mono', monospace;
+    font-weight: 400; color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .gk-input:focus { border-color: rgba(204,100,55,0.5); }
+  .gk-submit-btn {
+    width: 100%; background: var(--accent);
+    color: #000; font-family: 'Roboto Mono', monospace;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    padding: 13px; border: none; cursor: pointer;
+    transition: background 0.2s, letter-spacing 0.2s;
+    margin-top: 4px;
+  }
+  .gk-submit-btn:hover { background: #d97348; letter-spacing: 0.28em; }
+  #login-err {
+    font-size: 10px; color: #f87171;
+    letter-spacing: 0.1em; text-align: center; display: none;
+    font-family: 'Roboto Mono', monospace;
+  }
+
+  /* ── TOP NAVIGATION ────────────────────────────── */
+  #gk-nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    height: var(--nav-h);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px;
+    background: rgba(10,10,10,0.92);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  #gk-nav img { height: 20px; width: auto; }
+  #gk-nav-right { display: flex; align-items: center; gap: 20px; }
+  .gk-user-meta {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    text-align: right;
+  }
+  .gk-user-meta .name {
+    font-size: 10px; font-weight: 500; color: var(--text);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .gk-user-meta .role {
+    font-size: 8px; color: var(--muted);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  #gk-burger {
+    display: flex; align-items: center; gap: 10px;
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text); cursor: pointer;
+    padding: 8px 16px; border-radius: 100px;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    transition: all 0.3s var(--ease-smooth);
+    font-weight: 500;
+  }
+  #gk-burger:hover {
+    border-color: rgba(204,100,55,0.5);
+    box-shadow: 0 0 16px rgba(204,100,55,0.12);
+    color: var(--accent);
+  }
+  #gk-burger.open { border-color: rgba(204,100,55,0.5); color: var(--accent); }
+  .gk-burger-lines { display: flex; flex-direction: column; gap: 4px; width: 16px; }
+  .gk-burger-lines span {
+    display: block; height: 1px; background: currentColor;
+    transition: transform 0.4s var(--ease-smooth), opacity 0.3s;
+    transform-origin: center;
+  }
+  #gk-burger.open .gk-burger-lines span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+  #gk-burger.open .gk-burger-lines span:nth-child(2) { opacity: 0; }
+  #gk-burger.open .gk-burger-lines span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+  #gk-burger-label { transition: opacity 0.2s; }
+  #gk-burger.open #gk-burger-label { opacity: 0.6; }
+
+  /* ── MENU OVERLAY ─────────────────────────────── */
+  #gk-menu {
+    position: fixed; inset: 0; z-index: 999;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    padding: calc(var(--nav-h) + 24px) 40px 40px;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.5s var(--ease-smooth), visibility 0s linear 0.5s;
+  }
+  #gk-menu.open {
+    opacity: 1; visibility: visible;
+    transition: opacity 0.6s var(--ease-smooth), visibility 0s linear 0s;
+  }
+  .gk-menu-inner {
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    height: 100%; max-width: 900px;
+  }
+  .gk-menu-items { display: flex; flex-direction: column; gap: 0; padding-top: 16px; }
+  .gk-menu-item {
+    display: flex; align-items: baseline; gap: 20px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer; text-decoration: none;
+    color: rgba(255,255,255,0.35);
+    transition: color 0.3s var(--ease-smooth);
+    opacity: 0; transform: translateY(16px);
+    transition: color 0.3s var(--ease-smooth), opacity 0.5s var(--ease-smooth), transform 0.5s var(--ease-smooth);
+  }
+  #gk-menu.open .gk-menu-item { opacity: 1; transform: translateY(0); }
+  #gk-menu.open .gk-menu-item:nth-child(1) { transition-delay: 0.05s; }
+  #gk-menu.open .gk-menu-item:nth-child(2) { transition-delay: 0.10s; }
+  #gk-menu.open .gk-menu-item:nth-child(3) { transition-delay: 0.14s; }
+  #gk-menu.open .gk-menu-item:nth-child(4) { transition-delay: 0.18s; }
+  #gk-menu.open .gk-menu-item:nth-child(5) { transition-delay: 0.22s; }
+  #gk-menu.open .gk-menu-item:nth-child(6) { transition-delay: 0.26s; }
+  #gk-menu.open .gk-menu-item:nth-child(7) { transition-delay: 0.30s; }
+  #gk-menu.open .gk-menu-item:nth-child(8) { transition-delay: 0.34s; }
+  .gk-menu-items:has(.gk-menu-item:hover) .gk-menu-item:not(:hover) { color: rgba(255,255,255,0.15); }
+  .gk-menu-item:hover { color: var(--text); }
+  .gk-menu-item.active { color: var(--accent); }
+  .gk-menu-item.active .gk-menu-num { color: var(--accent); }
+  .gk-menu-num {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 11px; font-weight: 400; letter-spacing: 0.08em;
+    color: rgba(255,255,255,0.2);
+    min-width: 28px; padding-top: 6px;
+    transition: color 0.3s;
+  }
+  .gk-menu-label {
+    font-family: 'Barlow Condensed', 'Roboto Mono', monospace;
+    font-size: clamp(2.2rem, 4.5vw, 3.8rem);
+    font-weight: 700; letter-spacing: 0.01em;
+    text-transform: uppercase; line-height: 1;
+  }
+  .gk-menu-arrow {
+    margin-left: auto; font-size: 11px;
+    font-family: 'Roboto Mono', monospace;
+    letter-spacing: 0.1em; opacity: 0;
+    transition: opacity 0.2s, transform 0.3s var(--ease-smooth);
+    align-self: center;
+    color: var(--accent);
+  }
+  .gk-menu-item:hover .gk-menu-arrow { opacity: 1; transform: translateX(4px); }
+  .gk-menu-footer {
+    display: flex; align-items: center; gap: 16px;
+    padding-top: 24px; border-top: 1px solid var(--border);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.5s var(--ease-smooth) 0.4s, transform 0.5s var(--ease-smooth) 0.4s;
+  }
+  #gk-menu.open .gk-menu-footer { opacity: 1; transform: translateY(0); }
+  #user-avatar-initial {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: #000;
+    flex-shrink: 0; letter-spacing: 0;
+    font-family: 'Roboto Mono', monospace;
+  }
+  .gk-logout-btn {
+    margin-left: auto;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--muted); background: none;
+    border: 1px solid var(--border); padding: 7px 16px;
+    border-radius: 100px; cursor: pointer;
+    transition: all 0.3s var(--ease-smooth);
+  }
+  .gk-logout-btn:hover { border-color: rgba(204,100,55,0.4); color: var(--accent); }
+
+  /* ── PAGE CHROME ───────────────────────────────── */
+  #gk-page-bar {
+    position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 100;
+    height: 36px;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 32px;
+    background: rgba(10,10,10,0.8);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+  #gk-page-index {
+    font-size: 8px; color: var(--accent);
+    letter-spacing: 0.2em; font-weight: 500;
+    font-family: 'Roboto Mono', monospace;
+    min-width: 28px;
+  }
+  #page-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+  }
+  #gk-alert-pill {
+    margin-left: auto;
+    background: rgba(204,100,55,0.12);
+    color: var(--accent);
+    font-size: 8px; font-family: 'Roboto Mono', monospace;
+    padding: 2px 8px; letter-spacing: 0.1em;
+    border: 1px solid rgba(204,100,55,0.25);
+  }
+
+  /* ── MAIN CONTENT AREA ─────────────────────────── */
+  #gk-main {
+    padding-top: calc(var(--nav-h) + 36px);
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  /* ── PAGES ─────────────────────────────────────── */
+  .page { display: none; }
+  .page.active { display: block; animation: pagein 0.3s var(--ease-smooth); }
+  #page-finbuilder.active { display: flex; flex-direction: column; animation: pagein 0.3s var(--ease-smooth); }
+
+  /* ── BADGES ────────────────────────────────────── */
   .badge-green  { background: rgba(34,197,94,0.1);  color: #4ade80; border: 1px solid rgba(34,197,94,0.2); }
-  .badge-red    { background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  .badge-red    { background: rgba(204,100,55,0.1);  color: #f87171; border: 1px solid rgba(204,100,55,0.2); }
   .badge-blue   { background: rgba(59,130,246,0.1); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
   .badge-yellow { background: rgba(234,179,8,0.1);  color: #facc15; border: 1px solid rgba(234,179,8,0.2); }
 
-  /* Scrollbars — ultra thin */
-  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  /* ── SCROLLBARS ────────────────────────────────── */
+  ::-webkit-scrollbar { width: 2px; height: 2px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(239,68,68,0.2); border-radius: 0; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(239,68,68,0.5); }
+  ::-webkit-scrollbar-thumb { background: rgba(204,100,55,0.2); border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(204,100,55,0.4); }
 
-  /* Tabs */
+  /* ── TABS ──────────────────────────────────────── */
   .tab-btn {
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    font-weight: 700;
-    font-size: 10px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    font-weight: 500; font-size: 9px;
     transition: color 0.15s, border-color 0.15s;
+    font-family: 'Roboto Mono', monospace;
   }
-  .tab-btn.active { color: var(--red); border-color: var(--red); }
+  .tab-btn.active { color: var(--accent); border-color: var(--accent); }
 
-  /* Pages */
-  .page { display: none; }
-  .page.active { display: block; animation: pagein 0.18s ease; }
-  #page-finbuilder.active { display: flex; flex-direction: column; animation: pagein 0.18s ease; }
-  @keyframes pagein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* Table rows */
+  /* ── TABLE ROWS ────────────────────────────────── */
   .artist-row {
     border-left: 2px solid transparent;
-    transition: background 0.12s, border-color 0.12s;
+    transition: background 0.15s, border-color 0.15s;
   }
-  .artist-row:hover { background: rgba(239,68,68,0.05); border-left-color: var(--red); }
+  .artist-row:hover { background: rgba(204,100,55,0.04); border-left-color: var(--accent); }
 
-  /* Animations */
-  .pulse-dot { animation: pulse 2s infinite; }
+  /* ── SIDEBAR COMPAT (hidden — kept for JS refs) ── */
+  .sidebar-link { display: none; }
+
+  /* ── ANIMATIONS ────────────────────────────────── */
+  @keyframes pagein { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes gkFadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes gkSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes gkFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-12px); } }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
   @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .trend-up { color: #4ade80; font-family: 'DM Mono', monospace; }
-  .trend-down { color: #f87171; font-family: 'DM Mono', monospace; }
-
-  /* Login gate */
-  #login-gate {
-    position: fixed; inset: 0; z-index: 9999;
-    background: #000;
-    display: flex; align-items: center; justify-content: center;
-  }
-  #login-gate.hidden { display: none; }
-  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-8px)} 40%,80%{transform:translateX(8px)} }
   .shake { animation: shake 0.4s ease; }
+  .pulse-dot { animation: pulse 2s infinite; }
+  .trend-up { color: #4ade80; font-family: 'Roboto Mono', monospace; }
+  .trend-down { color: #f87171; font-family: 'Roboto Mono', monospace; }
 
-  /* Login — brand lockup */
-  #login-brand-word { line-height: 0.85; }
-
-  /* Input resets */
+  /* ── INPUT AUTOFILL ────────────────────────────── */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus {
@@ -140,160 +409,176 @@
     caret-color: #f5f5f5;
   }
 
-  /* Drag */
-  .fd-card-drag-over-top    { border-top: 2px solid var(--red) !important; }
-  .fd-card-drag-over-bottom { border-bottom: 2px solid var(--red) !important; }
+  /* ── DRAG ──────────────────────────────────────── */
+  .fd-card-drag-over-top    { border-top: 2px solid var(--accent) !important; }
+  .fd-card-drag-over-bottom { border-bottom: 2px solid var(--accent) !important; }
   .fd-card-dragging         { opacity: 0.3; }
   [data-profile-id] .fd-drag-handle { opacity: 0; transition: opacity 0.15s; cursor: grab; }
   [data-profile-id]:hover .fd-drag-handle { opacity: 1; }
 
-  /* Chart tooltip override */
-  .chartjs-tooltip { font-family: 'DM Mono', monospace !important; }
+  /* ── KPI TYPOGRAPHY ────────────────────────────── */
+  .kpi-num { font-family: 'Roboto Mono', monospace; font-size: 1.65rem; font-weight: 400; letter-spacing: -0.04em; line-height: 1; }
+  .kpi-label-text { font-size: 8px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); font-family: 'Roboto Mono', monospace; }
+  .mono, td.num, .num { font-family: 'Roboto Mono', monospace; letter-spacing: -0.02em; }
 
-  /* KPI number style */
-  .kpi-num { font-family: 'DM Mono', monospace; font-size: 1.65rem; font-weight: 500; letter-spacing: -0.04em; line-height: 1; }
-  .kpi-label-text { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  /* ── ACCENT RULE ───────────────────────────────── */
+  .red-rule { height: 1px; background: linear-gradient(90deg, var(--accent) 0%, transparent 80%); margin: 0; border: none; opacity: 0.35; }
 
-  /* Micro red separator */
-  .red-rule { height: 1px; background: linear-gradient(90deg, var(--red) 0%, transparent 80%); margin: 0; border: none; opacity: 0.4; }
+  /* ── CHART TOOLTIP ─────────────────────────────── */
+  .chartjs-tooltip { font-family: 'Roboto Mono', monospace !important; }
+
+  /* ── ROI OVERLAY (z-index above menu) ──────────── */
+  #fd-roi-overlay { z-index: 1001 !important; }
 </style>
 </head>
 <body class="min-h-screen">
 
-<!-- Login Gate -->
+<!-- Landing Page -->
 <div id="login-gate">
-  <!-- decorative grid lines -->
-  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(239,68,68,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(239,68,68,0.04) 1px,transparent 1px);background-size:80px 80px;pointer-events:none;"></div>
-  <!-- red accent line top -->
-  <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent 0%,#ef4444 40%,#ef4444 60%,transparent 100%);opacity:0.7;"></div>
+  <canvas id="gk-canvas"></canvas>
+  <div class="gk-noise"></div>
 
-  <div class="w-full px-6" style="max-width:380px;">
-    <!-- Brand -->
-    <div class="mb-10">
-      <img src="/data/GKreg.png" alt="GATEKEEP" style="height:48px;width:auto;display:block;margin-bottom:10px;">
-      <div style="font-size:9px;font-weight:500;letter-spacing:0.22em;text-transform:uppercase;color:#4b5563;">Artist Intelligence Platform</div>
-    </div>
+  <!-- Hero content -->
+  <div id="gk-landing-content">
+    <img src="/data/GKreg.png" alt="GATEKEEP" style="height:52px;width:auto;">
+    <div class="gk-tagline">Artist Intelligence Platform</div>
+    <button class="gk-start-btn" onclick="gkRevealLogin()">Start Now &nbsp;→</button>
+  </div>
 
-    <!-- Form -->
-    <div id="login-form-wrap" style="border:1px solid rgba(239,68,68,0.18);background:#0c0c0c;padding:28px;">
-      <div style="display:flex;flex-direction:column;gap:18px;">
-        <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;">Username</div>
-          <input id="login-user" type="text" autocomplete="username" placeholder="—"
-            style="width:100%;background:#000;border:1px solid rgba(239,68,68,0.12);padding:10px 14px;font-size:14px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:600;color:#f5f5f5;outline:none;transition:border-color 0.15s;letter-spacing:0.04em;"
-            onfocus="this.style.borderColor='rgba(239,68,68,0.5)'" onblur="this.style.borderColor='rgba(239,68,68,0.12)'"
-            onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-        </div>
-        <div>
-          <div style="font-size:9px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:#4b5563;margin-bottom:8px;">Password</div>
-          <input id="login-pass" type="password" autocomplete="current-password" placeholder="—"
-            style="width:100%;background:#000;border:1px solid rgba(239,68,68,0.12);padding:10px 14px;font-size:14px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-weight:600;color:#f5f5f5;outline:none;transition:border-color 0.15s;letter-spacing:0.04em;"
-            onfocus="this.style.borderColor='rgba(239,68,68,0.5)'" onblur="this.style.borderColor='rgba(239,68,68,0.12)'"
-            onkeydown="if(event.key==='Enter')doLogin()">
-        </div>
-        <p id="login-err" style="font-size:11px;color:#f87171;letter-spacing:0.06em;display:none;">INVALID CREDENTIALS</p>
-        <button onclick="doLogin()"
-          style="width:100%;background:#ef4444;color:#000;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;padding:12px;border:none;cursor:pointer;transition:background 0.15s,transform 0.1s;margin-top:2px;"
-          onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'"
-          onmousedown="this.style.transform='scale(0.99)'" onmouseup="this.style.transform='scale(1)'">
-          Access Platform
-        </button>
+  <!-- Login panel -->
+  <div id="gk-login-panel">
+    <button class="gk-login-back" onclick="gkBackToLanding()">← Back</button>
+    <img src="/data/GKreg.png" alt="GATEKEEP" class="gk-login-logo">
+    <div class="gk-login-form">
+      <div>
+        <label class="gk-field-label">Username</label>
+        <input id="login-user" type="text" autocomplete="username" placeholder="—" class="gk-input"
+          onfocus="this.style.borderColor='rgba(204,100,55,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
       </div>
+      <div>
+        <label class="gk-field-label">Password</label>
+        <input id="login-pass" type="password" autocomplete="current-password" placeholder="—" class="gk-input"
+          onfocus="this.style.borderColor='rgba(204,100,55,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <p id="login-err" style="font-size:10px;color:#f87171;letter-spacing:0.1em;display:none;font-family:'Roboto Mono',monospace;">INVALID CREDENTIALS</p>
+      <button onclick="doLogin()" class="gk-submit-btn">Access Platform</button>
     </div>
   </div>
 </div>
 
-<div class="flex h-screen overflow-hidden" id="app-shell" style="display:none!important">
+<div id="app-shell" style="display:none!important">
 
-  <!-- Sidebar -->
-  <aside class="w-56 flex-shrink-0 flex flex-col" style="background:#080808;border-right:1px solid rgba(239,68,68,0.1);">
-    <!-- Brand -->
-    <div style="padding:18px 16px 14px;border-bottom:1px solid rgba(239,68,68,0.1);">
-      <img src="/data/GKreg.png" alt="GATEKEEP" style="height:22px;width:auto;display:block;">
-    </div>
-    <nav class="flex-1 py-3" style="overflow-y:auto;">
-      <div style="padding:0 8px;display:flex;flex-direction:column;gap:1px;">
-      <a href="#" onclick="showPage('dashboard')" class="sidebar-link active flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-dashboard">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Dashboard</span>
-      </a>
-      <a href="#" onclick="showArtistList()" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-artist">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Artists</span>
-      </a>
-      <a href="#" onclick="showPage('venues')" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-venues">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Cities & Venues</span>
-      </a>
-      <a href="#" onclick="showPage('calendar')" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-calendar">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Tour Calendar</span>
-      </a>
-      <a href="#" onclick="showPage('financials')" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-financials">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Financials</span>
-      </a>
-      <a href="#" onclick="showPage('finbuilder')" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-finbuilder">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Model Builder</span>
-      </a>
-      <a href="#" onclick="showPage('reports')" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm" id="nav-reports">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Reports</span>
-      </a>
-      <div style="margin:12px 0;height:1px;background:rgba(239,68,68,0.1);"></div>
-      <a href="#" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Alerts</span>
-        <span style="margin-left:auto;background:rgba(239,68,68,0.15);color:#ef4444;font-size:9px;font-family:'DM Mono',monospace;padding:1px 6px;font-weight:500;" id="alert-count">0</span>
-      </a>
-      <a href="#" onclick="showPage('settings')" id="nav-settings" class="sidebar-link flex items-center gap-2.5 px-3 py-2 text-sm">
-        <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-        <span style="font-size:12px;font-weight:400;letter-spacing:0.02em;text-transform:uppercase;">Settings</span>
-      </a>
+  <!-- ── Top Navigation ── -->
+  <nav id="gk-nav">
+    <img src="/data/GKreg.png" alt="GATEKEEP" style="height:20px;width:auto;">
+    <div id="gk-nav-right">
+      <div class="gk-user-meta">
+        <span class="name" id="user-display-name">—</span>
+        <span class="role" id="user-display-role">—</span>
       </div>
-    </nav>
-    <!-- User -->
-    <div style="padding:12px 16px;border-top:1px solid rgba(239,68,68,0.1);display:flex;align-items:center;gap:10px;">
-      <div style="width:28px;height:28px;background:#ef4444;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#000;flex-shrink:0;letter-spacing:0;" id="user-avatar-initial">?</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:700;color:#fff;letter-spacing:0.04em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="user-display-name">—</div>
-        <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#374151;" id="user-display-role">—</div>
-      </div>
-      <button onclick="doLogout()" title="Sign out" style="color:#374151;background:none;border:none;cursor:pointer;padding:4px;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#374151'">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+      <button id="gk-burger" onclick="gkMenuToggle()">
+        <div class="gk-burger-lines">
+          <span></span><span></span><span></span>
+        </div>
+        <span id="gk-burger-label">Menu</span>
       </button>
     </div>
-  </aside>
+  </nav>
+
+  <!-- ── Menu Overlay ── -->
+  <div id="gk-menu">
+    <div class="gk-menu-inner">
+      <div class="gk-menu-items">
+        <a class="gk-menu-item" id="gk-nav-dashboard" onclick="gkNavTo('dashboard')">
+          <span class="gk-menu-num">01</span>
+          <span class="gk-menu-label">Dashboard</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-artist" onclick="gkNavTo('artist')">
+          <span class="gk-menu-num">02</span>
+          <span class="gk-menu-label">Artists</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-venues" onclick="gkNavTo('venues')">
+          <span class="gk-menu-num">03</span>
+          <span class="gk-menu-label">Cities &amp; Venues</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-calendar" onclick="gkNavTo('calendar')">
+          <span class="gk-menu-num">04</span>
+          <span class="gk-menu-label">Tour Calendar</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-financials" onclick="gkNavTo('financials')">
+          <span class="gk-menu-num">05</span>
+          <span class="gk-menu-label">Financials</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-finbuilder" onclick="gkNavTo('finbuilder')">
+          <span class="gk-menu-num">06</span>
+          <span class="gk-menu-label">Model Builder</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-reports" onclick="gkNavTo('reports')">
+          <span class="gk-menu-num">07</span>
+          <span class="gk-menu-label">Reports</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+        <a class="gk-menu-item" id="gk-nav-settings" onclick="gkNavTo('settings')">
+          <span class="gk-menu-num">08</span>
+          <span class="gk-menu-label">Settings</span>
+          <span class="gk-menu-arrow">→</span>
+        </a>
+      </div>
+      <div class="gk-menu-footer">
+        <div id="user-avatar-initial" style="width:32px;height:32px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#000;flex-shrink:0;font-family:'Roboto Mono',monospace;">?</div>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <div style="font-size:11px;font-weight:500;color:var(--text);letter-spacing:0.06em;text-transform:uppercase;" id="user-display-name-footer">—</div>
+          <div style="font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--muted);" id="user-display-role-footer">—</div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+          <span id="alert-count" style="background:rgba(204,100,55,0.12);color:var(--accent);font-size:8px;font-family:'Roboto Mono',monospace;padding:3px 8px;letter-spacing:0.1em;border:1px solid rgba(204,100,55,0.25);">0 alerts</span>
+          <button onclick="doLogout()" class="gk-logout-btn">Sign Out →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Page Bar ── -->
+  <div id="gk-page-bar">
+    <span id="gk-page-index">01</span>
+    <span id="page-title">Dashboard</span>
+    <span id="gk-alert-pill" style="display:none;">0 ALERTS</span>
+  </div>
 
   <!-- Main Content -->
-  <main class="flex-1 overflow-y-auto">
-    <header class="sticky top-0 z-10 px-6 py-3 flex items-center justify-between" style="background:rgba(0,0,0,0.95);border-bottom:1px solid rgba(239,68,68,0.12);">
-      <div>
-        <h1 style="font-size:18px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#fff;line-height:1;" id="page-title">Dashboard</h1>
-        <div class="flex items-center gap-2">
-          <p class="text-xs text-slate-500" id="page-subtitle">Loading data...</p>
-          <button id="refresh-btn" onclick="refreshData()" title="Refresh all data" class="hidden flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 transition-colors px-1.5 py-0.5 rounded border border-white/8 hover:border-white/20">
-            <svg id="refresh-icon" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-            <span id="refresh-label">Refresh</span>
-          </button>
-        </div>
+  <main id="gk-main" class="flex-1 overflow-y-auto">
+    <!-- Hidden utility elements preserved for JS references -->
+    <div style="display:none;">
+      <p id="page-subtitle">Loading data...</p>
+      <button id="refresh-btn" onclick="refreshData()">
+        <svg id="refresh-icon" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        <span id="refresh-label">Refresh</span>
+      </button>
+    </div>
+    <!-- Search bar -->
+    <div id="search-wrapper" style="position:fixed;top:0;left:50%;transform:translateX(-50%);z-index:1100;height:var(--nav-h);display:flex;align-items:center;">
+      <div style="position:relative;">
+        <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:#6b7280;pointer-events:none;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" placeholder="Search artists…" id="global-search" autocomplete="off"
+          style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);padding:7px 30px 7px 34px;font-size:11px;font-family:'Roboto Mono',monospace;color:#f5f5f5;outline:none;width:260px;letter-spacing:0.04em;transition:border-color 0.2s;"
+          oninput="artistSearch(this.value)"
+          onkeydown="artistSearchKey(event)"
+          onfocus="this.style.borderColor='rgba(204,100,55,0.4)';if(this.value.trim()) artistSearch(this.value)"
+          onblur="this.style.borderColor='rgba(255,255,255,0.08)'">
+        <button id="search-clear" onclick="clearArtistSearch()" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);color:#6b7280;background:none;border:none;cursor:pointer;display:none;">
+          <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+        <div id="search-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;width:380px;background:#0f0f0f;border:1px solid rgba(255,255,255,0.08);box-shadow:0 20px 60px rgba(0,0,0,0.8);z-index:50;overflow:hidden;"></div>
       </div>
-      <div class="flex items-center gap-3">
-        <div class="relative" id="search-wrapper">
-          <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5 pointer-events-none z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-          <input type="text" placeholder="Find an artist..." id="global-search" autocomplete="off"
-            class="bg-black border border-red-900/30 rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50 w-72"
-            oninput="artistSearch(this.value)"
-            onkeydown="artistSearchKey(event)"
-            onfocus="if(this.value.trim()) artistSearch(this.value)">
-          <button id="search-clear" onclick="clearArtistSearch()" class="absolute right-2.5 top-2 text-slate-600 hover:text-slate-400 hidden">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-          </button>
-          <div id="search-dropdown" class="hidden absolute top-full left-0 mt-1 w-96 bg-[#0c0c0c] border border-red-900/30 shadow-2xl z-50 overflow-hidden"></div>
-        </div>
-      </div>
-    </header>
+    </div>
 
     <!-- DASHBOARD PAGE -->
     <div id="page-dashboard" class="page active p-6 space-y-6">
@@ -1039,16 +1324,132 @@ function updateCalArtistBadge() {
   }
 }
 
+// ─── GATEKEEP UI ─────────────────────────────────────────────────────────────
+
+// Landing page canvas animation
+function gkInitCanvas() {
+  const canvas = document.getElementById('gk-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H, pts;
+  const N = 45;
+  const LINK_DIST = 140;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  function initPts() {
+    pts = Array.from({length: N}, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.28,
+      vy: (Math.random() - 0.5) * 0.28,
+      r: Math.random() * 1.2 + 0.4,
+    }));
+  }
+  function tick() {
+    ctx.clearRect(0, 0, W, H);
+    for (let i = 0; i < N; i++) {
+      for (let j = i + 1; j < N; j++) {
+        const dx = pts[i].x - pts[j].x;
+        const dy = pts[i].y - pts[j].y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < LINK_DIST) {
+          const a = (1 - d / LINK_DIST) * 0.14;
+          ctx.beginPath();
+          ctx.strokeStyle = `rgba(204,100,55,${a})`;
+          ctx.lineWidth = 0.6;
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(pts[j].x, pts[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    for (const p of pts) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(204,100,55,0.45)';
+      ctx.fill();
+    }
+    requestAnimationFrame(tick);
+  }
+  resize(); initPts(); tick();
+  window.addEventListener('resize', () => { resize(); initPts(); });
+}
+
+function gkRevealLogin() {
+  const lc = document.getElementById('gk-landing-content');
+  const lp = document.getElementById('gk-login-panel');
+  if (!lc || !lp) return;
+  lc.style.animation = 'gkFadeOut 0.4s var(--ease-smooth) forwards';
+  setTimeout(() => {
+    lc.style.display = 'none';
+    lp.style.display = 'flex';
+    setTimeout(() => document.getElementById('login-user')?.focus(), 50);
+  }, 380);
+}
+
+function gkBackToLanding() {
+  const lc = document.getElementById('gk-landing-content');
+  const lp = document.getElementById('gk-login-panel');
+  if (!lc || !lp) return;
+  lp.style.display = 'none';
+  lc.style.display = 'flex';
+  lc.style.animation = 'gkFadeIn 0.5s var(--ease-smooth) forwards';
+}
+
+// Menu
+let _gkMenuOpen = false;
+function gkMenuToggle() {
+  _gkMenuOpen = !_gkMenuOpen;
+  const menu = document.getElementById('gk-menu');
+  const btn = document.getElementById('gk-burger');
+  if (_gkMenuOpen) {
+    menu.classList.add('open'); btn.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  } else {
+    menu.classList.remove('open'); btn.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+}
+function gkMenuClose() {
+  _gkMenuOpen = false;
+  document.getElementById('gk-menu')?.classList.remove('open');
+  document.getElementById('gk-burger')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function gkNavTo(page) {
+  if (page === 'artist') { showArtistList(); } else { showPage(page); }
+  gkMenuClose();
+}
+
+// Sync footer user info in menu
+function gkSyncUser() {
+  const name = document.getElementById('user-display-name')?.textContent || '';
+  const role = document.getElementById('user-display-role')?.textContent || '';
+  const fn = document.getElementById('user-display-name-footer');
+  const fr = document.getElementById('user-display-role-footer');
+  if (fn) fn.textContent = name;
+  if (fr) fr.textContent = role;
+}
+
 // ─── Navigation ───
 function showPage(page) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
-  document.getElementById('page-' + page).classList.add('active');
-  document.getElementById('nav-' + page)?.classList.add('active');
-  const titles = { dashboard: 'Dashboard', artist: 'Artist Profile', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financial (Detail)', finbuilder: 'Financial Model Builder', reports: 'Reports', settings: 'Settings' };
-  document.getElementById('page-title').textContent = titles[page] || page;
-  // Reset scroll position for clean page transitions (FMB scrolls via its own fd-main/fd-sidebar)
-  const mainEl = document.querySelector('main');
+  document.querySelectorAll('.gk-menu-item').forEach(l => l.classList.remove('active'));
+  document.getElementById('page-' + page)?.classList.add('active');
+  document.getElementById('gk-nav-' + page)?.classList.add('active');
+  const titles = { dashboard: 'Dashboard', artist: 'Artists', venues: 'Cities & Venues', calendar: 'Tour Calendar', financials: 'Financials', findetail: 'Financials', finbuilder: 'Model Builder', reports: 'Reports', settings: 'Settings' };
+  const indices = { dashboard: '01', artist: '02', venues: '03', calendar: '04', financials: '05', findetail: '05', finbuilder: '06', reports: '07', settings: '08' };
+  const titleEl = document.getElementById('page-title');
+  const idxEl = document.getElementById('gk-page-index');
+  if (titleEl) titleEl.textContent = titles[page] || page;
+  if (idxEl) idxEl.textContent = indices[page] || '—';
+  const mainEl = document.getElementById('gk-main');
   if (mainEl) mainEl.scrollTop = 0;
   if (page === 'calendar' && !calendarLoaded) loadCalendarData();
   if (page === 'financials' && !financialsLoaded) initFinancials();
@@ -1278,8 +1679,8 @@ function renderDashboard() {
       labels: top10.map(a => a.name),
       datasets: [{
         data: top10.map(a => a.monthly_listeners),
-        backgroundColor: top10.map(a => a.daily_change >= 0 ? 'rgba(239,68,68,0.5)' : 'rgba(248,113,113,0.4)'),
-        borderColor: top10.map(a => a.daily_change >= 0 ? '#ef4444' : '#f87171'),
+        backgroundColor: top10.map(a => a.daily_change >= 0 ? 'rgba(204,100,55,0.5)' : 'rgba(248,113,113,0.4)'),
+        borderColor: top10.map(a => a.daily_change >= 0 ? '#cc6437' : '#f87171'),
         borderWidth: 1, borderRadius: 4, barPercentage: 0.65
       }]
     },
@@ -3092,7 +3493,7 @@ function renderVenuesPage() {
     data: {
       labels: regions,
       datasets: [
-        { label: 'Tier 1', data: regions.map(r => regionData[r]?.[1]||0), backgroundColor: '#ef4444', borderRadius: 3, barPercentage: 0.7 },
+        { label: 'Tier 1', data: regions.map(r => regionData[r]?.[1]||0), backgroundColor: '#cc6437', borderRadius: 3, barPercentage: 0.7 },
         { label: 'Tier 2', data: regions.map(r => regionData[r]?.[2]||0), backgroundColor: '#22d3ee', borderRadius: 3, barPercentage: 0.7 },
         { label: 'Tier 3', data: regions.map(r => regionData[r]?.[3]||0), backgroundColor: '#475569', borderRadius: 3, barPercentage: 0.7 }
       ]
@@ -3106,7 +3507,7 @@ function renderVenuesPage() {
 
   // Venue type donut
   const typeLabels = Object.keys(typeCounts);
-  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#ef4444', outdoor: '#4ade80' };
+  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#cc6437', outdoor: '#4ade80' };
   if (chartInstances.venueType) chartInstances.venueType.destroy();
   chartInstances.venueType = new Chart(document.getElementById('venueTypeChart'), {
     type: 'doughnut',
@@ -3160,7 +3561,7 @@ function renderMarketSizing() {
         <canvas id="marketSizingChart"></canvas>
       </div>
     </div>`;
-  const tierColors = { 1: '#ef4444', 2: '#22d3ee', 3: '#475569' };
+  const tierColors = { 1: '#cc6437', 2: '#22d3ee', 3: '#475569' };
   if (chartInstances.marketSizing) chartInstances.marketSizing.destroy();
   chartInstances.marketSizing = new Chart(document.getElementById('marketSizingChart'), {
     type: 'bar',
@@ -3197,7 +3598,7 @@ function renderCapacityLadder() {
   }
   const sorted = [...city.venues].sort((a,b) => b.capacity - a.capacity);
   const maxCap = sorted[0].capacity;
-  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#ef4444', outdoor: '#4ade80' };
+  const typeColors = { stadium: '#f87171', arena: '#fbbf24', theater: '#22d3ee', club: '#cc6437', outdoor: '#4ade80' };
   const typeBg = { stadium: 'bg-red-500/15 text-red-300', arena: 'bg-amber-500/15 text-amber-300', theater: 'bg-cyan-500/15 text-cyan-300', club: 'bg-red-500/15 text-red-300', outdoor: 'bg-green-500/15 text-green-300' };
   const tierCls = { A: 'bg-amber-500/15 text-amber-400', B: 'bg-cyan-500/15 text-cyan-400', C: 'bg-slate-500/15 text-slate-400' };
 
@@ -3817,7 +4218,7 @@ function renderFinancials(d) {
     type: 'doughnut',
     data: {
       labels: namedCosts.map(x => x.label),
-      datasets: [{ data: namedCosts.map(x => x.value), backgroundColor: ['#dc2626','#ef4444','#ef4444','#4ade80','#f59e0b','#ef4444','#06b6d4','#84cc16'], borderWidth: 0 }]
+      datasets: [{ data: namedCosts.map(x => x.value), backgroundColor: ['#b55630','#cc6437','#cc6437','#4ade80','#f59e0b','#cc6437','#06b6d4','#84cc16'], borderWidth: 0 }]
     },
     options: {
       responsive: true, maintainAspectRatio: false, cutout: '60%',
@@ -3954,7 +4355,7 @@ function fdImportProfiles(event) {
 function fdToast(msg, ms) {
   const t = document.createElement('div');
   t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0c0c0c;border:1px solid rgba(220,38,38,0.4);color:#e2e8f0;padding:8px 18px;border-radius:8px;font-size:12px;z-index:9999;pointer-events:none;transition:opacity 0.3s';
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0c0c0c;border:1px solid rgba(181,86,48,0.4);color:#e2e8f0;padding:8px 18px;border-radius:8px;font-size:12px;z-index:9999;pointer-events:none;transition:opacity 0.3s';
   document.body.appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms || 2000);
 }
@@ -6051,7 +6452,7 @@ function fdExportPDF() {
                 <td class="num">${retPct}%</td>
                 <td class="num" style="color:#92400e">${obl>0?'('+currency(obl)+')':'—'}</td>
                 <td class="num">${currency(dist)}</td>
-                <td class="num" style="font-weight:700;color:${moic>=1?'#ef4444':'#dc2626'}">${eqAmt>0?moic.toFixed(2)+'x':'—'}</td>
+                <td class="num" style="font-weight:700;color:${moic>=1?'#cc6437':'#b55630'}">${eqAmt>0?moic.toFixed(2)+'x':'—'}</td>
               </tr>`;
             }).join('')}
             <tr style="border-top:2px solid #d1d5db;background:#f0fdf4">
@@ -6061,17 +6462,17 @@ function fdExportPDF() {
               <td class="num"></td>
               <td class="num" style="color:#92400e"><strong>${scenObligation>0?'('+currency(scenObligation)+')':'—'}</strong></td>
               <td class="num"><strong>${currency(sv.investor_dist)}</strong></td>
-              <td class="num" style="font-weight:700;color:${sv.moic>=1?'#ef4444':'#dc2626'}">${sv.moic.toFixed(2)}x</td>
+              <td class="num" style="font-weight:700;color:${sv.moic>=1?'#cc6437':'#b55630'}">${sv.moic.toFixed(2)}x</td>
             </tr>
             ${Math.abs(sumPct-100)>0.01?`<tr><td colspan="7" style="color:#b45309;font-size:9px;font-style:italic">⚠ Stakes sum to ${sumPct.toFixed(1)}% — returns distributed proportionally</td></tr>`:''}
           </tbody>
         </table>
       </div>` : '';
 
-    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#ef4444':'#e5e7eb'};border-radius:8px;background:${s.use_for_roi?'#080808':'#fafafa'};">
+    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#cc6437':'#e5e7eb'};border-radius:8px;background:${s.use_for_roi?'#080808':'#fafafa'};">
       <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
         ${s.label||'Scenario'}
-        ${s.use_for_roi ? '<span style="font-size:9px;font-weight:600;background:#ef4444;color:white;padding:2px 6px;border-radius:4px;">USE FOR ROI</span>' : ''}
+        ${s.use_for_roi ? '<span style="font-size:9px;font-weight:600;background:#cc6437;color:white;padding:2px 6px;border-radius:4px;">USE FOR ROI</span>' : ''}
       </div>
       <table>
         <tbody>
@@ -6082,10 +6483,10 @@ function fdExportPDF() {
           <tr><td>Investor Distribution</td><td class="num">${currency(sv.investor_dist)}</td></tr>
           <tr><td>BluFin Distribution</td><td class="num">${currency(sv.blufin_dist)}</td></tr>
           <tr><td>Total Investor Return</td><td class="num">${currency(sv.total_inv_return)}</td></tr>
-          <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#ef4444':'#dc2626'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
+          <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#cc6437':'#b55630'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
           <tr><td>Absolute Return</td><td class="num">${sv.abs_return>0?pct(sv.abs_return):'—'}</td></tr>
           ${s.use_for_roi && scenObligation > 0 ? `<tr style="background:#fef3c7"><td style="color:#92400e;font-weight:600">Total Investor Obligation</td><td class="num" style="color:#92400e;font-weight:600">(${currency(scenObligation)})</td></tr>` : ''}
-          ${scenAdjRoi !== null ? `<tr style="background:#0d0000"><td style="color:#ef4444;font-weight:700">Adjusted Promoter ROI</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#ef4444':'#dc2626'}">${pct(scenAdjRoi)}</td></tr>` : ''}
+          ${scenAdjRoi !== null ? `<tr style="background:#0d0000"><td style="color:#cc6437;font-weight:700">Adjusted Promoter ROI</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#cc6437':'#b55630'}">${pct(scenAdjRoi)}</td></tr>` : ''}
         </tbody>
       </table>
       ${invTable}
@@ -6104,9 +6505,9 @@ function fdExportPDF() {
   .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin-bottom: 4px; }
   .kpi-value { font-size: 18px; font-weight: 700; }
   .kpi-value.green { color: #059669; }
-  .kpi-value.red { color: #dc2626; }
+  .kpi-value.red { color: #b55630; }
   .kpi-value.blue { color: #2563eb; }
-  .kpi-value.purple { color: #ef4444; }
+  .kpi-value.purple { color: #cc6437; }
   section { margin-bottom: 24px; }
   h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
@@ -6154,7 +6555,7 @@ ${catSummary ? `<section>
     <tr><td>Agency &amp; Other Fees</td><td class="num">(${currency((p.costs?.agency_fees || 0) + (p.costs?.blufin_fees || 0))})</td></tr>
     <tr><td><strong>Net Profit</strong></td><td class="num"><strong>${currency(c.net_profit)}</strong></td></tr>
     ${c.invested_capital > 0 ? `<tr style="font-size:10px;color:#6b7280"><td style="padding-left:16px">↳ Invested capital (${Math.round(c.mg_advance_pct*100)}% MG advance + pre-show ops)</td><td class="num">${currency(c.invested_capital)}</td></tr>` : ''}
-    <tr><td>${adjRoiLabel}</td><td class="num" style="font-weight:700;color:${adjRoi>=0?'#2563eb':'#dc2626'}">${pct(adjRoi)}</td></tr>
+    <tr><td>${adjRoiLabel}</td><td class="num" style="font-weight:700;color:${adjRoi>=0?'#2563eb':'#b55630'}">${pct(adjRoi)}</td></tr>
     ${activeRoiScen ? (() => {
       const invs = activeRoiScen.investors || [];
       if (invs.length) {
@@ -6338,7 +6739,7 @@ function fdKPIStripHTML(c, p) {
   const befColor = bef === null ? 'text-slate-500' : (bef <= 0.70 ? 'text-emerald-400' : bef <= 0.90 ? 'text-yellow-400' : 'text-red-400');
   const befDisplay = bef === null ? '—' : (bef * 100).toFixed(1) + '%';
   const showOptimizer = adjRoi < fdROIThreshold;
-  const optimizerBtn = showOptimizer ? `<button onclick="fdShowROIOptimizer()" style="display:flex;align-items:center;gap:4px;margin-top:7px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#ef4444;font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 8px;border-radius:3px;cursor:pointer;width:100%;justify-content:center;transition:background 0.12s;" onmouseover="this.style.background='rgba(239,68,68,0.22)'" onmouseout="this.style.background='rgba(239,68,68,0.12)'"><span style="font-size:10px;">⚡</span> Optimize ROI</button>` : '';
+  const optimizerBtn = showOptimizer ? `<button onclick="fdShowROIOptimizer()" style="display:flex;align-items:center;gap:4px;margin-top:7px;background:rgba(204,100,55,0.12);border:1px solid rgba(204,100,55,0.35);color:#cc6437;font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 8px;border-radius:3px;cursor:pointer;width:100%;justify-content:center;transition:background 0.12s;" onmouseover="this.style.background='rgba(204,100,55,0.22)'" onmouseout="this.style.background='rgba(204,100,55,0.12)'"><span style="font-size:10px;">⚡</span> Optimize ROI</button>` : '';
   return `<div class="grid grid-cols-6 gap-3">
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_attendance)} total attendance · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
@@ -7036,12 +7437,12 @@ function fdROIGaugeSVG(current, projected, threshold) {
   const thX = toX(threshold);
   const curX = toX(current);
   const projX = toX(projected != null ? projected : current);
-  const projColor = projected > current ? '#10b981' : '#ef4444';
+  const projColor = projected > current ? '#10b981' : '#cc6437';
   return `<svg viewBox="0 0 200 28" width="100%" height="28" xmlns="http://www.w3.org/2000/svg">
     <rect x="4" y="10" width="192" height="8" rx="4" fill="#1f2937"/>
     <rect x="${Math.min(curX,projX)}" y="10" width="${Math.abs(projX-curX)}" height="8" fill="${projColor}" opacity="0.25" rx="2"/>
-    <line x1="${thX}" y1="6" x2="${thX}" y2="22" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="3,2"/>
-    <text x="${thX}" y="4" fill="#ef4444" font-size="5" text-anchor="middle">target</text>
+    <line x1="${thX}" y1="6" x2="${thX}" y2="22" stroke="#cc6437" stroke-width="1.5" stroke-dasharray="3,2"/>
+    <text x="${thX}" y="4" fill="#cc6437" font-size="5" text-anchor="middle">target</text>
     <circle cx="${curX}" cy="14" r="5" fill="#64748b" stroke="#1e293b" stroke-width="1.5"/>
     ${projected !== null ? `<circle cx="${projX}" cy="14" r="5" fill="${projColor}" stroke="#1e293b" stroke-width="1.5"/>` : ''}
     <text x="${curX}" y="27" fill="#9ca3af" font-size="5" text-anchor="middle">${(current*100).toFixed(1)}%</text>
@@ -7060,34 +7461,34 @@ function fdROIOverlayHTML(c, p) {
   const sentimentBadge = sentiment.label==='positive'
     ? `<span style="background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.3);font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:0.08em;">● POSITIVE SENTIMENT</span>`
     : sentiment.label==='negative'
-    ? `<span style="background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:0.08em;">● NEGATIVE SENTIMENT</span>`
+    ? `<span style="background:rgba(204,100,55,0.15);color:#cc6437;border:1px solid rgba(204,100,55,0.3);font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:0.08em;">● NEGATIVE SENTIMENT</span>`
     : `<span style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);font-size:9px;padding:2px 7px;border-radius:3px;font-weight:600;letter-spacing:0.08em;">● NEUTRAL SENTIMENT</span>`;
 
   const impactBadge = imp => {
-    const cfg = {HIGH:'background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.25)',MEDIUM:'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)',LOW:'background:rgba(100,116,139,0.12);color:#94a3b8;border:1px solid rgba(100,116,139,0.25)'};
+    const cfg = {HIGH:'background:rgba(204,100,55,0.15);color:#cc6437;border:1px solid rgba(204,100,55,0.25)',MEDIUM:'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)',LOW:'background:rgba(100,116,139,0.12);color:#94a3b8;border:1px solid rgba(100,116,139,0.25)'};
     return `<span style="${cfg[imp]||cfg.LOW};font-size:8px;padding:1px 6px;border-radius:2px;font-weight:700;letter-spacing:0.1em;">${imp}</span>`;
   };
   const catBadge = cat => {
     const last = cat.includes('⚠️');
-    return `<span style="background:${last?'rgba(239,68,68,0.08)':'rgba(239,68,68,0.06)'};color:${last?'#ef4444':'#dc2626'};border:1px solid rgba(239,68,68,0.18);font-size:8px;padding:1px 6px;border-radius:2px;font-weight:600;letter-spacing:0.08em;">${cat}</span>`;
+    return `<span style="background:${last?'rgba(204,100,55,0.08)':'rgba(204,100,55,0.06)'};color:${last?'#cc6437':'#b55630'};border:1px solid rgba(204,100,55,0.18);font-size:8px;padding:1px 6px;border-radius:2px;font-weight:600;letter-spacing:0.08em;">${cat}</span>`;
   };
 
-  const roiColor = v => v>=fdROIThreshold ? '#10b981' : v>=0 ? '#fbbf24' : '#ef4444';
+  const roiColor = v => v>=fdROIThreshold ? '#10b981' : v>=0 ? '#fbbf24' : '#cc6437';
 
   const sugCards = sugs.map((s,i) => {
     const isLast = s.id === 'mg_negotiation';
     const lift = s.projROI !== null && s.projROI !== undefined ? s.projROI - s.currentROI : null;
-    return `<div style="border:1px solid ${isLast?'rgba(239,68,68,0.35)':'rgba(239,68,68,0.12)'};background:${isLast?'rgba(239,68,68,0.04)':'#0c0c0c'};border-radius:4px;padding:16px 18px;margin-bottom:10px;">
+    return `<div style="border:1px solid ${isLast?'rgba(204,100,55,0.35)':'rgba(204,100,55,0.12)'};background:${isLast?'rgba(204,100,55,0.04)':'#0c0c0c'};border-radius:4px;padding:16px 18px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="font-size:10px;font-weight:700;color:#ef4444;font-family:'DM Mono',monospace;min-width:20px;">${String(i+1).padStart(2,'0')}</span>
+        <span style="font-size:10px;font-weight:700;color:#cc6437;font-family:'DM Mono',monospace;min-width:20px;">${String(i+1).padStart(2,'0')}</span>
         <span style="font-size:14px;">${s.icon}</span>
         ${catBadge(s.cat)}
         ${impactBadge(s.impact)}
-        ${isLast ? `<span style="font-size:8px;color:#ef4444;font-weight:600;letter-spacing:0.08em;margin-left:4px;">— USE ONLY AFTER ALL ABOVE EXHAUSTED</span>` : ''}
+        ${isLast ? `<span style="font-size:8px;color:#cc6437;font-weight:600;letter-spacing:0.08em;margin-left:4px;">— USE ONLY AFTER ALL ABOVE EXHAUSTED</span>` : ''}
       </div>
       <div style="font-size:13px;font-weight:600;color:#f5f5f5;margin-bottom:8px;line-height:1.4;">${s.title}</div>
       <div style="font-size:10px;color:#9ca3af;line-height:1.65;margin-bottom:10px;">${s.why}</div>
-      <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:10px;padding-left:10px;border-left:2px solid rgba(239,68,68,0.25);">📊 ${s.data}</div>
+      <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:10px;padding-left:10px;border-left:2px solid rgba(204,100,55,0.25);">📊 ${s.data}</div>
       <div style="background:#080808;border:1px solid rgba(255,255,255,0.05);border-radius:3px;padding:8px 10px;margin-bottom:10px;">
         <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Lever</div>
         <div style="font-size:10px;color:#e2e8f0;font-family:'DM Mono',monospace;">${s.lever}</div>
@@ -7095,7 +7496,7 @@ function fdROIOverlayHTML(c, p) {
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
         <div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">CURRENT ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.currentROI)};font-family:'DM Mono',monospace;">${(s.currentROI*100).toFixed(2)}%</div></div>
         ${s.projROI !== null && s.projROI !== undefined ? `<div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">PROJECTED ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.projROI)};font-family:'DM Mono',monospace;">${(s.projROI*100).toFixed(2)}%</div></div>
-        <div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#ef4444'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
+        <div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#cc6437'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
       </div>
       ${s.projROI !== null && s.projROI !== undefined ? `<div style="margin-top:8px;">${fdROIGaugeSVG(s.currentROI, s.projROI, fdROIThreshold)}</div>` : ''}
       <div style="margin-top:10px;display:flex;justify-content:flex-end;">
@@ -7113,22 +7514,22 @@ function fdROIOverlayHTML(c, p) {
 
   return `<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
     <!-- Header -->
-    <div style="flex-shrink:0;padding:20px 28px 16px;border-bottom:1px solid rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:space-between;">
+    <div style="flex-shrink:0;padding:20px 28px 16px;border-bottom:1px solid rgba(204,100,55,0.15);display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:14px;">
         <div>
           <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:3px;">ROI Optimizer</div>
           <div style="font-size:18px;font-weight:700;color:#f5f5f5;">${p.artist||'Unnamed Artist'}</div>
           <div style="font-size:10px;color:#6b7280;margin-top:2px;">${(p.venue_type||'arena').charAt(0).toUpperCase()+(p.venue_type||'arena').slice(1)} · ${c.n} show${c.n>1?'s':''} · ${c.num_cities} cit${c.num_cities>1?'ies':'y'} · ${fmtNum(c.total_attendance)} total attendance</div>
         </div>
-        <div style="width:1px;height:36px;background:rgba(239,68,68,0.2);"></div>
+        <div style="width:1px;height:36px;background:rgba(204,100,55,0.2);"></div>
         <div>
           <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Current ROI</div>
-          <div style="font-size:28px;font-weight:700;color:${adjROI<fdROIThreshold?'#ef4444':'#10b981'};font-family:'DM Mono',monospace;line-height:1;">${(adjROI*100).toFixed(2)}%</div>
+          <div style="font-size:28px;font-weight:700;color:${adjROI<fdROIThreshold?'#cc6437':'#10b981'};font-family:'DM Mono',monospace;line-height:1;">${(adjROI*100).toFixed(2)}%</div>
         </div>
         <div>
           <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Threshold</div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="roi-threshold-input" min="0" max="100" step="0.5" value="${(fdROIThreshold*100).toFixed(1)}" style="background:#0c0c0c;border:1px solid rgba(239,68,68,0.25);color:#f5f5f5;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;width:60px;padding:3px 7px;border-radius:3px;text-align:right;" oninput="fdROIThreshold=Number(this.value)/100;fdROIRefreshSuggestions();">
+            <input type="number" id="roi-threshold-input" min="0" max="100" step="0.5" value="${(fdROIThreshold*100).toFixed(1)}" style="background:#0c0c0c;border:1px solid rgba(204,100,55,0.25);color:#f5f5f5;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;width:60px;padding:3px 7px;border-radius:3px;text-align:right;" oninput="fdROIThreshold=Number(this.value)/100;fdROIRefreshSuggestions();">
             <span style="font-size:11px;color:#6b7280;">%</span>
           </div>
         </div>
@@ -7137,11 +7538,11 @@ function fdROIOverlayHTML(c, p) {
           ${geo ? `<span style="font-size:8px;color:#6b7280;">${geo.city.charAt(0).toUpperCase()+geo.city.slice(1)} · WTP ${geo.wtp.toFixed(2)}× · Merch ${geo.merch.toFixed(2)}×</span>` : ''}
         </div>
       </div>
-      <button onclick="fdHideROIOptimizer()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);color:#ef4444;font-size:11px;font-weight:700;letter-spacing:0.1em;padding:7px 14px;border-radius:3px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">✕ CLOSE</button>
+      <button onclick="fdHideROIOptimizer()" style="background:rgba(204,100,55,0.1);border:1px solid rgba(204,100,55,0.25);color:#cc6437;font-size:11px;font-weight:700;letter-spacing:0.1em;padding:7px 14px;border-radius:3px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(204,100,55,0.2)'" onmouseout="this.style.background='rgba(204,100,55,0.1)'">✕ CLOSE</button>
     </div>
     <!-- Diagnosis strip -->
-    ${diagLines.length ? `<div style="flex-shrink:0;padding:10px 28px;background:#080808;border-bottom:1px solid rgba(239,68,68,0.10);display:flex;gap:12px;flex-wrap:wrap;">
-      ${diagLines.map(l=>`<span style="font-size:9px;color:#ef4444;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);padding:3px 8px;border-radius:2px;">⚠ ${l}</span>`).join('')}
+    ${diagLines.length ? `<div style="flex-shrink:0;padding:10px 28px;background:#080808;border-bottom:1px solid rgba(204,100,55,0.10);display:flex;gap:12px;flex-wrap:wrap;">
+      ${diagLines.map(l=>`<span style="font-size:9px;color:#cc6437;background:rgba(204,100,55,0.08);border:1px solid rgba(204,100,55,0.18);padding:3px 8px;border-radius:2px;">⚠ ${l}</span>`).join('')}
     </div>` : ''}
     <!-- Suggestions -->
     <div id="roi-suggestions-body" style="flex:1;overflow-y:auto;padding:20px 28px;">
@@ -7172,24 +7573,24 @@ function fdROIRefreshSuggestions() {
   const body = document.getElementById('roi-suggestions-body');
   if (!body) return;
   const sugs = fdROI_suggestions(c, p);
-  const roiColor = v => v >= fdROIThreshold ? '#10b981' : v >= 0 ? '#fbbf24' : '#ef4444';
+  const roiColor = v => v >= fdROIThreshold ? '#10b981' : v >= 0 ? '#fbbf24' : '#cc6437';
   const impactBadge = imp => {
-    const cfg = {HIGH:'background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.25)',MEDIUM:'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)',LOW:'background:rgba(100,116,139,0.12);color:#94a3b8;border:1px solid rgba(100,116,139,0.25)'};
+    const cfg = {HIGH:'background:rgba(204,100,55,0.15);color:#cc6437;border:1px solid rgba(204,100,55,0.25)',MEDIUM:'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)',LOW:'background:rgba(100,116,139,0.12);color:#94a3b8;border:1px solid rgba(100,116,139,0.25)'};
     return `<span style="${cfg[imp]||cfg.LOW};font-size:8px;padding:1px 6px;border-radius:2px;font-weight:700;letter-spacing:0.1em;">${imp}</span>`;
   };
-  const catBadge = cat => `<span style="background:${cat.includes('⚠️')?'rgba(239,68,68,0.08)':'rgba(239,68,68,0.06)'};color:${cat.includes('⚠️')?'#ef4444':'#dc2626'};border:1px solid rgba(239,68,68,0.18);font-size:8px;padding:1px 6px;border-radius:2px;font-weight:600;letter-spacing:0.08em;">${cat}</span>`;
+  const catBadge = cat => `<span style="background:${cat.includes('⚠️')?'rgba(204,100,55,0.08)':'rgba(204,100,55,0.06)'};color:${cat.includes('⚠️')?'#cc6437':'#b55630'};border:1px solid rgba(204,100,55,0.18);font-size:8px;padding:1px 6px;border-radius:2px;font-weight:600;letter-spacing:0.08em;">${cat}</span>`;
   const sugCards = sugs.map((s,i) => {
     const isLast = s.id === 'mg_negotiation';
     const lift = s.projROI !== null && s.projROI !== undefined ? s.projROI - s.currentROI : null;
-    return `<div style="border:1px solid ${isLast?'rgba(239,68,68,0.35)':'rgba(239,68,68,0.12)'};background:${isLast?'rgba(239,68,68,0.04)':'#0c0c0c'};border-radius:4px;padding:16px 18px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:10px;font-weight:700;color:#ef4444;font-family:'DM Mono',monospace;min-width:20px;">${String(i+1).padStart(2,'0')}</span><span style="font-size:14px;">${s.icon}</span>${catBadge(s.cat)}${impactBadge(s.impact)}${isLast?`<span style="font-size:8px;color:#ef4444;font-weight:600;letter-spacing:0.08em;margin-left:4px;">— USE ONLY AFTER ALL ABOVE EXHAUSTED</span>`:''}</div>
+    return `<div style="border:1px solid ${isLast?'rgba(204,100,55,0.35)':'rgba(204,100,55,0.12)'};background:${isLast?'rgba(204,100,55,0.04)':'#0c0c0c'};border-radius:4px;padding:16px 18px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:10px;font-weight:700;color:#cc6437;font-family:'DM Mono',monospace;min-width:20px;">${String(i+1).padStart(2,'0')}</span><span style="font-size:14px;">${s.icon}</span>${catBadge(s.cat)}${impactBadge(s.impact)}${isLast?`<span style="font-size:8px;color:#cc6437;font-weight:600;letter-spacing:0.08em;margin-left:4px;">— USE ONLY AFTER ALL ABOVE EXHAUSTED</span>`:''}</div>
       <div style="font-size:13px;font-weight:600;color:#f5f5f5;margin-bottom:8px;line-height:1.4;">${s.title}</div>
       <div style="font-size:10px;color:#9ca3af;line-height:1.65;margin-bottom:10px;">${s.why}</div>
-      <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:10px;padding-left:10px;border-left:2px solid rgba(239,68,68,0.25);">📊 ${s.data}</div>
+      <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:10px;padding-left:10px;border-left:2px solid rgba(204,100,55,0.25);">📊 ${s.data}</div>
       <div style="background:#080808;border:1px solid rgba(255,255,255,0.05);border-radius:3px;padding:8px 10px;margin-bottom:10px;"><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Lever</div><div style="font-size:10px;color:#e2e8f0;font-family:'DM Mono',monospace;">${s.lever}</div></div>
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
         <div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">CURRENT ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.currentROI)};font-family:'DM Mono',monospace;">${(s.currentROI*100).toFixed(2)}%</div></div>
-        ${s.projROI !== null && s.projROI !== undefined ? `<div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">PROJECTED ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.projROI)};font-family:'DM Mono',monospace;">${(s.projROI*100).toFixed(2)}%</div></div><div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#ef4444'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
+        ${s.projROI !== null && s.projROI !== undefined ? `<div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">PROJECTED ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.projROI)};font-family:'DM Mono',monospace;">${(s.projROI*100).toFixed(2)}%</div></div><div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#cc6437'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
       </div>
       ${s.projROI !== null && s.projROI !== undefined ? `<div style="margin-top:8px;">${fdROIGaugeSVG(s.currentROI, s.projROI, fdROIThreshold)}</div>` : ''}
       <div style="margin-top:10px;display:flex;justify-content:flex-end;"><button onclick="fdROIApply('${s.id}')" style="background:rgba(16,185,129,0.10);border:1px solid rgba(16,185,129,0.30);color:#10b981;font-size:9px;font-weight:700;letter-spacing:0.1em;padding:5px 16px;border-radius:3px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='rgba(16,185,129,0.22)'" onmouseout="this.style.background='rgba(16,185,129,0.10)'">→ APPLY TO PROFILE</button></div>
@@ -7307,13 +7708,13 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
   if (!fdSensState.open) {
     return `<div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#ef4444;">⚡ Sensitivity Analysis</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#cc6437;">⚡ Sensitivity Analysis</span>
         <span style="font-size:9px;color:#6b7280;">— adjust assumptions to preview impact on P&amp;L</span>
         ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Modified</span>' : ''}
       </div>
       <div class="flex items-center gap-2">
         ${actionBtns}
-        <button onclick="fdToggleSens()" style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#000;background:#ef4444;border:none;padding:5px 14px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">Open Sliders ↓</button>
+        <button onclick="fdToggleSens()" style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#000;background:#cc6437;border:none;padding:5px 14px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#b55630'" onmouseout="this.style.background='#cc6437'">Open Sliders ↓</button>
       </div>
     </div>`;
   }
@@ -7325,7 +7726,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
       </div>
       <div class="flex items-center gap-2">
         <span id="fd-sens-reset-btn">${actionBtns}</span>
-        <button onclick="fdToggleSens()" style="font-size:10px;font-weight:600;letter-spacing:0.06em;color:#6b7280;background:none;border:1px solid rgba(239,68,68,0.2);padding:3px 10px;cursor:pointer;transition:color 0.15s;" onmouseover="this.style.color='#f5f5f5'" onmouseout="this.style.color='#6b7280'">Collapse ↑</button>
+        <button onclick="fdToggleSens()" style="font-size:10px;font-weight:600;letter-spacing:0.06em;color:#6b7280;background:none;border:1px solid rgba(204,100,55,0.2);padding:3px 10px;cursor:pointer;transition:color 0.15s;" onmouseover="this.style.color='#f5f5f5'" onmouseout="this.style.color='#6b7280'">Collapse ↑</button>
       </div>
     </div>
     <div class="grid grid-cols-3 gap-5 mb-4">
@@ -7363,7 +7764,7 @@ function fdSensPanelInnerHTML(p, baseC, sensC) {
         <input id="fd-sens-fr-slider" type="range" min="0" max="100" step="1" value="${fillRatePct}"
           oninput="fdSensApply('fillRatePct', this.value)"
           ${fillRateEnabled ? '' : 'disabled'}
-          class="w-full cursor-pointer" style="height:4px;accent-color:${fillRateEnabled ? '#ef4444' : '#475569'}">
+          class="w-full cursor-pointer" style="height:4px;accent-color:${fillRateEnabled ? '#cc6437' : '#475569'}">
         <div id="fd-sens-fr-hint" class="text-[9px] text-slate-600 mt-1.5 text-center">${fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates'}</div>
       </div>
     </div>
@@ -7394,7 +7795,7 @@ function fdUpdateSens() {
     const frDisp = g('fd-sens-fr-display');
     if (frDisp) frDisp.innerHTML = fillRateEnabled ? '<span class="text-cyan-400">' + fillRatePct + '%</span>' : '<span class="text-slate-600">Off</span>';
     const frSlider = g('fd-sens-fr-slider');
-    if (frSlider) { frSlider.disabled = !fillRateEnabled; frSlider.style.accentColor = fillRateEnabled ? '#ef4444' : '#475569'; frSlider.value = fillRatePct; }
+    if (frSlider) { frSlider.disabled = !fillRateEnabled; frSlider.style.accentColor = fillRateEnabled ? '#cc6437' : '#475569'; frSlider.value = fillRatePct; }
     const frHint = g('fd-sens-fr-hint');
     if (frHint) frHint.textContent = fillRateEnabled ? 'Overrides per-city fill rates' : 'Enable to override per-city rates';
     const badgeEl = g('fd-sens-badge');
@@ -7655,7 +8056,7 @@ function fdRenderLive(p) {
     ${p.festival_mode ? fdFestivalLineupHTML(p) : ''}
 
     <!-- Sensitivity Panel -->
-    <div id="fd-sens-panel" style="border:1px solid rgba(239,68,68,0.25);background:#0c0c0c;border-radius:6px;padding:16px;">
+    <div id="fd-sens-panel" style="border:1px solid rgba(204,100,55,0.25);background:#0c0c0c;border-radius:6px;padding:16px;">
       ${(() => { const sensC = fdSensComputeProfile(p); return fdSensPanelInnerHTML(p, c, sensC); })()}
     </div>
 
@@ -7696,12 +8097,12 @@ function fdRenderLive(p) {
             const cityROIVal = fdROI_cityROI(cc, c, p);
             const cityHasData = cc.total_ticket_rev > 0;
             const cityROIBelow = cityHasData && cityROIVal < fdROIThreshold;
-            const cityROIColor = cityROIVal >= fdROIThreshold ? '#10b981' : cityROIVal >= 0 ? '#fbbf24' : '#ef4444';
+            const cityROIColor = cityROIVal >= fdROIThreshold ? '#10b981' : cityROIVal >= 0 ? '#fbbf24' : '#cc6437';
             const cityROIBadge = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
               '<span style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;">' + (tc.city_name||'City') + '</span>' +
               '<div style="display:flex;align-items:center;gap:6px;">' +
                 '<span style="font-size:9px;font-weight:600;color:' + cityROIColor + ';font-family:\'DM Mono\',monospace;">City ROI ' + (cityROIVal*100).toFixed(1) + '%</span>' +
-                (cityROIBelow ? '<button onclick="fdShowROIOptimizer()" title="ROI below threshold — open optimizer" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:#ef4444;font-size:8px;font-weight:700;padding:2px 7px;border-radius:2px;cursor:pointer;letter-spacing:0.08em;">⚡ OPTIMIZE</button>' : '') +
+                (cityROIBelow ? '<button onclick="fdShowROIOptimizer()" title="ROI below threshold — open optimizer" style="background:rgba(204,100,55,0.12);border:1px solid rgba(204,100,55,0.35);color:#cc6437;font-size:8px;font-weight:700;padding:2px 7px;border-radius:2px;cursor:pointer;letter-spacing:0.08em;">⚡ OPTIMIZE</button>' : '') +
               '</div>' +
             '</div>';
 
@@ -8515,7 +8916,7 @@ function fdSetRoiScen(scenId) {
 
 // ─── Chart.js defaults ───
 Chart.defaults.color = '#6b7280';
-Chart.defaults.borderColor = 'rgba(239,68,68,0.07)';
+Chart.defaults.borderColor = 'rgba(204,100,55,0.07)';
 Chart.defaults.font.family = 'DM Mono';
 Chart.defaults.font.size = 10;
 
@@ -8830,10 +9231,10 @@ function rpCommitmentExposure(computed) {
     return { ds, deals, mg };
   }).filter(x=>x.deals.length>0);
   if (!stageData.length) return '';
-  const stageColorMap = { 'Interest':'#94a3b8','Offer Sent':'#38bdf8','Binder Sent':'#60a5fa','Offer Accepted':'#ef4444','Show in Pre-production':'#fbbf24','Tickets Live':'#22d3ee','Completed':'#34d399' };
+  const stageColorMap = { 'Interest':'#94a3b8','Offer Sent':'#38bdf8','Binder Sent':'#60a5fa','Offer Accepted':'#cc6437','Show in Pre-production':'#fbbf24','Tickets Live':'#22d3ee','Completed':'#34d399' };
   const rows = stageData.map(({ds,deals,mg}) => {
     const pct = totalMG>0?mg/totalMG:0;
-    const color = stageColorMap[ds.label]||'#ef4444';
+    const color = stageColorMap[ds.label]||'#cc6437';
     return `<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0"><span class="text-[9px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 w-40 text-center ${ds.active}">${ds.label}</span><div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${(pct*100).toFixed(1)}%;background:${color};opacity:0.6"></div></div><span class="text-[9px] text-slate-500 w-8 text-center flex-shrink-0">${deals.length}</span><span class="text-[10px] font-semibold text-red-400 w-24 text-right flex-shrink-0">${fmtDollar(mg)}</span><span class="text-[9px] text-slate-600 w-10 text-right flex-shrink-0">${(pct*100).toFixed(0)}%</span></div>`;
   }).join('');
   return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Commitment Exposure by Stage</h3><div class="text-[10px] text-slate-400">Total MG on the table: <span class="text-red-400 font-semibold">${fmtDollar(totalMG)}</span></div></div><div class="flex text-[9px] text-slate-600 uppercase tracking-wider pb-1.5 border-b border-white/5 mb-1"><span class="w-40 flex-shrink-0">Stage</span><span class="flex-1 pl-3">Share of MG</span><span class="w-8 text-center flex-shrink-0">Deals</span><span class="w-24 text-right flex-shrink-0">MG Amount</span><span class="w-10 text-right flex-shrink-0">%</span></div>${rows}</div>`;
@@ -8912,6 +9313,7 @@ async function initAuth() {
       document.getElementById('user-display-name').textContent = currentUser.username;
       document.getElementById('user-display-role').textContent = currentUser.role === 'admin' ? 'Admin' : 'User';
       await loadUserData();
+      gkSyncUser();
     } else {
       document.getElementById('login-gate').classList.remove('hidden');
       document.getElementById('app-shell').style.setProperty('display', 'none', 'important');
@@ -8947,13 +9349,12 @@ async function doLogin() {
       document.getElementById('user-display-name').textContent = data.username;
       document.getElementById('user-display-role').textContent = data.role === 'admin' ? 'Admin' : 'User';
       await loadUserData();
+      gkSyncUser();
     } else {
       errEl.textContent = 'INVALID CREDENTIALS';
       errEl.style.display = 'block';
       document.getElementById('login-pass').value = '';
-      wrap.classList.remove('shake');
-      void wrap.offsetWidth;
-      wrap.classList.add('shake');
+      if (wrap) { wrap.classList.remove('shake'); void wrap.offsetWidth; wrap.classList.add('shake'); }
     }
   } catch(e) {
     errEl.textContent = 'CONNECTION ERROR';
@@ -8974,6 +9375,12 @@ async function doLogout() {
   document.getElementById('login-err').style.display = 'none';
   document.getElementById('app-shell').style.setProperty('display', 'none', 'important');
   document.getElementById('login-gate').classList.remove('hidden');
+  // Reset landing page state
+  const lc = document.getElementById('gk-landing-content');
+  const lp = document.getElementById('gk-login-panel');
+  if (lc) { lc.style.display = 'flex'; lc.style.animation = ''; }
+  if (lp) lp.style.display = 'none';
+  gkMenuClose();
   setTimeout(() => document.getElementById('login-user').focus(), 50);
 }
 
@@ -9280,12 +9687,12 @@ function initDashboardData() {
   loadData();
 }
 
-document.addEventListener('DOMContentLoaded', () => { initAuth(); });
+document.addEventListener('DOMContentLoaded', () => { gkInitCanvas(); initAuth(); });
 </script>
 
 <!-- ROI OPTIMIZER OVERLAY -->
 <div id="fd-roi-overlay" style="display:none;opacity:0;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);transition:opacity 0.2s ease;flex-direction:column;">
-  <div style="margin:auto;width:100%;max-width:860px;height:calc(100vh - 48px);margin-top:24px;background:#080808;border:1px solid rgba(239,68,68,0.22);border-radius:6px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 80px rgba(239,68,68,0.08);">
+  <div style="margin:auto;width:100%;max-width:860px;height:calc(100vh - 48px);margin-top:24px;background:#080808;border:1px solid rgba(204,100,55,0.22);border-radius:6px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 80px rgba(204,100,55,0.08);">
     <div id="roi-overlay-content" style="display:flex;flex-direction:column;height:100%;overflow:hidden;"></div>
   </div>
 </div>
