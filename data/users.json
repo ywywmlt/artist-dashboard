@@ -1,7 +1,7 @@
 [
   {
     "username": "gatekeep",
-    "password_hash": "pbkdf2:sha256:1000000$UesdSZ9m93syadJS$1ee2b40821850e43dfedd53590955350163570ee5eaa0006b24fdf4a3161fb1b",
+    "password_hash": "pbkdf2:sha256:1000000$R7PimWG5LtoTrmD4$3a275dd1ce498b9c3b5bf49298f1dc86f428355cf7a022360fd546b996530947",
     "role": "admin"
   }
 ]
