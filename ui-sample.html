@@ -3983,27 +3983,41 @@ function computeProfile(p) {
   const co_prom_pct  = Math.min(1, Math.max(0, Number(cop.split_pct)||0));
   const co_promoter_share  = net_profit * co_prom_pct;
   const blufin_net_profit  = net_profit - co_promoter_share;
-  // Invested capital = advance MG payments (all except the last, which is settled
-  // from ticket proceeds) + ALL pre-show op costs (venue fee, production,
-  // hospitality, insurance — all committed before ticket revenue is realised).
+
+  // Invested capital = MG advance tranches + support act MGs (paid upfront) + all pre-show op costs
   const mgSched = co.mg_schedule || [];
   let mg_advance_pct;
   if (mgSched.length === 0) {
-    mg_advance_pct = 0.5;                          // no schedule: fall back to 50%
+    mg_advance_pct = 0.5;
   } else if (mgSched.length === 1) {
-    mg_advance_pct = 1.0;                          // single payment = all upfront
+    mg_advance_pct = 1.0;
   } else {
-    // Sum every payment except the last — the last tranche is paid from
-    // collected presales/ticket revenue, not from working capital.
     mg_advance_pct = Math.min(1, Math.max(0,
       mgSched.slice(0, -1).reduce((s, pmt) => s + (Number(pmt.pct) || 0), 0)
     ));
   }
   const mg_advance_cost  = artist_mg_cost * mg_advance_pct;
-  const invested_capital = mg_advance_cost + total_op_costs;
+  // FIX: include support act MGs in invested capital (paid upfront like MG advance)
+  const invested_capital = mg_advance_cost + support_act_total + total_op_costs;
+
+  // FIX: ROI uses blufin_net_profit (after co-promoter split) — reflects actual return on capital
   const roi = invested_capital > 0
-    ? net_profit / invested_capital
-    : (total_costs > 0 ? net_profit / total_costs : 0);
+    ? blufin_net_profit / invested_capital
+    : (total_costs > 0 ? blufin_net_profit / total_costs : 0);
+
+  // Tour-level break-even fill rate — the fill % at which the entire deal breaks even
+  // (covers MG + support + ops + agency + ticketing fees), net of fixed non-ticket revenue
+  const total_ticket_rev_at_100 = cityCalcs.reduce((s, cc) => s + cc.rev_at_100 * cc.shows, 0);
+  const total_seats_at_100 = cityCalcs.reduce((s, cc) =>
+    s + cc.cats.reduce((s2, cat) => s2 + (Number(cat.count)||0), 0) * cc.shows, 0);
+  const fnb_rev_at_100 = (Number(ar.fnb_per_head)||0) * (Number(ar.fnb_buyer_pct)||0) * total_seats_at_100;
+  const fixed_deal_costs = artist_mg_cost + support_act_total
+    + (Number(co.agency_fees)||0) + (Number(co.blufin_fees)||0) + total_op_costs;
+  const non_ticket_rev_fixed = merch_rev + sponsor_rev;
+  const revenue_per_pct_fill = total_ticket_rev_at_100 * (1 - ticketing_fee_pct) + fnb_rev_at_100;
+  const tour_break_even_fill = revenue_per_pct_fill > 0
+    ? Math.min(1, Math.max(0, (fixed_deal_costs - non_ticket_rev_fixed) / revenue_per_pct_fill))
+    : null;
 
   return {
     cityCalcs,
@@ -4015,7 +4029,8 @@ function computeProfile(p) {
     num_cities: cities.length,
     artist_mg_cost, support_act_total,
     co_prom_pct, co_promoter_share, blufin_net_profit,
-    deal_type: co.deal_type||'flat_mg'
+    deal_type: co.deal_type||'flat_mg',
+    tour_break_even_fill
   };
 }
 
@@ -6263,11 +6278,15 @@ function fdKPIStripHTML(c, p) {
   const adjRoi = fdSensAdjustedROI(c, p);
   const roiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
   const roiLabel = (p?.investor_scenarios || []).some(s => s.use_for_roi && Number(s.equity) > 0) ? 'ROI (adj.)' : 'ROI';
-  return `<div class="grid grid-cols-5 gap-3">
+  const bef = c.tour_break_even_fill;
+  const befColor = bef === null ? 'text-slate-500' : (bef <= 0.70 ? 'text-emerald-400' : bef <= 0.90 ? 'text-yellow-400' : 'text-red-400');
+  const befDisplay = bef === null ? '—' : (bef * 100).toFixed(1) + '%';
+  return `<div class="grid grid-cols-6 gap-3">
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Gross Revenue</div><div class="text-lg font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="text-[9px] text-slate-500 mt-1">${fmtNum(c.total_attendance)} total attendance · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Total Costs</div><div class="text-lg font-bold text-red-400">${fmtDollar(c.total_costs)}</div><div class="text-[9px] text-slate-500 mt-1">MG + ticketing + ops</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Net Profit</div><div class="text-lg font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">${roiLabel}</div><div class="text-lg font-bold ${roiColor}">${(adjRoi*100).toFixed(2)}%</div><div class="text-[9px] text-slate-500 mt-1">${c.invested_capital > 0 ? 'on ' + fmtDollar(c.invested_capital) + ' capital' : 'on total costs'}</div></div>
+    <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Break-even Fill</div><div class="text-lg font-bold ${befColor}">${befDisplay}</div><div class="text-[9px] text-slate-500 mt-1">fill rate to cover full deal</div></div>
     <div class="kpi-card rounded-xl p-3"><div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">Best MOIC</div><div class="text-lg font-bold ${mc}">${bestMoic > 0 ? bestMoic.toFixed(2)+'x' : '—'}</div></div>
   </div>`;
 }
@@ -6574,7 +6593,8 @@ function fdSensAdjustedROI(c, p) {
   } else {
     obligation = Number(activeScen.equity) * ((activeScen.expected_return_pct || 0) / 100);
   }
-  const adjustedProfit = c.net_profit - obligation;
+  const baseProfit = (c.blufin_net_profit !== undefined) ? c.blufin_net_profit : c.net_profit;
+  const adjustedProfit = baseProfit - obligation;
   return c.invested_capital > 0
     ? adjustedProfit / c.invested_capital
     : (c.total_costs > 0 ? adjustedProfit / c.total_costs : 0);
