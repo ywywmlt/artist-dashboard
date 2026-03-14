@@ -8874,24 +8874,42 @@ function _writeBackedProfiles(profiles) {
 }
 
 async function loadUserData() {
-  // 1. Load from local/sessionStorage immediately so profiles appear before server responds
-  const backed = _readBackedProfiles();
-  if (backed) fdState.profiles = backed;
+  // localStorage is always authoritative — it survives Railway redeploys.
+  // The server resets to the git-committed snapshot on every deploy, so it can
+  // never be treated as the source of truth for profiles the user created since
+  // the last commit. Strategy:
+  //   1. Apply localStorage immediately (user sees their profiles instantly).
+  //   2. Fetch server state for watchlist/contacts and for cross-device profiles.
+  //   3. Merge: localStorage profiles win for any ID that exists in both.
+  //      Server-only profiles (created on another device/browser) are added in.
+  //   4. Always push the merged result back to server so it stays current.
 
-  // 2. Sync with server
+  const backed = _readBackedProfiles();
+  if (backed && backed.length > 0) fdState.profiles = backed;
+
   try {
     const res = await fetch('/api/user-data');
     if (res.ok) {
       const data = await res.json();
       const serverProfiles = data.profiles || [];
-      if (serverProfiles.length > 0) {
-        // Server is authoritative — update state and refresh local backup
+
+      if (backed && backed.length > 0) {
+        // localStorage is authoritative. Bring in any server-only profiles
+        // (e.g. created from a different browser/device) but don't let server
+        // overwrite profiles that already exist in localStorage.
+        const localIds = new Set(backed.map(p => p.id));
+        const serverOnly = serverProfiles.filter(p => !localIds.has(p.id));
+        if (serverOnly.length > 0) {
+          fdState.profiles = [...backed, ...serverOnly];
+        }
+        // Always resync merged result to server so it reflects the current state
+        await saveUserData();
+      } else if (serverProfiles.length > 0) {
+        // No localStorage data at all — use server (first login on this device)
         fdState.profiles = serverProfiles;
         _writeBackedProfiles(serverProfiles);
-      } else if (fdState.profiles.length > 0) {
-        // Server is empty (e.g. after redeploy) but we have local data — push it back
-        await saveUserData();
       }
+
       watchlist = data.watchlist || {};
       contacts = data.contacts || {};
     }
