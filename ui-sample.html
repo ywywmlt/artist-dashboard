@@ -6700,7 +6700,7 @@ function fdROI_genreData(p) {
   if (typeof artists !== 'undefined' && typeof mbMap !== 'undefined') {
     const match = artists.find(a => {
       const n = (a.name||'').toLowerCase();
-      return n.length > 2 && (lower => n.includes(lower) || lower.includes(n))(name);
+      return n.length > 2 && (n.includes(name) || name.includes(n));
     });
     if (match) { const mb = mbMap[match.spotify_id]; if (mb?.genres) mbGenres = mb.genres.map(g=>g.toLowerCase()); }
   }
@@ -6969,7 +6969,6 @@ function fdROIGaugeSVG(current, projected, threshold) {
   const curX = toX(current);
   const projX = toX(projected != null ? projected : current);
   const projColor = projected > current ? '#10b981' : '#ef4444';
-  const zeroX = toX(0);
   return `<svg viewBox="0 0 200 28" width="100%" height="28" xmlns="http://www.w3.org/2000/svg">
     <rect x="4" y="10" width="192" height="8" rx="4" fill="#1f2937"/>
     <rect x="${Math.min(curX,projX)}" y="10" width="${Math.abs(projX-curX)}" height="8" fill="${projColor}" opacity="0.25" rx="2"/>
@@ -7058,7 +7057,7 @@ function fdROIOverlayHTML(c, p) {
         <div>
           <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;">Threshold</div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <input type="number" id="roi-threshold-input" min="0" max="100" step="0.5" value="${(fdROIThreshold*100).toFixed(1)}" style="background:#0c0c0c;border:1px solid rgba(239,68,68,0.25);color:#f5f5f5;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;width:60px;padding:3px 7px;border-radius:3px;text-align:right;" oninput="fdROIThreshold=Number(this.value)/100;document.getElementById('roi-overlay-content').innerHTML=fdROIOverlayHTML(computeProfile(fdState.draftProfile),fdState.draftProfile);">
+            <input type="number" id="roi-threshold-input" min="0" max="100" step="0.5" value="${(fdROIThreshold*100).toFixed(1)}" style="background:#0c0c0c;border:1px solid rgba(239,68,68,0.25);color:#f5f5f5;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;width:60px;padding:3px 7px;border-radius:3px;text-align:right;" oninput="fdROIThreshold=Number(this.value)/100;fdROIRefreshSuggestions();">
             <span style="font-size:11px;color:#6b7280;">%</span>
           </div>
         </div>
@@ -7074,7 +7073,7 @@ function fdROIOverlayHTML(c, p) {
       ${diagLines.map(l=>`<span style="font-size:9px;color:#ef4444;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);padding:3px 8px;border-radius:2px;">⚠ ${l}</span>`).join('')}
     </div>` : ''}
     <!-- Suggestions -->
-    <div style="flex:1;overflow-y:auto;padding:20px 28px;">
+    <div id="roi-suggestions-body" style="flex:1;overflow-y:auto;padding:20px 28px;">
       <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:14px;">${sugs.length} Suggestion${sugs.length!==1?'s':''} — ordered by impact, MG renegotiation always last</div>
       ${sugs.length ? sugCards : `<div style="text-align:center;padding:60px 0;color:#4b5563;font-size:13px;">No actionable suggestions — deal is well-structured.</div>`}
       <div style="height:40px;"></div>
@@ -7092,6 +7091,39 @@ function fdShowROIOptimizer() {
   content.innerHTML = fdROIOverlayHTML(c, p);
   overlay.style.display = 'flex';
   setTimeout(()=>{ overlay.style.opacity='1'; }, 10);
+}
+
+// Refreshes only the suggestions body when threshold changes — preserves input focus
+function fdROIRefreshSuggestions() {
+  const p = fdState.draftProfile;
+  if (!p) return;
+  const c = computeProfile(p);
+  const body = document.getElementById('roi-suggestions-body');
+  if (!body) return;
+  const sugs = fdROI_suggestions(c, p);
+  const roiColor = v => v >= fdROIThreshold ? '#10b981' : v >= 0 ? '#fbbf24' : '#ef4444';
+  const impactBadge = imp => {
+    const cfg = {HIGH:'background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.25)',MEDIUM:'background:rgba(251,191,36,0.12);color:#fbbf24;border:1px solid rgba(251,191,36,0.25)',LOW:'background:rgba(100,116,139,0.12);color:#94a3b8;border:1px solid rgba(100,116,139,0.25)'};
+    return `<span style="${cfg[imp]||cfg.LOW};font-size:8px;padding:1px 6px;border-radius:2px;font-weight:700;letter-spacing:0.1em;">${imp}</span>`;
+  };
+  const catBadge = cat => `<span style="background:${cat.includes('⚠️')?'rgba(239,68,68,0.08)':'rgba(239,68,68,0.06)'};color:${cat.includes('⚠️')?'#ef4444':'#dc2626'};border:1px solid rgba(239,68,68,0.18);font-size:8px;padding:1px 6px;border-radius:2px;font-weight:600;letter-spacing:0.08em;">${cat}</span>`;
+  const sugCards = sugs.map((s,i) => {
+    const isLast = s.id === 'mg_negotiation';
+    const lift = s.projROI !== null && s.projROI !== undefined ? s.projROI - s.currentROI : null;
+    return `<div style="border:1px solid ${isLast?'rgba(239,68,68,0.35)':'rgba(239,68,68,0.12)'};background:${isLast?'rgba(239,68,68,0.04)':'#0c0c0c'};border-radius:4px;padding:16px 18px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="font-size:10px;font-weight:700;color:#ef4444;font-family:'DM Mono',monospace;min-width:20px;">${String(i+1).padStart(2,'0')}</span><span style="font-size:14px;">${s.icon}</span>${catBadge(s.cat)}${impactBadge(s.impact)}${isLast?`<span style="font-size:8px;color:#ef4444;font-weight:600;letter-spacing:0.08em;margin-left:4px;">— USE ONLY AFTER ALL ABOVE EXHAUSTED</span>`:''}</div>
+      <div style="font-size:13px;font-weight:600;color:#f5f5f5;margin-bottom:8px;line-height:1.4;">${s.title}</div>
+      <div style="font-size:10px;color:#9ca3af;line-height:1.65;margin-bottom:10px;">${s.why}</div>
+      <div style="font-size:9px;color:#6b7280;font-style:italic;margin-bottom:10px;padding-left:10px;border-left:2px solid rgba(239,68,68,0.25);">📊 ${s.data}</div>
+      <div style="background:#080808;border:1px solid rgba(255,255,255,0.05);border-radius:3px;padding:8px 10px;margin-bottom:10px;"><div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;">Lever</div><div style="font-size:10px;color:#e2e8f0;font-family:'DM Mono',monospace;">${s.lever}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;">
+        <div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">CURRENT ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.currentROI)};font-family:'DM Mono',monospace;">${(s.currentROI*100).toFixed(2)}%</div></div>
+        ${s.projROI !== null && s.projROI !== undefined ? `<div><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">PROJECTED ROI</div><div style="font-size:16px;font-weight:700;color:${roiColor(s.projROI)};font-family:'DM Mono',monospace;">${(s.projROI*100).toFixed(2)}%</div></div><div style="text-align:right;"><div style="font-size:9px;color:#6b7280;margin-bottom:2px;">DELTA</div><div style="font-size:13px;font-weight:700;color:${lift>0?'#10b981':'#ef4444'};font-family:'DM Mono',monospace;">${lift>=0?'+':''}${(lift*100).toFixed(2)}pp</div></div>` : ''}
+      </div>
+      ${s.projROI !== null && s.projROI !== undefined ? `<div style="margin-top:8px;">${fdROIGaugeSVG(s.currentROI, s.projROI, fdROIThreshold)}</div>` : ''}
+    </div>`;
+  }).join('');
+  body.innerHTML = `<div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:14px;">${sugs.length} Suggestion${sugs.length!==1?'s':''} — ordered by impact, MG renegotiation always last</div>${sugs.length ? sugCards : '<div style="text-align:center;padding:60px 0;color:#4b5563;font-size:13px;">No actionable suggestions — deal is well-structured.</div>'}<div style="height:40px;"></div>`;
 }
 
 function fdHideROIOptimizer() {
@@ -7566,9 +7598,10 @@ function fdRenderLive(p) {
               '</tr>';
             }).join('');
 
-            // Per-city ROI badge
+            // Per-city ROI badge — only show when city has actual revenue data
             const cityROIVal = fdROI_cityROI(cc, c, p);
-            const cityROIBelow = cityROIVal < fdROIThreshold;
+            const cityHasData = cc.total_ticket_rev > 0;
+            const cityROIBelow = cityHasData && cityROIVal < fdROIThreshold;
             const cityROIColor = cityROIVal >= fdROIThreshold ? '#10b981' : cityROIVal >= 0 ? '#fbbf24' : '#ef4444';
             const cityROIBadge = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
               '<span style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.1em;">' + (tc.city_name||'City') + '</span>' +
