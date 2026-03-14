@@ -3829,23 +3829,79 @@ function renderFinancials(d) {
 // ─── Financial Model Builder ──────────────────────────────────────────────────
 
 const FD_KEY = 'artist-dashboard-fin-profiles';
+
+// Venue presets — categories defined by PROPORTION (pct) not hard counts.
+// Counts are generated at runtime from pct × actual capacity so they always
+// sum to exactly the entered capacity. defaultCapacity is just the starting value.
 const VENUE_PRESETS = {
-  stadium: { capacity: 40000, categories: [
-    { name: 'GA Standing', price: 150, count: 15000 },
-    { name: 'Lower Bowl',  price: 250, count: 12000 },
-    { name: 'Mid Deck',    price: 300, count:  8000 },
-    { name: 'VIP',         price: 500, count:  4500 },
-    { name: 'VVIP',        price:1000, count:   500 }]},
-  arena:   { capacity: 18000, categories: [
-    { name: 'Floor GA',    price: 120, count:  6000 },
-    { name: 'Lower Bowl',  price: 200, count:  8000 },
-    { name: 'Upper Bowl',  price: 150, count:  3500 },
-    { name: 'VIP',         price: 400, count:   500 }]},
-  theater: { capacity:  3000, categories: [
-    { name: 'General',     price:  80, count:  2000 },
-    { name: 'Premium',     price: 150, count:   800 },
-    { name: 'VIP',         price: 300, count:   200 }]}
+  stadium: {
+    defaultCapacity: 50000,
+    categories: [
+      { name: 'GA Floor / Pit',                pct: 0.30, price:  175 },
+      { name: 'Golden Circle (Premium Floor)',  pct: 0.05, price:  265 },
+      { name: 'Lower Bowl – Sideline',          pct: 0.20, price:  235 },
+      { name: 'Lower Bowl – End / Corner',      pct: 0.08, price:  165 },
+      { name: 'Club / Loge Level',              pct: 0.03, price:  575 },
+      { name: 'Mid Level – Sideline',           pct: 0.15, price:  195 },
+      { name: 'Mid Level – End Zone',           pct: 0.05, price:  140 },
+      { name: 'Upper Deck',                     pct: 0.08, price:  110 },
+      { name: 'VIP Package (Floor + Hosp.)',    pct: 0.04, price:  950 },
+      { name: 'VVIP / Suite Experience',        pct: 0.015,price: 2400 },
+      { name: 'Marquee / Ultra Package',        pct: 0.005,price: 5500 },
+    ]
+  },
+  arena: {
+    defaultCapacity: 18000,
+    categories: [
+      { name: 'GA Floor (Standing)',            pct: 0.20, price:  130 },
+      { name: 'Floor Reserved – Front',         pct: 0.08, price:  210 },
+      { name: 'Lower Bowl – Sideline (100s)',   pct: 0.28, price:  178 },
+      { name: 'Lower Bowl – End (100s)',        pct: 0.10, price:  122 },
+      { name: 'Club Level (200s)',              pct: 0.05, price:  295 },
+      { name: 'Upper Bowl (300s)',              pct: 0.22, price:   90 },
+      { name: 'VIP Floor Package',             pct: 0.05, price:  485 },
+      { name: 'VVIP / Suite Package',          pct: 0.02, price: 1500 },
+    ]
+  },
+  theater: {
+    defaultCapacity: 2800,
+    categories: [
+      { name: 'GA Floor',                       pct: 0.18, price:   85 },
+      { name: 'Orchestra – Front (Rows A–J)',   pct: 0.28, price:  125 },
+      { name: 'Orchestra – Rear (Rows K–Z)',    pct: 0.20, price:   98 },
+      { name: 'Mezzanine',                      pct: 0.20, price:   80 },
+      { name: 'Balcony',                        pct: 0.11, price:   65 },
+      { name: 'VIP Box / Table Package',        pct: 0.03, price:  385 },
+    ]
+  },
+  club: {
+    defaultCapacity: 800,
+    categories: [
+      { name: 'GA Floor',                       pct: 0.62, price:   42 },
+      { name: 'Stage Side Reserved',            pct: 0.18, price:   70 },
+      { name: 'Mezzanine / Balcony',            pct: 0.13, price:   58 },
+      { name: 'VIP Table Package',              pct: 0.07, price:  165 },
+    ]
+  }
 };
+
+// Generate seat categories where counts sum EXACTLY to capacity.
+// The last category absorbs any rounding remainder.
+function fdGenerateCategoriesForCapacity(venueType, capacity) {
+  const template = (VENUE_PRESETS[venueType] || VENUE_PRESETS.arena).categories;
+  const cap = Math.max(1, Math.round(Number(capacity) || 0));
+  const cats = [];
+  let allocated = 0;
+  for (let i = 0; i < template.length; i++) {
+    const isLast = i === template.length - 1;
+    const count = isLast
+      ? Math.max(1, cap - allocated)
+      : Math.max(1, Math.round(template[i].pct * cap));
+    cats.push({ name: template[i].name, price: template[i].price, count });
+    if (!isLast) allocated += count;
+  }
+  return cats;
+}
 
 const TICKETING_CO_PRESETS = {
   ticketmaster: { label: 'Ticketmaster',          days_after_show: 5,  advance_pct: 0,    advance_days_before: 0  },
@@ -4370,7 +4426,7 @@ const FD_INPUT = 'w-full bg-black border border-red-900/30 rounded-lg px-3 py-2 
 const FD_LABEL = 'block text-[10px] text-slate-500 uppercase tracking-wider mb-1';
 
 function fdMigrateProfile(p) {
-  if (!p.venue_capacity) p.venue_capacity = VENUE_PRESETS[p.venue_type || 'stadium']?.capacity || 40000;
+  if (!p.venue_capacity) p.venue_capacity = VENUE_PRESETS[p.venue_type || 'arena']?.defaultCapacity || 18000;
   if (!p.ticketing_settlement) p.ticketing_settlement = { company: 'custom', days_after_show: 0, advance_pct: 0, advance_days_before: 0 };
   // Migrate legacy flat city/shows/costs to tour_cities array
   if (!p.tour_cities) {
@@ -4378,7 +4434,7 @@ function fdMigrateProfile(p) {
       id: 'tc_legacy_' + (p.id || '0'),
       city_name:       p.city || '',
       venue_name:      '',
-      capacity:        p.venue_capacity || VENUE_PRESETS[p.venue_type || 'stadium']?.capacity || 40000,
+      capacity:        p.venue_capacity || VENUE_PRESETS[p.venue_type || 'arena']?.defaultCapacity || 18000,
       num_shows:       p.num_shows || 1,
       concert_date:    p.concert_date || '',
       seat_categories: (p.seat_categories||[]).map(c => ({...c})),
@@ -4759,17 +4815,18 @@ function fdEmptyState() {
 }
 
 function fdStartCreate() {
-  const preset = VENUE_PRESETS.stadium;
   const newId = fdGenId();
+  const defaultType = 'arena';
+  const defaultCap = VENUE_PRESETS[defaultType].defaultCapacity;
   fdState.mode = 'edit'; fdState.activeId = null;
   fdState.draftProfile = {
     id: newId, createdAt: new Date().toISOString(),
-    artist: '', venue_type: 'stadium',
+    artist: '', venue_type: defaultType,
     tour_cities: [{
       id: 'tc_' + fdGenId(),
-      city_name: '', venue_name: '', capacity: preset.capacity,
+      city_name: '', venue_name: '', capacity: defaultCap,
       num_shows: 1, concert_date: '',
-      seat_categories: preset.categories.map(c => ({...c})),
+      seat_categories: fdGenerateCategoriesForCapacity(defaultType, defaultCap),
       fill_rate: 1.0,
       venue_fee: 0, production: 0, hospitality: 0, insurance: 0
     }],
@@ -6147,17 +6204,16 @@ function fdPatch(path, value) {
 
 function fdPatchVenueType(val) {
   if (!fdState.draftProfile) return;
-  const preset = VENUE_PRESETS[val] || VENUE_PRESETS.stadium;
+  const preset = VENUE_PRESETS[val] || VENUE_PRESETS.arena;
+  const cap = preset.defaultCapacity;
   fdState.draftProfile.venue_type = val;
-  fdState.draftProfile.venue_capacity = preset.capacity;
-  // Reset seat categories, capacity and fill_rate on ALL cities to match new venue type
+  fdState.draftProfile.venue_capacity = cap;
   for (const tc of (fdState.draftProfile.tour_cities || [])) {
-    tc.seat_categories = preset.categories.map(c => ({...c}));
-    tc.capacity = preset.capacity;
+    tc.capacity = cap;
+    tc.seat_categories = fdGenerateCategoriesForCapacity(val, cap);
     tc.fill_rate = 1.0;
   }
-  // Keep global fallback in sync
-  fdState.draftProfile.seat_categories = preset.categories.map(c => ({...c}));
+  fdState.draftProfile.seat_categories = fdGenerateCategoriesForCapacity(val, cap);
   fdSetMain(fdState.draftProfile);
 }
 
@@ -7487,9 +7543,10 @@ function fdRenderLive(p) {
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <select class="bg-black border border-red-900/30 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-red-500/50" onchange="fdPatchVenueType(this.value)">
-            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (seat preset)</option>
-            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (seat preset)</option>
-            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (seat preset)</option>
+            <option value="stadium" ${p.venue_type==='stadium'?'selected':''}>Stadium (40k–90k)</option>
+            <option value="arena"   ${p.venue_type==='arena'?'selected':''}>Arena (12k–22k)</option>
+            <option value="theater" ${p.venue_type==='theater'?'selected':''}>Theater (1.5k–5k)</option>
+            <option value="club"    ${p.venue_type==='club'?'selected':''}>Club (300–1.5k)</option>
           </select>
           <button onclick="fdToggleFestivalMode()" class="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${p.festival_mode ? 'bg-amber-500/15 border-amber-500/30 text-amber-300' : 'border-white/10 text-slate-400 hover:text-white hover:border-white/20'}">🎪 Festival ${p.festival_mode ? 'ON' : 'OFF'}</button>
           <div id="fd-stage-dial" class="flex items-center gap-0.5 bg-black border border-red-900/30 rounded-lg px-1 py-0.5">${fdStageDialHTML(p)}</div>
@@ -8164,19 +8221,33 @@ function fdRemoveCityCategory(tcId, idx) {
   fdSetMain(fdState.draftProfile);
 }
 
-// Proportionally scale all seat category counts when the venue capacity changes
+// Scale seat category counts when capacity changes — counts always sum to EXACTLY newCap
 function fdScaleCapacity(cityId, newCap) {
   if (!fdState.draftProfile) return;
   const city = (fdState.draftProfile.tour_cities || []).find(c => c.id === cityId);
   if (!city) return;
-  const oldCap = Number(city.capacity) || 0;
-  if (oldCap > 0 && newCap > 0 && oldCap !== newCap) {
-    const scale = newCap / oldCap;
-    for (const cat of (city.seat_categories || [])) {
-      cat.count = Math.round((Number(cat.count) || 0) * scale);
+  const cap = Math.max(1, Math.round(Number(newCap) || 0));
+  const cats = city.seat_categories || [];
+  if (cats.length > 0) {
+    const oldTotal = cats.reduce((s, c) => s + (Number(c.count) || 0), 0);
+    if (oldTotal > 0) {
+      // Scale proportionally; last category absorbs rounding remainder
+      let allocated = 0;
+      for (let i = 0; i < cats.length; i++) {
+        const isLast = i === cats.length - 1;
+        const count = isLast
+          ? Math.max(0, cap - allocated)
+          : Math.max(0, Math.round((Number(cats[i].count) || 0) / oldTotal * cap));
+        cats[i] = { ...cats[i], count };
+        if (!isLast) allocated += count;
+      }
+    } else {
+      city.seat_categories = fdGenerateCategoriesForCapacity(fdState.draftProfile.venue_type || 'arena', cap);
     }
+  } else {
+    city.seat_categories = fdGenerateCategoriesForCapacity(fdState.draftProfile.venue_type || 'arena', cap);
   }
-  city.capacity = newCap;
+  city.capacity = cap;
   fdSetMain(fdState.draftProfile);
 }
 
