@@ -6258,6 +6258,8 @@ function fdExportPDF() {
   const activeRoiScen = (p.investor_scenarios || []).find(s => s.use_for_roi && Number(s.equity) > 0) || null;
   const adjRoi = fdSensAdjustedROI(c, p);
   const adjRoiLabel = activeRoiScen ? 'ROI (adj.)' : 'ROI';
+  const bfNetAfterTaxPDF = c.blufin_net_profit_after_tax !== undefined ? c.blufin_net_profit_after_tax : c.net_profit;
+  const absRoiPDF = c.invested_capital > 0 ? bfNetAfterTaxPDF / c.invested_capital : (c.total_costs > 0 ? bfNetAfterTaxPDF / c.total_costs : 0);
 
   const cityRows = (c.cityCalcs || []).map(cc => {
     const fillPct = Math.round((cc.fill_rate || 1) * 100);
@@ -6307,7 +6309,7 @@ function fdExportPDF() {
       }
     }
     const scenAdjRoi = s.use_for_roi && (c.invested_capital > 0 || c.total_costs > 0)
-      ? (c.net_profit - scenObligation) / (c.invested_capital > 0 ? c.invested_capital : c.total_costs)
+      ? (bfNetAfterTaxPDF - scenObligation) / (c.invested_capital > 0 ? c.invested_capital : c.total_costs)
       : null;
 
     const invTable = investors.length > 0 ? `
@@ -6350,8 +6352,8 @@ function fdExportPDF() {
         </table>
       </div>` : '';
 
-    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#cc6437':'#e5e7eb'};border-radius:8px;background:${s.use_for_roi?'#080808':'#fafafa'};">
-      <div style="font-size:12px;font-weight:700;color:#1d4ed8;margin-bottom:8px;display:flex;align-items:center;gap:8px;">
+    return `<div style="margin-bottom:14px;padding:12px;border:1px solid ${s.use_for_roi?'#cc6437':'#e5e7eb'};border-left:${s.use_for_roi?'4px solid #cc6437':'1px solid #e5e7eb'};border-radius:6px;background:${s.use_for_roi?'#fff8f5':'#fafafa'};">
+      <div style="font-size:12px;font-weight:700;color:${s.use_for_roi?'#cc6437':'#111'};margin-bottom:8px;display:flex;align-items:center;gap:8px;">
         ${s.label||'Scenario'}
         ${s.use_for_roi ? '<span style="font-size:9px;font-weight:600;background:#cc6437;color:white;padding:2px 6px;border-radius:4px;">USE FOR ROI</span>' : ''}
       </div>
@@ -6367,7 +6369,7 @@ function fdExportPDF() {
           <tr><td>MOIC</td><td class="num" style="font-weight:700;color:${sv.moic>=1?'#cc6437':'#b55630'}">${sv.moic>0?sv.moic.toFixed(2)+'x':'—'}</td></tr>
           <tr><td>Absolute Return</td><td class="num">${sv.abs_return>0?pct(sv.abs_return):'—'}</td></tr>
           ${s.use_for_roi && scenObligation > 0 ? `<tr style="background:#fef3c7"><td style="color:#92400e;font-weight:600">Total Investor Obligation</td><td class="num" style="color:#92400e;font-weight:600">(${currency(scenObligation)})</td></tr>` : ''}
-          ${scenAdjRoi !== null ? `<tr style="background:#0d0000"><td style="color:#cc6437;font-weight:700">Adjusted Promoter ROI</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#cc6437':'#b55630'}">${pct(scenAdjRoi)}</td></tr>` : ''}
+          ${scenAdjRoi !== null ? `<tr style="background:#fef3e8;border-top:1px solid #fde8d0"><td style="color:#cc6437;font-weight:700">Adjusted Promoter ROI (Post-Tax)</td><td class="num" style="font-weight:700;color:${scenAdjRoi>=0?'#cc6437':'#b55630'}">${pct(scenAdjRoi)}</td></tr>` : ''}
         </tbody>
       </table>
       ${invTable}
@@ -6384,7 +6386,7 @@ function fdExportPDF() {
   .kpi-row { display: flex; gap: 12px; margin-bottom: 24px; }
   .kpi { flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
   .kpi-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #666; margin-bottom: 4px; }
-  .kpi-value { font-size: 18px; font-weight: 700; }
+  .kpi-value { font-size: 15px; font-weight: 700; }
   .kpi-value.green { color: #059669; }
   .kpi-value.red { color: #b55630; }
   .kpi-value.blue { color: #2563eb; }
@@ -6407,6 +6409,7 @@ function fdExportPDF() {
   <div class="kpi"><div class="kpi-label">Total Costs</div><div class="kpi-value red">${currency(c.total_costs)}</div></div>
   <div class="kpi"><div class="kpi-label">Net Profit</div><div class="kpi-value ${c.net_profit >= 0 ? 'green' : 'red'}">${currency(c.net_profit)}</div></div>
   <div class="kpi"><div class="kpi-label">${adjRoiLabel}</div><div class="kpi-value ${adjRoi >= 0 ? 'blue' : 'red'}">${pct(adjRoi)}</div></div>
+  <div class="kpi"><div class="kpi-label">ROI (Absolute)</div><div class="kpi-value ${absRoiPDF >= 0 ? 'green' : 'red'}">${pct(absRoiPDF)}</div><div style="font-size:9px;color:#9ca3af;margin-top:2px;">post-tax ÷ invested capital</div></div>
   <div class="kpi"><div class="kpi-label">Total Attendance</div><div class="kpi-value purple">${Math.round(c.total_attendance).toLocaleString()}</div></div>
 </div>
 
