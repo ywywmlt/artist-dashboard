@@ -5207,8 +5207,10 @@ async function fdExportExcel() {
 
   // ── Sheet: Model ──────────────────────────────────────────────────────────
   const ws = wb.addWorksheet('Model');
-  ws.views = [{ showGridLines:false, zoomScale:110 }];
+  ws.views = [{ state:'frozen', xSplit:1, ySplit:2, showGridLines:false, zoomScale:110, activeCell:'B3' }];
   ws.columns = [{width:32},{width:18},{width:14},{width:18},{width:20},{width:18}];
+  ws.properties.tabColor = { argb:'FFCC6437' };
+  ws.pageSetup = { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0 };
 
   let r = 1;
 
@@ -5683,8 +5685,10 @@ async function fdExportExcel() {
 
   // ── Sheet 2: Sell-Through Scenarios ──────────────────────────────────────
   const ws2 = wb.addWorksheet('Scenarios');
-  ws2.views = [{ showGridLines: false, zoomScale: 110 }];
+  ws2.views = [{ state:'frozen', xSplit:1, ySplit:4, showGridLines:false, zoomScale:110, activeCell:'B5' }];
   ws2.columns = [{ width: 34 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
+  ws2.properties.tabColor = { argb:'FF1E3A5F' };
+  ws2.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0 };
 
   // Full-capacity (100% sell-through) baselines
   let _fullTkt = 0, _fullSeats = 0;
@@ -5738,10 +5742,11 @@ async function fdExportExcel() {
   }
   function spRow2(label,vals,numFmt,opts){
     opts=opts||{};
-    sc(ws2.getCell(sr,1),{font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:opts.bold?C.dark:C.gray}}}).value=label;
+    const altBg = (!opts.bold && !opts.profit && sr%2===0) ? 'FFF8FAFC' : undefined;
+    sc(ws2.getCell(sr,1),{fill:altBg,font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:opts.bold?C.dark:C.gray}}}).value=label;
     vals.forEach((v,i)=>{
       const isPos=typeof v==='number'&&v>=0;
-      const bg=opts.profit?(isPos?C.totG:C.totR):(i===4?'FFF0FDF4':opts.fill||undefined);
+      const bg=opts.profit?(isPos?C.totG:C.totR):(i===4?'FFF0FDF4':opts.fill||altBg);
       const fc=opts.profit?(isPos?C.green:C.red):(i===4?C.green:C.blueFont);
       sc(ws2.getCell(sr,i+2),{fill:bg,font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:fc}},align:{horizontal:'right'},numFmt,border:opts.border||undefined}).value=v;
     });
@@ -5789,11 +5794,11 @@ async function fdExportExcel() {
       const sp2 = Number(invScen.above_hurdle_investor_pct)||0.50;
       const lbl2 = invScen.label || 'Investor';
       const moics = spScens.map(s => {
-        const net = s.net;
+        const net = s.netAt;
         return (eq2 + Math.min(net, eq2 * hr2) + Math.max(0, net - eq2 * hr2) * sp2) / eq2;
       });
       const roes = spScens.map(s => {
-        const net = s.net;
+        const net = s.netAt;
         return (Math.min(net, eq2 * hr2) + Math.max(0, net - eq2 * hr2) * sp2) / eq2;
       });
       spRow2(lbl2 + ' \u2014 MOIC', moics, '0.00"x"', {});
@@ -5803,8 +5808,10 @@ async function fdExportExcel() {
 
   // ── Sheet 3: Cash Flow Timeline ──────────────────────────────────────────
   const ws3 = wb.addWorksheet('Cash Flow');
-  ws3.views = [{ showGridLines: false, zoomScale: 110 }];
+  ws3.views = [{ state:'frozen', xSplit:1, ySplit:4, showGridLines:false, zoomScale:110, activeCell:'B5' }];
   ws3.columns = [{ width: 16 }, { width: 30 }, { width: 16 }, { width: 16 }, { width: 18 }];
+  ws3.properties.tabColor = { argb:'FF0F766E' };
+  ws3.pageSetup = { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0 };
 
   function _addDays(dt, days)   { const d = new Date(dt); d.setDate(d.getDate() + days); return d; }
   function _addMonths(dt, mnths) { const d = new Date(dt); d.setMonth(d.getMonth() + mnths); return d; }
@@ -5851,24 +5858,24 @@ async function fdExportExcel() {
       }
       _cfEvents.push({ date: cityDate, label: '\u2605 SHOW DATE \u2014 ' + cityName + (cc.shows > 1 ? ' (\xd7' + cc.shows + ')' : ''), out: 0, cin: 0, isShow: true });
     }
-    // 6. Additional revenue settlement — 1 day after first show
+    // Compute last show date once — used for settlements and tax
+    const _lastShowDate = c.cityCalcs.reduce((latest, cc) => {
+      const d = cc.tc.concert_date ? new Date(cc.tc.concert_date + 'T12:00:00') : _firstShow;
+      return d > latest ? d : latest;
+    }, _firstShow);
+
+    // 6. Additional revenue settlement — 1 day after last show
     if (addlAll > 0) {
-      _cfEvents.push({ date: _addDays(_firstShow, 1), label: 'Additional Revenue Settlement (Merch / F&B / Sponsorship)', out: 0, cin: addlAll });
+      _cfEvents.push({ date: _addDays(_lastShowDate, 1), label: 'Additional Revenue Settlement (Merch / F&B / Sponsorship)', out: 0, cin: addlAll });
     }
-    // 7. Final ticket settlement
+    // 7. Final ticket settlement — after last show
     const _remainTkt = tktRevAll * (1 - _advPct) * (1 - feePct);
     if (_remainTkt > 0) {
-      _cfEvents.push({ date: _addDays(_firstShow, _daysAfter), label: 'Final Ticket Settlement (' + _daysAfter + ' days after show)', out: 0, cin: _remainTkt });
-    } else if (_advPct === 0 && tktRevAll * (1 - feePct) > 0) {
-      _cfEvents.push({ date: _addDays(_firstShow, _daysAfter), label: 'Ticket Settlement (' + _daysAfter + ' days after show)', out: 0, cin: tktRevAll * (1 - feePct) });
+      _cfEvents.push({ date: _addDays(_lastShowDate, _daysAfter), label: 'Final Ticket Settlement (' + _daysAfter + ' days after last show)', out: 0, cin: _remainTkt });
     }
     // 8. Tax payment — 30 days after last show
     const _taxAmtCF = c.tax_amount || 0;
     if (_taxAmtCF > 0) {
-      const _lastShowDate = c.cityCalcs.reduce((latest, cc) => {
-        const d = cc.tc.concert_date ? new Date(cc.tc.concert_date + 'T12:00:00') : _firstShow;
-        return d > latest ? d : latest;
-      }, _firstShow);
       _cfEvents.push({ date: _addDays(_lastShowDate, 30), label: 'Tax Payment (' + ((Number(co.tax_rate)||0)*100).toFixed(1) + '% effective rate)', out: _taxAmtCF, cin: 0 });
     }
   }
@@ -5937,8 +5944,10 @@ async function fdExportExcel() {
 
   // ── Sheet 4: Sensitivity Matrix ──────────────────────────────────────────
   const ws4 = wb.addWorksheet('Sensitivity');
-  ws4.views = [{ showGridLines: false, zoomScale: 110 }];
+  ws4.views = [{ state:'frozen', xSplit:1, ySplit:5, showGridLines:false, zoomScale:110, activeCell:'B6' }];
   ws4.columns = [{ width: 22 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }];
+  ws4.properties.tabColor = { argb:'FF1E40AF' };
+  ws4.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0 };
 
   // Recompute full-capacity baselines (avoids block-scope conflict with Sheet 2)
   let _s4FullTkt = 0, _s4FullSeats = 0;
@@ -5956,7 +5965,8 @@ async function fdExportExcel() {
     const fee   = tkt * feePct;
     const fnb   = fHead * fPct * (_s4FullSeats * fr);
     const merch = mPH * mSplit * (_s4FullSeats * fr);
-    return (tkt + merch + fnb + _spon) - (_fixedCosts + fee);
+    const pre   = (tkt + merch + fnb + _spon) - (_fixedCosts + fee);
+    return pre > 0 ? pre * (1 - _taxRt) : pre;
   }
 
   function _s4Color(val, minV, maxV) {
@@ -5989,7 +5999,7 @@ async function fdExportExcel() {
 
   // NET PROFIT section header
   ws4.mergeCells('A'+r4+':F'+r4);
-  sc(ws4.getCell('A'+r4), { fill: C.dark, font: { bold: true, size: 10, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  NET PROFIT BY FILL RATE & TICKET PRICE';
+  sc(ws4.getCell('A'+r4), { fill: C.dark, font: { bold: true, size: 10, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  NET PROFIT BY FILL RATE & TICKET PRICE' + (_taxRt > 0 ? '  (POST-TAX)' : '');
   ws4.getRow(r4).height = 18; r4++;
 
   // Column headers
@@ -6002,7 +6012,8 @@ async function fdExportExcel() {
   // NET PROFIT data rows
   S4_FILLS.forEach((fr, ri) => {
     const isCur = ri === _s4CurRow;
-    sc(ws4.getCell(r4, 1), { fill: isCur ? C.calcB : C.bgLt, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
+    const rowLabelBg = isCur ? C.calcB : (ri % 2 === 0 ? C.bgLt : 'FFFAFAFA');
+    sc(ws4.getCell(r4, 1), { fill: rowLabelBg, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
     S4_PMULTS.forEach((pm, ci) => {
       const net = _s4Nets[ri][ci];
       sc(ws4.getCell(r4, ci + 2), { fill: _s4Color(net, _s4Min, _s4Max), font: { bold: isCur, color: { argb: net >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = net;
@@ -6038,7 +6049,8 @@ async function fdExportExcel() {
 
     S4_FILLS.forEach((fr, ri) => {
       const isCur = ri === _s4CurRow;
-      sc(ws4.getCell(r4, 1), { fill: isCur ? C.calcB : C.bgLt, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
+      const mRowLabelBg = isCur ? C.calcB : (ri % 2 === 0 ? C.bgLt : 'FFFAFAFA');
+      sc(ws4.getCell(r4, 1), { fill: mRowLabelBg, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
       S4_PMULTS.forEach((pm, ci) => {
         const moic = _s4Moics[ri][ci];
         sc(ws4.getCell(r4, ci + 2), { fill: _s4Color(moic, _s4MMin, _s4MMax), font: { bold: isCur, color: { argb: moic >= 1 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '0.00"x"' }).value = moic;
