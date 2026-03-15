@@ -5164,7 +5164,8 @@ async function fdExportExcel() {
     rose:'FFBE123C',  white:'FFFFFFFF', gray:'FF64748B',  dgray:'FF334155',
     inputY:'FFFFFDE7', calcB:'FFE8F0FE', totG:'FFECFDF5', totR:'FFFEF2F2',
     bgLt:'FFF8FAFC',  green:'FF065F46', red:'FF991B1B',   redLight:'FFFCA5A5',
-    greenLight:'FF6EE7B7', blueFont:'FF1E40AF'
+    greenLight:'FF6EE7B7', blueFont:'FF1E40AF',
+    navyLt:'FFEBF0F8', hdrBdr:'FF93C5FD', cityBg:'FFEFF6FF', colHdrBg:'FFE2E8F0'
   };
 
   function fill(a)     { return { type:'pattern', pattern:'solid', fgColor:{argb:a} }; }
@@ -5200,9 +5201,21 @@ async function fdExportExcel() {
 
   function colHdrs(ws, r, labels) {
     labels.forEach((h, i) => {
-      sc(ws.getCell(r, i+1), { fill:C.bgLt, font:{bold:true,color:{argb:C.dgray}}, align:{horizontal:i===0?'left':'right'}, border:bBot('FF94A3B8') }).value = h;
+      sc(ws.getCell(r, i+1), { fill:C.colHdrBg, font:{bold:true,size:9,color:{argb:C.dgray}}, align:{horizontal:i===0?'left':'right'}, border:{bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = h;
     });
-    ws.getRow(r).height = 16;
+    ws.getRow(r).height = 17;
+  }
+
+  // Light sub-section header — navy text on ice-blue bg with accent underline
+  function lhdr(ws, r, text) {
+    ws.mergeCells('A'+r+':F'+r);
+    const cell = ws.getCell('A'+r);
+    cell.fill = fill(C.navyLt);
+    cell.font = { size:10, bold:true, color:{argb:C.navy} };
+    cell.alignment = { vertical:'middle', horizontal:'left' };
+    cell.border = { bottom:{ style:'medium', color:{argb:C.hdrBdr} } };
+    cell.value = '  ' + text;
+    ws.getRow(r).height = 18;
   }
 
   // ── Sheet: Model ──────────────────────────────────────────────────────────
@@ -5248,7 +5261,7 @@ async function fdExportExcel() {
   r++;
 
   // TICKET REVENUE — per city
-  hdr(ws, r, 'TICKET REVENUE BY CITY', C.navy); r++;
+  lhdr(ws, r, 'TICKET REVENUE BY CITY'); r++;
   colHdrs(ws, r, ['City / Category','Price / Ticket','Seats','Revenue / Show','Shows','Total Revenue']); r++;
 
   const cityRevRefs = [];
@@ -5258,8 +5271,8 @@ async function fdExportExcel() {
     const cityLbl = (tc.city_name || tc.venue_name || 'City Stop') + (tc.num_shows > 1 ? ' (' + tc.num_shows + ' shows)' : '');
     // City header row
     ws.mergeCells('A'+r+':F'+r);
-    sc(ws.getCell('A'+r),{fill:{type:'pattern',pattern:'solid',fgColor:{argb:'FF1E293B'}},font:{bold:true,size:9,color:{argb:'FF94A3B8'}}}).value='  ' + cityLbl;
-    ws.getRow(r).height=16; r++;
+    sc(ws.getCell('A'+r),{fill:C.cityBg,font:{bold:true,size:9,color:{argb:C.navy}},border:{bottom:{style:'thin',color:{argb:C.hdrBdr}}}}).value='  ' + cityLbl;
+    ws.getRow(r).height=15; r++;
 
     const cityCatsStart = r;
     const cityCats = (cc.cats && cc.cats.length > 0) ? cc.cats : [];
@@ -5271,7 +5284,7 @@ async function fdExportExcel() {
       fml(ws.getCell(r,4),'B'+r+'*C'+r, pr*ct, {numFmt:'$#,##0'});
       inp(ws.getCell(r,5), cc.shows, {numFmt:'#,##0'});
       fml(ws.getCell(r,6),'D'+r+'*E'+r, pr*ct*cc.shows, {numFmt:'$#,##0'});
-      ws.getRow(r).height=17; r++;
+      ws.getRow(r).height=18; r++;
     }
     const cityCatsEnd = r-1;
     sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value = '  Total — ' + (tc.city_name||tc.venue_name||'City');
@@ -5303,7 +5316,7 @@ async function fdExportExcel() {
   ws.getRow(r).height = 17; r++; r++;
 
   // ADDITIONAL REVENUE
-  hdr(ws, r, 'ADDITIONAL REVENUE', C.navy); r++;
+  lhdr(ws, r, 'ADDITIONAL REVENUE'); r++;
   colHdrs(ws, r, ['Item','Rate / Basis','Split %','Net / Show','Qty','Net — All Shows']); r++;
 
   const addlACs = [];
@@ -5358,7 +5371,7 @@ async function fdExportExcel() {
   hdr(ws, r, 'COST MODEL', C.dark); r++; r++;
 
   // Artist MG
-  hdr(ws, r, 'Artist Minimum Guarantee (MG)', C.navy); r++;
+  lhdr(ws, r, 'Artist Minimum Guarantee (MG)'); r++;
   const artistMG=Number(co.artist_mg)||0;
   sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Total MG (all-in deal)';
   const mgCell=ws.getCell(r,2);
@@ -5368,7 +5381,7 @@ async function fdExportExcel() {
 
   // MG Schedule
   if (mgSched.length > 0) {
-    hdr(ws, r, 'MG Payment Schedule', C.navy); r++;
+    lhdr(ws, r, 'MG Payment Schedule'); r++;
     colHdrs(ws, r, ['Milestone','% of MG','Months Before Show','Amount Due','Due Date']); r++;
 
     const schedS=r;
@@ -5394,7 +5407,7 @@ async function fdExportExcel() {
   }
 
   // Operating costs
-  hdr(ws, r, 'Operating Costs by City / Stop', C.navy); r++;
+  lhdr(ws, r, 'Operating Costs by City / Stop'); r++;
   colHdrs(ws, r, ['City / Venue','Shows','Cost/Show','Total']); r++;
 
   const _cities = (p.tour_cities && p.tour_cities.length > 0)
@@ -5418,7 +5431,7 @@ async function fdExportExcel() {
   ws.getRow(r).height=18; r++; r++;
 
   // One-time costs
-  hdr(ws, r, 'One-Time / Fixed Costs', C.navy); r++;
+  lhdr(ws, r, 'One-Time / Fixed Costs'); r++;
   const agFees=Number(co.agency_fees)||0, bfFees=Number(co.blufin_fees)||0;
   sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Agency / Management Fees';
   inp(ws.getCell(r,2),agFees,{numFmt:'$#,##0'});
@@ -5446,7 +5459,7 @@ async function fdExportExcel() {
   hdr(ws, r, 'RESULTS SUMMARY', C.purple); r++;
   ['Metric','Per Show (avg)','','','','All Shows (Total)'].forEach((h,i)=>{
     if (!h) return;
-    sc(ws.getCell(r,i===5?6:i+1),{fill:C.bgLt,font:{bold:true,color:{argb:C.dgray}},align:{horizontal:i===0?'left':'right'},border:bBot('FF94A3B8')}).value=h;
+    sc(ws.getCell(r,i===5?6:i+1),{fill:C.colHdrBg,font:{bold:true,size:9,color:{argb:C.dgray}},align:{horizontal:i===0?'left':'right'},border:{bottom:{style:'medium',color:{argb:'FF94A3B8'}}}}).value=h;
   }); ws.getRow(r).height=16; r++;
 
   sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='Total Gross Revenue';
@@ -5565,7 +5578,7 @@ async function fdExportExcel() {
     for (const scen of invScens) {
       const eq=Number(scen.equity)||0, hr=Number(scen.hurdle_rate)||0.20, sp=Number(scen.above_hurdle_investor_pct)||0.50;
       const sv=computeScenario(c,scen);
-      hdr(ws, r, scen.label||'Investor Scenario', C.navy); r++;
+      lhdr(ws, r, scen.label||'Investor Scenario'); r++;
 
       sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Equity Investment';
       inp(ws.getCell(r,2),eq,{numFmt:'$#,##0'}); const EQ='B'+r; ws.getRow(r).height=17; r++;
@@ -5606,7 +5619,7 @@ async function fdExportExcel() {
       if (invList.length > 0) {
         r++;
         ws.mergeCells('A'+r+':F'+r);
-        sc(ws.getCell('A'+r),{fill:C.navy,font:{bold:true,size:9,color:{argb:C.white}},align:{horizontal:'left'}}).value='  Investor Breakdown';
+        sc(ws.getCell('A'+r),{fill:C.navyLt,font:{bold:true,size:9,color:{argb:C.navy}},align:{horizontal:'left'},border:{bottom:{style:'thin',color:{argb:C.hdrBdr}}}}).value='  Investor Breakdown';
         ws.getRow(r).height=16; r++;
         colHdrs(ws, r, ['Investor Name','Stake % (edit)','Equity Amount','Distribution','Total Return','MOIC']); r++;
 
@@ -5729,15 +5742,23 @@ async function fdExportExcel() {
   ws2.getRow(sr).height=14; sr++; sr++;
 
   // Column headers
-  sc(ws2.getCell(sr,1),{fill:C.bgLt,font:{bold:true,color:{argb:C.dgray}},align:{horizontal:'left'},border:bBot('FF94A3B8')}).value='Metric';
+  sc(ws2.getCell(sr,1),{fill:C.colHdrBg,font:{bold:true,size:9,color:{argb:C.dgray}},align:{horizontal:'left'},border:{bottom:{style:'medium',color:{argb:'FF94A3B8'}}}}).value='Metric';
   SP_PCTS.forEach((pct,i)=>{
     sc(ws2.getCell(sr,i+2),{fill:SPHDR_COLS[i],font:{bold:true,size:12,color:{argb:C.white}},align:{horizontal:'right'},border:bBot('FF94A3B8')}).value=(pct*100)+'%';
   });
   ws2.getRow(sr).height=24; sr++;
 
-  function spHdr2(text,col){
+  function spHdr2(text,col,light){
     ws2.mergeCells('A'+sr+':F'+sr);
-    sc(ws2.getCell('A'+sr),{fill:col,font:{bold:true,size:10,color:{argb:C.white}},align:{horizontal:'left'}}).value='  '+text;
+    if(light){
+      const _c=ws2.getCell('A'+sr);
+      _c.fill=fill(C.navyLt); _c.font={size:10,bold:true,color:{argb:C.navy}};
+      _c.alignment={vertical:'middle',horizontal:'left'};
+      _c.border={bottom:{style:'medium',color:{argb:C.hdrBdr}}};
+      _c.value='  '+text;
+    } else {
+      sc(ws2.getCell('A'+sr),{fill:col,font:{bold:true,size:10,color:{argb:C.white}},align:{horizontal:'left'}}).value='  '+text;
+    }
     ws2.getRow(sr).height=18; sr++;
   }
   function spRow2(label,vals,numFmt,opts){
@@ -5753,12 +5774,12 @@ async function fdExportExcel() {
     ws2.getRow(sr).height=opts.tall?22:17; sr++;
   }
 
-  spHdr2('TICKET REVENUE',C.navy);
+  spHdr2('TICKET REVENUE',null,true);
   spRow2('Ticket Revenue (at sell-through)', spScens.map(s=>s.tkt), '$#,##0');
   if(feePct>0) spRow2('Less: Ticketing Fee ('+(feePct*100).toFixed(0)+'%)', spScens.map(s=>-s.fee), '"($"#,##0")"');
   sr++;
 
-  spHdr2('ADDITIONAL REVENUE',C.navy);
+  spHdr2('ADDITIONAL REVENUE',null,true);
   if(mPH>0||mSplit>0) spRow2('Merch Revenue (per-head × attendance)', spScens.map(s=>s.merch), '$#,##0');
   if(fHead>0||fPct>0) spRow2('F&B Revenue (per-head × attendance)', spScens.map(s=>s.fnb), '$#,##0');
   if(_spon>0)  spRow2('Sponsorship Revenue (fixed)', spScens.map(()=>_spon), '$#,##0');
@@ -5890,7 +5911,7 @@ async function fdExportExcel() {
   ws3.getRow(r3).height = 14; r3++; r3++;
 
   ['Date', 'Milestone', 'Cash Out', 'Cash In', 'Cumulative Balance'].forEach((h, i) => {
-    sc(ws3.getCell(r3, i + 1), { fill: C.bgLt, font: { bold: true, color: { argb: C.dgray } }, align: { horizontal: i <= 1 ? 'left' : 'right' }, border: bBot('FF94A3B8') }).value = h;
+    sc(ws3.getCell(r3, i + 1), { fill: C.colHdrBg, font: { bold: true, size:9, color: { argb: C.dgray } }, align: { horizontal: i <= 1 ? 'left' : 'right' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = h;
   });
   ws3.getRow(r3).height = 16; r3++;
 
@@ -6003,9 +6024,9 @@ async function fdExportExcel() {
   ws4.getRow(r4).height = 18; r4++;
 
   // Column headers
-  sc(ws4.getCell(r4, 1), { fill: C.bgLt, font: { bold: true, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: bBot('FF94A3B8') }).value = 'Fill Rate \\ Price Mult';
+  sc(ws4.getCell(r4, 1), { fill: C.colHdrBg, font: { bold: true, size:9, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = 'Fill Rate \\ Price Mult';
   S4_PMULTS.forEach((pm, i) => {
-    sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'right' }, border: bBot('FF94A3B8') }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
+    sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, size:9, color: { argb: C.white } }, align: { horizontal: 'right' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
   });
   ws4.getRow(r4).height = 18; r4++;
 
@@ -6034,9 +6055,9 @@ async function fdExportExcel() {
     ws4.getRow(r4).height = 18; r4++;
 
     // Column headers (repeat)
-    sc(ws4.getCell(r4, 1), { fill: C.bgLt, font: { bold: true, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: bBot('FF94A3B8') }).value = 'Fill Rate \\ Price Mult';
+    sc(ws4.getCell(r4, 1), { fill: C.colHdrBg, font: { bold: true, size:9, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = 'Fill Rate \\ Price Mult';
     S4_PMULTS.forEach((pm, i) => {
-      sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'right' }, border: bBot('FF94A3B8') }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
+      sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, size:9, color: { argb: C.white } }, align: { horizontal: 'right' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
     });
     ws4.getRow(r4).height = 18; r4++;
 
@@ -6221,7 +6242,7 @@ async function fdBatchExport() {
       ws.addRow(['']);
       const invHdr = ws.addRow(['Scenario','Equity','MOIC','Return %']);
       invHdr.height = 16;
-      [1,2,3,4].forEach(i => sc(ws.getCell(invHdr.number,i), { fill:C.navy, font:{bold:true,color:{argb:C.white}}, align:{horizontal:i===1?'left':'right'} }));
+      [1,2,3,4].forEach(i => sc(ws.getCell(invHdr.number,i), { fill:C.navyLt, font:{bold:true,size:9,color:{argb:C.navy}}, align:{horizontal:i===1?'left':'right'}, border:{bottom:{style:'medium',color:{argb:C.hdrBdr}}} }));
       invScens.forEach(scen => {
         const s = computeScenario(c, scen);
         const r = ws.addRow([scen.label||'Investor', s.equity, s.moic, s.abs_return]);
