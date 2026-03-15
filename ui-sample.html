@@ -3611,6 +3611,7 @@ function renderArtistGrid(query) {
 }
 
 function showDemandCard(e, sid) {
+  if (_demandHideTimer) { clearTimeout(_demandHideTimer); _demandHideTimer = null; }
   const a = artists.find(x => x.spotify_id === sid);
   if (!a) return;
   const t = touringMap[sid] || null;
@@ -3653,11 +3654,13 @@ function showDemandCard(e, sid) {
   requestAnimationFrame(() => { card.style.opacity = '1'; });
 }
 
+let _demandHideTimer = null;
 function hideDemandCard() {
   const card = document.getElementById('demand-hover-card');
   if (!card) return;
   card.style.opacity = '0';
-  setTimeout(() => { if (card.style.opacity === '0') card.style.display = 'none'; }, 130);
+  if (_demandHideTimer) clearTimeout(_demandHideTimer);
+  _demandHideTimer = setTimeout(() => { card.style.display = 'none'; _demandHideTimer = null; }, 150);
 }
 
 function renderArtistCharts(a, t) {
