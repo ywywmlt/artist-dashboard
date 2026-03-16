@@ -716,6 +716,21 @@
   <nav id="gk-nav">
     <img src="/data/GKreg.png" alt="GATEKEEP" style="height:20px;width:auto;">
     <div id="gk-nav-right">
+      <!-- Bell alerts button -->
+      <div style="position:relative;">
+        <button id="alerts-bell-btn" onclick="toggleAlertPanel()" style="position:relative;background:transparent;border:none;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.4);transition:color 0.15s;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color=(document.getElementById('alert-panel')?.classList.contains('open')?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.4)')">
+          <svg style="width:18px;height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+          <span id="bell-badge" style="display:none;position:absolute;top:-2px;right:-2px;min-width:14px;height:14px;background:#cc6437;border-radius:7px;font-size:9px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;line-height:1;">0</span>
+        </button>
+        <!-- Alert panel dropdown -->
+        <div id="alert-panel" style="display:none;position:absolute;right:-8px;top:calc(100% + 10px);width:360px;background:#111;border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.7);z-index:9000;max-height:480px;overflow-y:auto;">
+          <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.6);">Alerts</span>
+            <button onclick="markAllAlertsRead()" style="font-size:10px;color:rgba(255,255,255,0.3);background:none;border:none;cursor:pointer;padding:0;" onmouseover="this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">Mark all read</button>
+          </div>
+          <div id="alert-panel-list" style="padding:8px 0;"></div>
+        </div>
+      </div>
       <div class="gk-user-meta">
         <span class="name" id="user-display-name">—</span>
         <span class="role" id="user-display-role">—</span>
@@ -1127,6 +1142,15 @@
             Import
             <input type="file" accept=".json" class="hidden" onchange="fdImportProfiles(event)">
           </label>
+          <!-- Currency selector -->
+          <select id="fd-currency-sel" onchange="setActiveCurrency(this.value)" style="height:30px;padding:0 8px;font-size:11px;font-weight:500;letter-spacing:0.03em;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;outline:none;border-radius:0;">
+            <option value="USD" style="background:#111">USD $</option>
+            <option value="EUR" style="background:#111">EUR €</option>
+            <option value="JPY" style="background:#111">JPY ¥</option>
+            <option value="GBP" style="background:#111">GBP £</option>
+            <option value="AUD" style="background:#111">AUD A$</option>
+            <option value="CAD" style="background:#111">CAD C$</option>
+          </select>
           <!-- Divider -->
           <div style="width:1px;height:18px;background:rgba(255,255,255,0.08);margin:0 2px;flex-shrink:0;"></div>
           <!-- Profile-context buttons (hidden until a profile is active) -->
@@ -1725,13 +1749,15 @@ function showPage(page) {
 
 // ─── Data Loading ───
 async function loadData() {
-  const [seedRes, touringRes, venueRes, newsRes, mbRes, eventsRes] = await Promise.all([
+  const [seedRes, touringRes, venueRes, newsRes, mbRes, eventsRes, histRes, spotifyRes] = await Promise.all([
     fetch('data/raw/kworb_seed.json'),
     fetch('data/raw/touring_data.json'),
     fetch('data/touring-cities-venues.json'),
     fetch('data/raw/news_alerts.json').catch(() => null),
     fetch('data/raw/musicbrainz_data.json').catch(() => null),
-    fetch('data/raw/ticketmaster_events.json').catch(() => null)
+    fetch('data/raw/ticketmaster_events.json').catch(() => null),
+    fetch('data/raw/listener_history.json').catch(() => null),
+    fetch('data/raw/spotify_data.json').catch(() => null),
   ]);
   artists = await seedRes.json();
   const touringArr = await touringRes.json();
@@ -1756,6 +1782,18 @@ async function loadData() {
     });
     // Sort each artist's events by date ascending
     Object.values(eventsMap).forEach(arr => arr.sort((a, b) => a.date.localeCompare(b.date)));
+  }
+  if (histRes && histRes.ok) {
+    window.listenerHistory = await histRes.json();
+  } else {
+    window.listenerHistory = null;
+  }
+  if (spotifyRes && spotifyRes.ok) {
+    const spArr = await spotifyRes.json();
+    window.spotifyMap = {};
+    spArr.forEach(s => { window.spotifyMap[s.spotify_id] = s; });
+  } else {
+    window.spotifyMap = null;
   }
 
   document.getElementById('page-subtitle').innerHTML =
@@ -2613,6 +2651,7 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
   const pctOfPeak = a.peak_listeners ? Math.round((ml / a.peak_listeners) * 100) : null;
   const up = a.daily_change >= 0;
   const name = a.name;
+  const sp = window.spotifyMap && window.spotifyMap[spotifyId];
   const showEvents = eventsMap[spotifyId] || [];
   const demand = computeArtistDemand(ml, a.peak_listeners, t ? t.is_touring : false, a.daily_change, t ? t.recent_event_count : 0, showEvents);
   const markets = getMarketFocus(mb ? mb.country : null, mb ? mb.genres : []);
@@ -2670,6 +2709,42 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
               <div class="kpi-label-text mt-1 ${demand.momentumColor}">${demand.momentum}</div>
             </div>
           </div>
+          ${(() => {
+            const histEntries = window.listenerHistory && window.listenerHistory[spotifyId];
+            const mom7 = a.momentum_7d ?? (histEntries && histEntries.length >= 8 ? (() => { const now = histEntries[histEntries.length-1].listeners; const past = histEntries[Math.max(0,histEntries.length-8)].listeners; return past ? +((now-past)/past*100).toFixed(1) : 0; })() : null);
+            const mom30 = a.momentum_30d ?? (histEntries && histEntries.length >= 31 ? (() => { const now = histEntries[histEntries.length-1].listeners; const past = histEntries[Math.max(0,histEntries.length-31)].listeners; return past ? +((now-past)/past*100).toFixed(1) : 0; })() : null);
+            const hasMom = mom7 !== null || mom30 !== null;
+            const hasSp = sp && (sp.popularity != null || sp.followers != null);
+            if (!hasMom && !hasSp) return '';
+            const m7Color = mom7 > 5 ? 'text-green-400' : mom7 > 0 ? 'text-cyan-400' : mom7 < -5 ? 'text-red-400' : 'text-amber-400';
+            const m30Color = mom30 > 10 ? 'text-green-400' : mom30 > 0 ? 'text-cyan-400' : mom30 < -10 ? 'text-red-400' : 'text-amber-400';
+            const popColor = sp?.popularity >= 75 ? 'text-green-400' : sp?.popularity >= 50 ? 'text-cyan-400' : 'text-amber-400';
+            const popBar = sp?.popularity != null ? `<div class="mt-1.5 w-full bg-white/10 rounded-full h-1"><div class="${popColor.replace('text','bg')} h-1 rounded-full" style="width:${sp.popularity}%"></div></div>` : '';
+            return `<div class="grid grid-cols-4 gap-3 mt-2">
+              ${hasMom ? `
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 14px">
+                <div class="kpi-label-text mb-1">7-Day Momentum</div>
+                <div class="kpi-num ${m7Color}" style="font-size:1.1rem">${mom7 !== null ? (mom7>0?'+':'')+mom7+'%' : '—'}</div>
+                <div class="kpi-label-text mt-1" style="color:rgba(255,255,255,0.15)">vs 7d ago</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 14px">
+                <div class="kpi-label-text mb-1">30-Day Momentum</div>
+                <div class="kpi-num ${m30Color}" style="font-size:1.1rem">${mom30 !== null ? (mom30>0?'+':'')+mom30+'%' : '—'}</div>
+                <div class="kpi-label-text mt-1" style="color:rgba(255,255,255,0.15)">vs 30d ago</div>
+              </div>` : '<div></div><div></div>'}
+              ${hasSp ? `
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 14px">
+                <div class="kpi-label-text mb-1">Spotify Popularity</div>
+                <div class="kpi-num ${popColor}" style="font-size:1.1rem">${sp.popularity ?? '—'}<span style="font-size:9px;color:var(--muted)">/100</span></div>
+                ${popBar}
+              </div>
+              <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);padding:10px 14px">
+                <div class="kpi-label-text mb-1">Spotify Followers</div>
+                <div class="kpi-num text-white" style="font-size:1.1rem">${sp.followers != null ? fmt(sp.followers) : '—'}</div>
+                <div class="kpi-label-text mt-1" style="color:rgba(255,255,255,0.15)">followers</div>
+              </div>` : '<div></div><div></div>'}
+            </div>`;
+          })()}
           <!-- Deal Status (Watchlist) -->
           <div class="border-t border-white/5 mt-4 pt-3 flex items-center gap-3 flex-wrap">
             <span class="text-[10px] text-slate-500 uppercase tracking-wider">Deal Status:</span>
@@ -3672,18 +3747,31 @@ function renderArtistCharts(a, t) {
     if (chartInstances[k]) { chartInstances[k].destroy(); chartInstances[k] = null; }
   });
 
-  // Listener trend sparkline — synthetic 14-point estimate
+  // Listener trend sparkline — real history if available, synthetic fallback
   const canvas = document.getElementById('listenerTrendChart');
   if (!canvas) return;
   const ml = a.monthly_listeners;
-  const monthlyDelta = (a.daily_change || 0) * 30;
-  const seed0 = a.spotify_id.charCodeAt(0) + (a.spotify_id.charCodeAt(2) || 0);
-  const trendData = [];
-  for (let i = 13; i >= 0; i--) {
-    const noise = Math.sin(i * 7.3 + seed0) * ml * 0.025;
-    trendData.push(Math.max(0, Math.round(ml - monthlyDelta * i + noise)));
+  let trendData, labels;
+  const histEntries = window.listenerHistory && window.listenerHistory[a.spotify_id];
+  if (histEntries && histEntries.length >= 2) {
+    // Use real data — sample up to 30 points evenly spaced
+    const step = Math.max(1, Math.floor(histEntries.length / 30));
+    const sampled = [];
+    for (let i = 0; i < histEntries.length; i += step) sampled.push(histEntries[i]);
+    if (sampled[sampled.length - 1] !== histEntries[histEntries.length - 1]) sampled.push(histEntries[histEntries.length - 1]);
+    trendData = sampled.map(e => e.listeners);
+    labels = sampled.map(e => e.date.slice(5)); // MM-DD
+  } else {
+    // Synthetic fallback
+    const monthlyDelta = (a.daily_change || 0) * 30;
+    const seed0 = a.spotify_id.charCodeAt(0) + (a.spotify_id.charCodeAt(2) || 0);
+    trendData = [];
+    for (let i = 13; i >= 0; i--) {
+      const noise = Math.sin(i * 7.3 + seed0) * ml * 0.025;
+      trendData.push(Math.max(0, Math.round(ml - monthlyDelta * i + noise)));
+    }
+    labels = ['13mo','12mo','11mo','10mo','9mo','8mo','7mo','6mo','5mo','4mo','3mo','2mo','1mo','Now'];
   }
-  const labels = ['13mo','12mo','11mo','10mo','9mo','8mo','7mo','6mo','5mo','4mo','3mo','2mo','1mo','Now'];
   const isUp = a.daily_change >= 0;
   chartInstances.listenerTrend = new Chart(canvas, {
     type: 'line',
@@ -4202,6 +4290,34 @@ function calEventCard(e) {
 }
 
 
+// ── Currency support ──────────────────────────────────────────────────────────
+const FX_RATES = { USD: 1.0, EUR: 0.92, JPY: 149.5, GBP: 0.79, AUD: 1.55, CAD: 1.36 };
+const FX_SYMBOLS = { USD: '$', EUR: '€', JPY: '¥', GBP: '£', AUD: 'A$', CAD: 'C$' };
+let activeCurrency = (() => { try { return localStorage.getItem('gk_currency') || 'USD'; } catch(e) { return 'USD'; } })();
+let activeFxRate = FX_RATES[activeCurrency] || 1.0;
+
+function setActiveCurrency(code) {
+  activeCurrency = code;
+  activeFxRate = FX_RATES[code] || 1.0;
+  try { localStorage.setItem('gk_currency', code); } catch(e) {}
+  // Re-render financial model if open
+  if (fdState.draftProfile) fdSetMain(fdState.draftProfile);
+}
+
+function fmtMoney(v) {
+  if (v == null) return '—';
+  const val = v * activeFxRate;
+  const sym = FX_SYMBOLS[activeCurrency] || '$';
+  const neg = val < 0;
+  const abs = Math.abs(val);
+  let s;
+  if (abs >= 1e6) s = sym + (abs/1e6).toFixed(2) + 'M';
+  else if (abs >= 1e3) s = sym + Math.round(abs).toLocaleString();
+  else s = sym + Math.round(abs).toLocaleString();
+  return neg ? '(' + s + ')' : s;
+}
+
+// fmtDollar kept for any external usage — USD only
 function fmtDollar(v) {
   if (v == null) return '—';
   if (Math.abs(v) >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
@@ -4630,7 +4746,14 @@ function fdComputeCompleteness(p) {
 
 // ─── Financial Model Builder ─────────────────────────────────────────────────
 
-function initFinBuilder() { finBuilderLoaded = true; fdLoad(); fdRender(); }
+function initFinBuilder() {
+  finBuilderLoaded = true;
+  fdLoad();
+  fdRender();
+  // Restore saved currency selection
+  const sel = document.getElementById('fd-currency-sel');
+  if (sel) sel.value = activeCurrency;
+}
 
 const FD_INPUT = 'fd-input w-full';
 const FD_LABEL = 'block text-[9px] text-slate-500 uppercase tracking-widest mb-1.5 font-medium';
@@ -4735,7 +4858,7 @@ function fdCompareHTML() {
       const mc = s.moic >= 1 ? 'text-red-400' : 'text-red-400';
       return `<div class="pt-2 border-t border-white/5 mt-2">
         <div class="text-[9px] text-slate-500 uppercase tracking-wider mb-1">${scen.label||'Investor'}</div>
-        <div class="flex justify-between text-xs mb-0.5"><span class="text-slate-500">Equity</span><span class="text-white">${fmtDollar(s.equity)}</span></div>
+        <div class="flex justify-between text-xs mb-0.5"><span class="text-slate-500">Equity</span><span class="text-white">${fmtMoney(s.equity)}</span></div>
         <div class="flex justify-between text-xs mb-0.5"><span class="text-slate-500">MOIC</span><span class="font-bold ${mc}">${s.moic.toFixed(2)}x</span></div>
         <div class="flex justify-between text-xs"><span class="text-slate-500">Return %</span><span class="${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>
       </div>`;
@@ -4746,9 +4869,9 @@ function fdCompareHTML() {
         <div class="flex gap-1.5 mt-1 flex-wrap">${fdStageBadge(p.deal_stage)}<span class="text-[9px] text-slate-500">${c.n} show${c.n!==1?'s':''} · ${c.num_cities} cit${c.num_cities>1?'ies':'y'}</span></div>
       </div>
       <div class="grid grid-cols-2 gap-2">
-        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Gross Rev</div><div class="text-sm font-bold text-emerald-400">${fmtDollar(c.total_gross_rev)}</div></div>
-        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Net Profit</div><div class="text-sm font-bold ${rc}">${fmtDollar(c.net_profit)}</div></div>
-        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Total Costs</div><div class="text-sm font-bold text-red-400">${fmtDollar(c.total_costs)}</div></div>
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Gross Rev</div><div class="text-sm font-bold text-emerald-400">${fmtMoney(c.total_gross_rev)}</div></div>
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Net Profit</div><div class="text-sm font-bold ${rc}">${fmtMoney(c.net_profit)}</div></div>
+        <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">Total Costs</div><div class="text-sm font-bold text-red-400">${fmtMoney(c.total_costs)}</div></div>
         <div class="kpi-card rounded-lg p-2"><div class="text-[8px] text-slate-500 uppercase mb-0.5">ROI</div><div class="text-sm font-bold ${rc}">${(c.roi*100).toFixed(1)}%</div></div>
       </div>
       <div class="text-[10px] text-slate-500 uppercase tracking-wider pt-1 border-t border-white/5 mb-1">P&amp;L</div>
@@ -4794,7 +4917,7 @@ function fdSupportActsHTML(acts) {
       ${ROLES.map(r=>`<option value="${r}" ${a.role===r?'selected':''}>${r.replace('-',' ').replace(/\b\w/g,l=>l.toUpperCase())}</option>`).join('')}
     </select>
     <input type="number" class="${FD_INPUT} text-xs py-1 w-28 shrink-0" min="0" placeholder="MG $" value="${a.mg||0}" oninput="fdPatchSupportAct('${a.id}','mg',this.value)">
-    <span class="text-xs text-red-400 whitespace-nowrap shrink-0 w-20 text-right">${fmtDollar(Number(a.mg)||0)}</span>
+    <span class="text-xs text-red-400 whitespace-nowrap shrink-0 w-20 text-right">${fmtMoney(Number(a.mg)||0)}</span>
     <button onclick="fdRemoveSupportAct('${a.id}')" class="text-slate-600 hover:text-red-400 p-1 shrink-0">
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
@@ -4837,7 +4960,7 @@ function fdMGDealSectionHTML(p) {
       </select></div>
     <div class="flex justify-between pt-2 border-t border-white/5 text-xs">
       <span class="text-slate-400">Computed Artist Cost</span>
-      <span id="fd-mg-computed-cost" class="text-red-400 font-semibold">${fmtDollar(c.artist_mg_cost)}</span>
+      <span id="fd-mg-computed-cost" class="text-red-400 font-semibold">${fmtMoney(c.artist_mg_cost)}</span>
     </div>
   </div>` : `<div>
     <label class="${FD_LABEL}">Total MG (all-in deal)</label>
@@ -4853,9 +4976,9 @@ function fdCoPromoterSummaryHTML(p, c) {
   if (!c.co_prom_pct) return '';
   const rc = c.blufin_net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
   return `<div class="mt-3 pt-3 border-t border-white/5 space-y-1">
-    <div class="flex justify-between text-xs"><span class="text-slate-500">Net Profit (total)</span><span class="text-white">${fmtDollar(c.net_profit)}</span></div>
-    <div class="flex justify-between text-xs"><span class="text-slate-500">${p.costs?.co_promoter?.name||'Co-Promoter'} share (${(c.co_prom_pct*100).toFixed(0)}%)</span><span class="text-red-400">(${fmtDollar(c.co_promoter_share)})</span></div>
-    <div class="flex justify-between text-xs font-semibold pt-0.5"><span class="text-slate-300">BluFin Net Share</span><span class="${rc}">${fmtDollar(c.blufin_net_profit)}</span></div>
+    <div class="flex justify-between text-xs"><span class="text-slate-500">Net Profit (total)</span><span class="text-white">${fmtMoney(c.net_profit)}</span></div>
+    <div class="flex justify-between text-xs"><span class="text-slate-500">${p.costs?.co_promoter?.name||'Co-Promoter'} share (${(c.co_prom_pct*100).toFixed(0)}%)</span><span class="text-red-400">(${fmtMoney(c.co_promoter_share)})</span></div>
+    <div class="flex justify-between text-xs font-semibold pt-0.5"><span class="text-slate-300">BluFin Net Share</span><span class="${rc}">${fmtMoney(c.blufin_net_profit)}</span></div>
   </div>`;
 }
 
@@ -4956,7 +5079,7 @@ function fdRender() {
         <div style="font-size:15px;font-weight:600;color:#f5f5f5;letter-spacing:-0.01em;line-height:1.2;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.artist || 'Unnamed Artist'}</div>
 
         <!-- Row 3: Net profit — dominant financial number -->
-        <div style="font-size:1.4rem;font-weight:300;letter-spacing:-0.04em;color:${profitColorSb};font-variant-numeric:tabular-nums;line-height:1;margin-bottom:10px;">${fmtDollar(c.net_profit)}</div>
+        <div style="font-size:1.4rem;font-weight:300;letter-spacing:-0.04em;color:${profitColorSb};font-variant-numeric:tabular-nums;line-height:1;margin-bottom:10px;">${fmtMoney(c.net_profit)}</div>
 
         <!-- Row 4: metadata bar -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);">
@@ -6610,23 +6733,23 @@ function fdUpdateLive() {
     const tcFillRate = cc.fill_rate;
     (cc.tc.seat_categories || []).forEach((cat, i) => {
       const revPS = (Number(cat.price)||0) * (Number(cat.count)||0) * tcFillRate;
-      upd('fd-cat-rev-' + tcId + '-' + i, fmtDollar(revPS));
-      upd('fd-cat-tot-' + tcId + '-' + i, fmtDollar(revPS * cc.shows));
+      upd('fd-cat-rev-' + tcId + '-' + i, fmtMoney(revPS));
+      upd('fd-cat-tot-' + tcId + '-' + i, fmtMoney(revPS * cc.shows));
     });
     const occTxt = cc.occ > 0 ? ' · <span class="text-amber-400">' + (cc.occ*100).toFixed(0) + '% occ</span>' : '';
     upd('fd-city-footer-' + tcId,
       '<span class="flex gap-3">' +
-        '<span>Ticket rev: <span class="text-emerald-400 font-semibold">' + fmtDollar(cc.rev_per_show) + '/show</span></span>' +
+        '<span>Ticket rev: <span class="text-emerald-400 font-semibold">' + fmtMoney(cc.rev_per_show) + '/show</span></span>' +
         '<span class="text-slate-600">·</span>' +
         '<span>' + fmtNum(cc.seats_per_show) + ' seats' + occTxt + '</span>' +
       '</span>' +
       '<span class="flex gap-3">' +
-        '<span>Cost/show: <span class="text-red-400 font-semibold">' + fmtDollar(cc.cpp) + '</span></span>' +
+        '<span>Cost/show: <span class="text-red-400 font-semibold">' + fmtMoney(cc.cpp) + '</span></span>' +
         '<span class="text-slate-600">·</span>' +
-        '<span>' + cc.shows + ' show' + (cc.shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtDollar(cc.total_op_cost) + '</span></span>' +
+        '<span>' + cc.shows + ' show' + (cc.shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtMoney(cc.total_op_cost) + '</span></span>' +
       '</span>');
   }
-  upd('fd-mg-computed-cost', fmtDollar(c.artist_mg_cost));
+  upd('fd-mg-computed-cost', fmtMoney(c.artist_mg_cost));
   upd('fd-co-promoter-summary', fdCoPromoterSummaryHTML(p, c));
   for (const scen of (p.investor_scenarios || [])) {
     upd('fd-scen-' + scen.id + '-inv-table', fdScenInvTableHTML(scen));
@@ -6655,10 +6778,10 @@ function fdKPIStripHTML(c, p) {
   const showOptimizer = adjRoi < fdROIThreshold;
   const optimizerBtn = showOptimizer ? `<button onclick="fdShowROIOptimizer()" style="display:flex;align-items:center;gap:4px;margin-top:7px;background:rgba(204,100,55,0.12);border:1px solid rgba(204,100,55,0.35);color:#cc6437;font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 8px;border-radius:3px;cursor:pointer;width:100%;justify-content:center;transition:background 0.12s;" onmouseover="this.style.background='rgba(204,100,55,0.22)'" onmouseout="this.style.background='rgba(204,100,55,0.12)'"><span style="font-size:10px;">⚡</span> Optimize ROI</button>` : '';
   return `<div class="fd-kpi-band" style="grid-template-columns:repeat(7,1fr);">
-    <div class="fd-kpi-cell"><span class="fd-kpi-label">Gross Revenue</span><div class="fd-kpi-num text-emerald-400">${fmtDollar(c.total_gross_rev)}</div><div class="fd-kpi-sub">${fmtNum(c.total_attendance)} att · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
-    <div class="fd-kpi-cell"><span class="fd-kpi-label">Total Costs</span><div class="fd-kpi-num" style="color:rgba(204,100,55,0.85);">${fmtDollar(c.total_costs)}</div><div class="fd-kpi-sub">MG + ticketing + ops</div></div>
-    <div class="fd-kpi-cell"><span class="fd-kpi-label">Net Profit</span><div class="fd-kpi-num ${rc}">${fmtDollar(c.net_profit)}</div></div>
-    <div class="fd-kpi-cell"><span class="fd-kpi-label">${roiLabel}</span><div class="fd-kpi-num ${roiColor}">${(adjRoi*100).toFixed(2)}%</div><div class="fd-kpi-sub">${c.invested_capital > 0 ? 'on ' + fmtDollar(c.invested_capital) + ' capital' : 'on total costs'}</div>${optimizerBtn}</div>
+    <div class="fd-kpi-cell"><span class="fd-kpi-label">Gross Revenue</span><div class="fd-kpi-num text-emerald-400">${fmtMoney(c.total_gross_rev)}</div><div class="fd-kpi-sub">${fmtNum(c.total_attendance)} att · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
+    <div class="fd-kpi-cell"><span class="fd-kpi-label">Total Costs</span><div class="fd-kpi-num" style="color:rgba(204,100,55,0.85);">${fmtMoney(c.total_costs)}</div><div class="fd-kpi-sub">MG + ticketing + ops</div></div>
+    <div class="fd-kpi-cell"><span class="fd-kpi-label">Net Profit</span><div class="fd-kpi-num ${rc}">${fmtMoney(c.net_profit)}</div></div>
+    <div class="fd-kpi-cell"><span class="fd-kpi-label">${roiLabel}</span><div class="fd-kpi-num ${roiColor}">${(adjRoi*100).toFixed(2)}%</div><div class="fd-kpi-sub">${c.invested_capital > 0 ? 'on ' + fmtMoney(c.invested_capital) + ' capital' : 'on total costs'}</div>${optimizerBtn}</div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">ROI (Absolute)</span><div class="fd-kpi-num ${absColor}">${(absReturn*100).toFixed(2)}%</div><div class="fd-kpi-sub">post-tax ÷ invested capital</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Break-even Fill</span><div class="fd-kpi-num ${befColor}">${befDisplay}</div><div class="fd-kpi-sub">fill rate to break even</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Best MOIC</span><div class="fd-kpi-num ${mc}">${bestMoic > 0 ? bestMoic.toFixed(2)+'x' : '—'}</div></div>
@@ -6679,25 +6802,25 @@ function fdCityCatTotalsHTML(cc) {
     <td class="py-1.5 pl-2 text-xs text-white">Total${fillBadge}</td>
     <td class="py-1.5 text-right text-xs text-white pr-1">${fmtNum(effSeats)}${maxNote}</td>
     <td></td>
-    <td class="py-1.5 text-right text-xs text-emerald-400 pr-1">${fmtDollar(cc.rev_per_show)}</td>
-    <td class="py-1.5 text-right text-xs text-emerald-400 pr-2">${fmtDollar(cc.total_ticket_rev)}</td>
+    <td class="py-1.5 text-right text-xs text-emerald-400 pr-1">${fmtMoney(cc.rev_per_show)}</td>
+    <td class="py-1.5 text-right text-xs text-emerald-400 pr-2">${fmtMoney(cc.total_ticket_rev)}</td>
     <td></td>
   </tr>`;
 }
 
 function fdAddlDerivedHTML(p, c) {
   return `<div class="grid grid-cols-3 gap-2 mt-2 text-[10px]">
-    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">Merch: </span><span class="text-emerald-400 font-semibold">${fmtDollar(c.merch_rev)}</span></div>
-    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">F&amp;B: </span><span class="text-emerald-400 font-semibold">${fmtDollar(c.fnb_rev)}</span></div>
-    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">Sponsorship: </span><span class="text-emerald-400 font-semibold">${fmtDollar(c.sponsor_rev)}</span></div>
+    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">Merch: </span><span class="text-emerald-400 font-semibold">${fmtMoney(c.merch_rev)}</span></div>
+    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">F&amp;B: </span><span class="text-emerald-400 font-semibold">${fmtMoney(c.fnb_rev)}</span></div>
+    <div class="bg-white/3 rounded px-2 py-1.5 text-center"><span class="text-slate-500">Sponsorship: </span><span class="text-emerald-400 font-semibold">${fmtMoney(c.sponsor_rev)}</span></div>
   </div>`;
 }
 
 function fdCostSummaryHTML(c) {
   return `<div class="grid grid-cols-3 gap-2 mt-3 text-[10px]">
-    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">Op. Cost / Show</div><div class="font-bold text-white">${fmtDollar(c.op_per_show)}</div></div>
-    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">Total Op. Costs</div><div class="font-bold text-red-400">${fmtDollar(c.total_op_costs)}</div></div>
-    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">All Costs</div><div class="font-bold text-red-400">${fmtDollar(c.total_costs)}</div></div>
+    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">Op. Cost / Show</div><div class="font-bold text-white">${fmtMoney(c.op_per_show)}</div></div>
+    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">Total Op. Costs</div><div class="font-bold text-red-400">${fmtMoney(c.total_op_costs)}</div></div>
+    <div class="bg-white/3 rounded-lg p-2.5 text-center"><div class="text-[9px] text-slate-500 uppercase mb-1">All Costs</div><div class="font-bold text-red-400">${fmtMoney(c.total_costs)}</div></div>
   </div>`;
 }
 
@@ -6707,30 +6830,30 @@ function fdPLSummaryHTML(p, c) {
   const perCityRevRows = c.cityCalcs.length > 1
     ? c.cityCalcs.map(cc => {
         const nm = (cc.tc.city_name||(cc.tc.venue_name?'('+cc.tc.venue_name+')':'City Stop')).split(',')[0];
-        return '<div class="fd-pl-row indent"><span class="fd-pl-lbl">' + nm + ' (' + cc.shows + ' show' + (cc.shows>1?'s':'') + ' × ' + fmtDollar(cc.rev_per_show) + ')</span><span class="fd-pl-val neu">' + fmtDollar(cc.total_ticket_rev) + '</span></div>';
+        return '<div class="fd-pl-row indent"><span class="fd-pl-lbl">' + nm + ' (' + cc.shows + ' show' + (cc.shows>1?'s':'') + ' × ' + fmtMoney(cc.rev_per_show) + ')</span><span class="fd-pl-val neu">' + fmtMoney(cc.total_ticket_rev) + '</span></div>';
       }).join('') : '';
   const _rc2 = c.net_profit >= 0 ? 'pos' : 'neg';
   return `<div class="fd-pl">
-    <div class="fd-pl-row"><span class="fd-pl-lbl" style="color:rgba(255,255,255,0.65);">Gross Ticket Revenue</span><span class="fd-pl-val neu">${fmtDollar(c.total_ticket_rev)}</span></div>
+    <div class="fd-pl-row"><span class="fd-pl-lbl" style="color:rgba(255,255,255,0.65);">Gross Ticket Revenue</span><span class="fd-pl-val neu">${fmtMoney(c.total_ticket_rev)}</span></div>
     ${perCityRevRows}
-    ${c.ticketing_fee>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Less: Platform Fee (${((co.ticketing_fee_pct||0)*100).toFixed(0)}%)</span><span class="fd-pl-val neg">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
-    ${c.merch_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Merch Revenue (${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}% split · $${(p.additional_revenue?.merch_per_head||0).toFixed(2)}/head × ${fmtNum(c.total_attendance)} att.)</span><span class="fd-pl-val pos">${fmtDollar(c.merch_rev)}</span></div>`:''}
-    ${c.fnb_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">F&amp;B Revenue</span><span class="fd-pl-val pos">${fmtDollar(c.fnb_rev)}</span></div>`:''}
-    ${c.sponsor_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Sponsorship Revenue</span><span class="fd-pl-val pos">${fmtDollar(c.sponsor_rev)}</span></div>`:''}
-    <div class="fd-pl-row subtotal"><span class="fd-pl-lbl">Total Gross Revenue</span><span class="fd-pl-val pos">${fmtDollar(c.total_gross_rev)}</span></div>
-    <div class="fd-pl-row indent"><span class="fd-pl-lbl">${(p.costs?.deal_type==='backend')?'Artist Backend Deal':'Artist MG'}</span><span class="fd-pl-val neg">(${fmtDollar(c.artist_mg_cost)})</span></div>
-    ${(c.support_act_total||0)>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Support Acts (${(p.support_acts||[]).length} act${(p.support_acts||[]).length!==1?'s':''})</span><span class="fd-pl-val neg">(${fmtDollar(c.support_act_total)})</span></div>`:''}
-    ${c.ticketing_fee>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Ticketing Platform Fee</span><span class="fd-pl-val neg">(${fmtDollar(c.ticketing_fee)})</span></div>`:''}
-    ${c.total_op_costs>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Operating Costs (${c.n} shows × ${c.num_cities} ${c.num_cities>1?'cities':'city'})</span><span class="fd-pl-val neg">(${fmtDollar(c.total_op_costs)})</span></div>`:''}
-    ${(co.agency_fees||0)>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Agency Fees</span><span class="fd-pl-val neg">(${fmtDollar(co.agency_fees)})</span></div>`:''}
-    ${(co.blufin_fees||0)>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">BluFin Fees</span><span class="fd-pl-val neg">(${fmtDollar(co.blufin_fees)})</span></div>`:''}
-    <div class="fd-pl-row net"><span class="fd-pl-lbl">Net Profit</span><span class="fd-pl-val ${_rc2}">${fmtDollar(c.net_profit)}</span></div>
+    ${c.ticketing_fee>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Less: Platform Fee (${((co.ticketing_fee_pct||0)*100).toFixed(0)}%)</span><span class="fd-pl-val neg">(${fmtMoney(c.ticketing_fee)})</span></div>`:''}
+    ${c.merch_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Merch Revenue (${((p.additional_revenue?.merch_split_pct||0)*100).toFixed(0)}% split · $${(p.additional_revenue?.merch_per_head||0).toFixed(2)}/head × ${fmtNum(c.total_attendance)} att.)</span><span class="fd-pl-val pos">${fmtMoney(c.merch_rev)}</span></div>`:''}
+    ${c.fnb_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">F&amp;B Revenue</span><span class="fd-pl-val pos">${fmtMoney(c.fnb_rev)}</span></div>`:''}
+    ${c.sponsor_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Sponsorship Revenue</span><span class="fd-pl-val pos">${fmtMoney(c.sponsor_rev)}</span></div>`:''}
+    <div class="fd-pl-row subtotal"><span class="fd-pl-lbl">Total Gross Revenue</span><span class="fd-pl-val pos">${fmtMoney(c.total_gross_rev)}</span></div>
+    <div class="fd-pl-row indent"><span class="fd-pl-lbl">${(p.costs?.deal_type==='backend')?'Artist Backend Deal':'Artist MG'}</span><span class="fd-pl-val neg">(${fmtMoney(c.artist_mg_cost)})</span></div>
+    ${(c.support_act_total||0)>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Support Acts (${(p.support_acts||[]).length} act${(p.support_acts||[]).length!==1?'s':''})</span><span class="fd-pl-val neg">(${fmtMoney(c.support_act_total)})</span></div>`:''}
+    ${c.ticketing_fee>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Ticketing Platform Fee</span><span class="fd-pl-val neg">(${fmtMoney(c.ticketing_fee)})</span></div>`:''}
+    ${c.total_op_costs>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Operating Costs (${c.n} shows × ${c.num_cities} ${c.num_cities>1?'cities':'city'})</span><span class="fd-pl-val neg">(${fmtMoney(c.total_op_costs)})</span></div>`:''}
+    ${(co.agency_fees||0)>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Agency Fees</span><span class="fd-pl-val neg">(${fmtMoney(co.agency_fees)})</span></div>`:''}
+    ${(co.blufin_fees||0)>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">BluFin Fees</span><span class="fd-pl-val neg">(${fmtMoney(co.blufin_fees)})</span></div>`:''}
+    <div class="fd-pl-row net"><span class="fd-pl-lbl">Net Profit</span><span class="fd-pl-val ${_rc2}">${fmtMoney(c.net_profit)}</span></div>
     ${(c.co_prom_pct||0)>0?`
-<div class="fd-pl-row indent"><span class="fd-pl-lbl">↳ ${p.costs?.co_promoter?.name||'Co-Promoter'} share (${(c.co_prom_pct*100).toFixed(0)}%)</span><span class="fd-pl-val neg">(${fmtDollar(c.co_promoter_share)})</span></div>
-<div class="fd-pl-row indent"><span class="fd-pl-lbl">↳ BluFin Pre-Tax Share</span><span class="fd-pl-val ${(c.blufin_net_profit||0)>=0?'pos':'neg'}">${fmtDollar(c.blufin_net_profit)}</span></div>`:(!((c.co_prom_pct||0)>0)&&c.tax_rate>0)?`
-<div class="fd-pl-row indent"><span class="fd-pl-lbl">↳ Pre-Tax Profit</span><span class="fd-pl-val ${c.blufin_net_profit>=0?'pos':'neg'}">${fmtDollar(c.blufin_net_profit)}</span></div>`:``}
-    ${c.tax_rate>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Tax (${(c.tax_rate*100).toFixed(1)}% effective rate)</span><span class="fd-pl-val neg">${c.tax_amount>0?'('+fmtDollar(c.tax_amount)+')':'—'}</span></div>
-<div class="fd-pl-row net" style="padding-top:8px;"><span class="fd-pl-lbl">Net Profit (Post-Tax)</span><span class="fd-pl-val ${(c.blufin_net_profit_after_tax||0)>=0?'pos':'neg'}">${fmtDollar(c.blufin_net_profit_after_tax)}</span></div>`:''}
+<div class="fd-pl-row indent"><span class="fd-pl-lbl">↳ ${p.costs?.co_promoter?.name||'Co-Promoter'} share (${(c.co_prom_pct*100).toFixed(0)}%)</span><span class="fd-pl-val neg">(${fmtMoney(c.co_promoter_share)})</span></div>
+<div class="fd-pl-row indent"><span class="fd-pl-lbl">↳ BluFin Pre-Tax Share</span><span class="fd-pl-val ${(c.blufin_net_profit||0)>=0?'pos':'neg'}">${fmtMoney(c.blufin_net_profit)}</span></div>`:(!((c.co_prom_pct||0)>0)&&c.tax_rate>0)?`
+<div class="fd-pl-row indent"><span class="fd-pl-lbl">↳ Pre-Tax Profit</span><span class="fd-pl-val ${c.blufin_net_profit>=0?'pos':'neg'}">${fmtMoney(c.blufin_net_profit)}</span></div>`:``}
+    ${c.tax_rate>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Tax (${(c.tax_rate*100).toFixed(1)}% effective rate)</span><span class="fd-pl-val neg">${c.tax_amount>0?'('+fmtMoney(c.tax_amount)+')':'—'}</span></div>
+<div class="fd-pl-row net" style="padding-top:8px;"><span class="fd-pl-lbl">Net Profit (Post-Tax)</span><span class="fd-pl-val ${(c.blufin_net_profit_after_tax||0)>=0?'pos':'neg'}">${fmtMoney(c.blufin_net_profit_after_tax)}</span></div>`:''}
     ${(() => {
       const adjRoi = fdSensAdjustedROI(c, p);
       const adjRoiColor = adjRoi >= 0 ? 'text-emerald-400' : 'text-red-400';
@@ -6742,15 +6865,15 @@ function fdPLSummaryHTML(p, c) {
           return investors.map(inv => {
             const invEquity = Number(activeInvScen.equity) * (inv.pct || 0) / 100;
             const obl = invEquity * ((inv.expected_return_pct || 0) / 100);
-            return `<div class="fd-pl-row indent"><span class="fd-pl-lbl" style="font-size:10px;">↳ ${inv.name || 'Investor'} (${(inv.pct||0).toFixed(1)}% stake × ${(inv.expected_return_pct||0)}% return)</span><span class="fd-pl-val" style="font-size:10px;color:rgba(251,191,36,0.7);">(${fmtDollar(obl)})</span></div>`;
+            return `<div class="fd-pl-row indent"><span class="fd-pl-lbl" style="font-size:10px;">↳ ${inv.name || 'Investor'} (${(inv.pct||0).toFixed(1)}% stake × ${(inv.expected_return_pct||0)}% return)</span><span class="fd-pl-val" style="font-size:10px;color:rgba(251,191,36,0.7);">(${fmtMoney(obl)})</span></div>`;
           }).join('');
         } else {
           const obl = Number(activeInvScen.equity) * ((activeInvScen.expected_return_pct || 0) / 100);
-          return `<div class="fd-pl-row indent"><span class="fd-pl-lbl" style="font-size:10px;">↳ investor obligation (${activeInvScen.label || activeInvScen.id}, ${(activeInvScen.expected_return_pct||0)}% return)</span><span class="fd-pl-val" style="font-size:10px;color:rgba(251,191,36,0.7);">(${fmtDollar(obl)})</span></div>`;
+          return `<div class="fd-pl-row indent"><span class="fd-pl-lbl" style="font-size:10px;">↳ investor obligation (${activeInvScen.label || activeInvScen.id}, ${(activeInvScen.expected_return_pct||0)}% return)</span><span class="fd-pl-val" style="font-size:10px;color:rgba(251,191,36,0.7);">(${fmtMoney(obl)})</span></div>`;
         }
       })() : '';
       return `<div class="fd-pl-row roi-row"><span class="fd-pl-lbl">${roiLbl}</span><span class="fd-pl-val" style="color:${adjRoi>=0?'#10b981':'#cc6437'};font-size:13px;font-weight:700;">${(adjRoi*100).toFixed(2)}%</span></div>
-    ${c.invested_capital > 0 ? `<div class="fd-pl-row indent" style="padding-left:28px;"><span class="fd-pl-lbl" style="font-size:10px;">↳ MG advance ${fmtDollar(c.mg_advance_cost)} + support ${fmtDollar(c.support_act_total)} + ops ${fmtDollar(c.total_op_costs)} + fees ${fmtDollar((p.costs?.agency_fees||0)+(p.costs?.blufin_fees||0))}</span><span class="fd-pl-val neu" style="font-size:10px;">${fmtDollar(c.invested_capital)}</span></div>` : ''}
+    ${c.invested_capital > 0 ? `<div class="fd-pl-row indent" style="padding-left:28px;"><span class="fd-pl-lbl" style="font-size:10px;">↳ MG advance ${fmtMoney(c.mg_advance_cost)} + support ${fmtMoney(c.support_act_total)} + ops ${fmtMoney(c.total_op_costs)} + fees ${fmtMoney((p.costs?.agency_fees||0)+(p.costs?.blufin_fees||0))}</span><span class="fd-pl-val neu" style="font-size:10px;">${fmtMoney(c.invested_capital)}</span></div>` : ''}
     ${obligationLines}`;
     })()}
   </div>`;
@@ -6762,11 +6885,11 @@ function fdScenResultHTML(c, scen) {
   const mc = s.moic >= 1 ? 'text-red-400' : 'text-red-400';
   const wfNote = c.net_profit <= s.hurdle_amount ? '(all profit ≤ hurdle, 100% to investor)' : '';
   let html = `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">
-    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Hurdle amount (${(s.hurdle_rate*100).toFixed(0)}%)</span><span class="text-[10px] text-white">${fmtDollar(s.hurdle_amount)}</span></div>
-    ${s.investor_dist !== s.hurdle_amount ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Above-hurdle (investor ${(s.inv_split*100).toFixed(0)}%)</span><span class="text-[10px] text-emerald-400">${fmtDollar(s.investor_dist - s.hurdle_amount < 0 ? 0 : s.investor_dist - s.hurdle_amount)}</span></div>` : ''}
-    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor distribution ${wfNote}</span><span class="text-[10px] text-emerald-400 font-semibold">${fmtDollar(s.investor_dist)}</span></div>
-    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin distribution</span><span class="text-[10px] text-white">${fmtDollar(s.blufin_dist)}</span></div>
-    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Total investor return (equity + dist.)</span><span class="text-[10px] font-bold text-emerald-400">${fmtDollar(s.total_inv_return)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Hurdle amount (${(s.hurdle_rate*100).toFixed(0)}%)</span><span class="text-[10px] text-white">${fmtMoney(s.hurdle_amount)}</span></div>
+    ${s.investor_dist !== s.hurdle_amount ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Above-hurdle (investor ${(s.inv_split*100).toFixed(0)}%)</span><span class="text-[10px] text-emerald-400">${fmtMoney(s.investor_dist - s.hurdle_amount < 0 ? 0 : s.investor_dist - s.hurdle_amount)}</span></div>` : ''}
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor distribution ${wfNote}</span><span class="text-[10px] text-emerald-400 font-semibold">${fmtMoney(s.investor_dist)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin distribution</span><span class="text-[10px] text-white">${fmtMoney(s.blufin_dist)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Total investor return (equity + dist.)</span><span class="text-[10px] font-bold text-emerald-400">${fmtMoney(s.total_inv_return)}</span></div>
     <div class="flex justify-between py-1.5 bg-white/5 rounded px-2 mt-1"><span class="text-xs font-bold text-white">MOIC</span><span class="text-xs font-bold ${mc}">${s.moic.toFixed(2)}x</span></div>
     <div class="flex justify-between py-1.5 bg-white/5 rounded px-2"><span class="text-xs font-bold text-white">Absolute Return</span><span class="text-xs font-bold ${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>`;
 
@@ -6782,8 +6905,8 @@ function fdScenResultHTML(c, scen) {
       return `<tr class="border-b border-white/5">
         <td class="py-1 pr-2 text-[10px] text-slate-300 truncate max-w-[80px]">${inv.name || '—'}</td>
         <td class="py-1 px-1 text-[10px] text-slate-400 text-right">${(inv.pct || 0).toFixed(1)}%</td>
-        <td class="py-1 px-1 text-[10px] text-white text-right">${fmtDollar(equity_amount)}</td>
-        <td class="py-1 px-1 text-[10px] text-emerald-400 text-right">${fmtDollar(dist)}</td>
+        <td class="py-1 px-1 text-[10px] text-white text-right">${fmtMoney(equity_amount)}</td>
+        <td class="py-1 px-1 text-[10px] text-emerald-400 text-right">${fmtMoney(dist)}</td>
         <td class="py-1 pl-1 text-[10px] font-semibold ${invMc} text-right">${equity_amount > 0 ? moic.toFixed(2) + 'x' : '—'}</td>
       </tr>`;
     }).join('');
@@ -6804,8 +6927,8 @@ function fdScenResultHTML(c, scen) {
         <tfoot><tr class="border-t border-white/10">
           <td class="py-1 pr-2 text-[10px] font-semibold text-white">Total</td>
           <td class="py-1 px-1 text-[10px] font-semibold text-white text-right">${sumPct.toFixed(1)}%</td>
-          <td class="py-1 px-1 text-[10px] font-semibold text-white text-right">${fmtDollar(totalEquity)}</td>
-          <td class="py-1 px-1 text-[10px] font-semibold text-emerald-400 text-right">${fmtDollar(totalDist)}</td>
+          <td class="py-1 px-1 text-[10px] font-semibold text-white text-right">${fmtMoney(totalEquity)}</td>
+          <td class="py-1 px-1 text-[10px] font-semibold text-emerald-400 text-right">${fmtMoney(totalDist)}</td>
           <td class="py-1 pl-1 text-[10px] text-slate-500 text-right">—</td>
         </tr></tfoot>
       </table>
@@ -6824,13 +6947,13 @@ function fdCashFlowHTML(p, c) {
     const balColor = row.balance >= 0 ? 'text-emerald-400' : 'text-red-400';
     const netColor = row.net >= 0 ? 'text-emerald-400' : 'text-red-400';
     const itemsHTML = row.items.map(it =>
-      `<div class="flex justify-between text-[10px] py-0.5 leading-relaxed"><span class="text-slate-500 pr-2">${it.label}</span><span class="${it.amount>=0?'text-emerald-400/80':'text-red-400/80'} whitespace-nowrap">${fmtDollar(it.amount)}</span></div>`
+      `<div class="flex justify-between text-[10px] py-0.5 leading-relaxed"><span class="text-slate-500 pr-2">${it.label}</span><span class="${it.amount>=0?'text-emerald-400/80':'text-red-400/80'} whitespace-nowrap">${fmtMoney(it.amount)}</span></div>`
     ).join('');
     return `<tr class="border-b border-white/5 align-top">
       <td class="py-2.5 pl-3 text-sm text-slate-300 whitespace-nowrap font-medium">${row.display}</td>
       <td class="py-2.5 px-3 min-w-[280px]">${itemsHTML}</td>
-      <td class="py-2.5 text-right text-sm font-semibold ${netColor} whitespace-nowrap">${fmtDollar(row.net)}</td>
-      <td class="py-2.5 text-right pr-3 text-sm font-bold ${balColor} whitespace-nowrap">${fmtDollar(row.balance)}</td>
+      <td class="py-2.5 text-right text-sm font-semibold ${netColor} whitespace-nowrap">${fmtMoney(row.net)}</td>
+      <td class="py-2.5 text-right pr-3 text-sm font-bold ${balColor} whitespace-nowrap">${fmtMoney(row.balance)}</td>
     </tr>`;
   }).join('');
   return `<table class="w-full">
@@ -7435,8 +7558,8 @@ function fdROIOverlayHTML(c, p) {
 
   const diagLines = [];
   if (fill < 0.75) diagLines.push(`Fill rate ${(fill*100).toFixed(0)}% — below ${((FD_BENCHMARKS.venue[p.venue_type||'arena']?.avg_fill||0.86)*100).toFixed(0)}% industry average`);
-  if (c.blufin_net_profit < 0) diagLines.push(`Net loss of ${fmtDollar(Math.abs(c.blufin_net_profit))} — deal is currently underwater`);
-  if (!c.support_act_total && c.artist_mg_cost > 0 && (c.sponsor_rev===0)) diagLines.push(`Zero sponsorship revenue captured against $${fmtDollar(c.artist_mg_cost)} MG exposure`);
+  if (c.blufin_net_profit < 0) diagLines.push(`Net loss of ${fmtMoney(Math.abs(c.blufin_net_profit))} — deal is currently underwater`);
+  if (!c.support_act_total && c.artist_mg_cost > 0 && (c.sponsor_rev===0)) diagLines.push(`Zero sponsorship revenue captured against $${fmtMoney(c.artist_mg_cost)} MG exposure`);
   if ((Number(p.additional_revenue?.fnb_per_head)||0) === 0) diagLines.push(`F&B revenue not modeled — high-margin opportunity uncaptured`);
   if (adjROI < 0) diagLines.push(`Negative ROI — deal loses money at current assumptions`);
 
@@ -7836,8 +7959,8 @@ function fdRenderLive(p) {
       <td class="py-1.5 pl-2 pr-1"><input type="text" class="${FD_INPUT} text-xs py-1.5" value="${(cat.name||'').replace(/"/g,'&quot;')}" placeholder="Category name" oninput="fdState.draftProfile.seat_categories[${i}].name=this.value"></td>
       <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${cat.count||0}" placeholder="Seats" oninput="fdState.draftProfile.seat_categories[${i}].count=Number(this.value);fdUpdateLive()"></td>
       <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${cat.price||0}" placeholder="Price $" oninput="fdState.draftProfile.seat_categories[${i}].price=Number(this.value);fdUpdateLive()"></td>
-      <td class="py-1.5 text-right text-xs text-emerald-400 pr-1 whitespace-nowrap">${fmtDollar(revPS)}</td>
-      <td class="py-1.5 text-right text-xs text-emerald-400 pr-2 whitespace-nowrap">${fmtDollar(revTot)}</td>
+      <td class="py-1.5 text-right text-xs text-emerald-400 pr-1 whitespace-nowrap">${fmtMoney(revPS)}</td>
+      <td class="py-1.5 text-right text-xs text-emerald-400 pr-2 whitespace-nowrap">${fmtMoney(revTot)}</td>
       <td class="py-1.5 pr-1"><button onclick="fdRemoveCategory(${i})" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
     </tr>`;
   }).join('');
@@ -7855,7 +7978,7 @@ function fdRenderLive(p) {
       <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5 w-20" min="0" max="100" value="${((s.pct||0)*100).toFixed(0)}" placeholder="%" oninput="fdState.draftProfile.costs.mg_schedule[${i}].pct=Number(this.value)/100;fdUpdateLive()"></td>
       <td class="py-1.5 px-1"><input type="number" class="${FD_INPUT} text-xs py-1.5 w-24" min="0" value="${s.months_before||0}" placeholder="months" oninput="fdState.draftProfile.costs.mg_schedule[${i}].months_before=Number(this.value);fdUpdateLive()"></td>
       <td class="py-1.5 text-center text-xs text-slate-400 whitespace-nowrap">${dateStr}</td>
-      <td class="py-1.5 text-right text-xs font-semibold text-red-400 pr-2 whitespace-nowrap">${amt>0?fmtDollar(amt):'—'}</td>
+      <td class="py-1.5 text-right text-xs font-semibold text-red-400 pr-2 whitespace-nowrap">${amt>0?fmtMoney(amt):'—'}</td>
       <td class="py-1.5 pr-1"><button onclick="fdRemoveMGSchedule(${i})" class="text-slate-600 hover:text-red-400 p-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>
     </tr>`;
   }).join('');
@@ -7943,7 +8066,7 @@ function fdRenderLive(p) {
         <div>
           <label class="${FD_LABEL}">Ticketing Platform Fee (%)</label>
           <input type="number" class="${FD_INPUT}" min="0" max="100" step="0.1" value="${((p.costs?.ticketing_fee_pct||0)*100).toFixed(1)}" oninput="fdPatch('costs.ticketing_fee_pct',Number(this.value)/100);fdUpdateLive()">
-          <div class="text-[9px] text-slate-600 mt-1">→ Fee: ${fmtDollar(c.ticketing_fee)} (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}% of ticket revenue)</div>
+          <div class="text-[9px] text-slate-600 mt-1">→ Fee: ${fmtMoney(c.ticketing_fee)} (${((p.costs?.ticketing_fee_pct||0)*100).toFixed(0)}% of ticket revenue)</div>
         </div>
       </div>
       <!-- Ticketing Company & Settlement -->
@@ -7964,10 +8087,10 @@ function fdRenderLive(p) {
             const lines = [];
             if ((Number(ts.advance_pct)||0) > 0) {
               const ad = new Date(cd); ad.setDate(ad.getDate() - (Number(ts.advance_days_before)||0));
-              lines.push('Advance: ' + fmtDollar(advAmt) + ' on ' + ad.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}));
+              lines.push('Advance: ' + fmtMoney(advAmt) + ' on ' + ad.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}));
             }
             const sd = new Date(cd); sd.setDate(sd.getDate() + (Number(ts.days_after_show)||0));
-            lines.push('Final settlement: ' + fmtDollar(finalAmt) + ' on ' + sd.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}));
+            lines.push('Final settlement: ' + fmtMoney(finalAmt) + ' on ' + sd.toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}));
             return lines.join(' · ');
           })();
           return `<div class="grid grid-cols-4 gap-3">
@@ -7992,7 +8115,7 @@ function fdRenderLive(p) {
             </div>
           </div>
           <div class="mt-2 bg-white/3 rounded-lg px-3 py-2 text-[10px] text-slate-400 leading-relaxed">
-            <span class="text-slate-500 font-medium">Net ticket rev: </span><span class="text-white">${fmtDollar(netT)}</span>
+            <span class="text-slate-500 font-medium">Net ticket rev: </span><span class="text-white">${fmtMoney(netT)}</span>
             <span class="mx-2 text-slate-600">·</span>${settleSummary}
           </div>`;
         })()}
@@ -8006,7 +8129,7 @@ function fdRenderLive(p) {
           <th class="text-left pb-2 pl-2">Label</th><th class="text-left pb-2 px-1">% of MG</th><th class="text-left pb-2 px-1">Months Before</th><th class="text-center pb-2">Est. Date</th><th class="text-right pb-2 pr-2">Amount</th><th class="pb-2 w-8"></th>
         </tr></thead>
         <tbody>${schedRows}</tbody>
-        <tfoot><tr class="border-t border-white/10"><td class="py-2 pl-2 text-xs font-bold text-white" colspan="3">Total MG</td><td></td><td class="py-2 text-right pr-2 text-xs font-bold text-red-400">${fmtDollar(p.costs?.artist_mg||0)}</td><td></td></tr></tfoot>
+        <tfoot><tr class="border-t border-white/10"><td class="py-2 pl-2 text-xs font-bold text-white" colspan="3">Total MG</td><td></td><td class="py-2 text-right pr-2 text-xs font-bold text-red-400">${fmtMoney(p.costs?.artist_mg||0)}</td><td></td></tr></tfoot>
       </table>
     </div>
 
@@ -8045,8 +8168,8 @@ function fdRenderLive(p) {
                 '<td class="py-1 pl-2 pr-1"><input type="text" class="' + FD_INPUT + ' text-[11px] py-1" value="' + (cat.name||'').replace(/"/g,'&quot;') + '" placeholder="Category" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'name\',this.value)"></td>' +
                 '<td class="py-1 px-1"><input type="number" class="' + FD_INPUT + ' text-[11px] py-1 w-20" min="0" value="' + (cat.count||0) + '" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'count\',Number(this.value));fdUpdateLive()"></td>' +
                 '<td class="py-1 px-1"><input type="number" class="' + FD_INPUT + ' text-[11px] py-1 w-20" min="0" value="' + (cat.price||0) + '" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'price\',Number(this.value));fdUpdateLive()"></td>' +
-                '<td id="fd-cat-rev-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-1 whitespace-nowrap">' + fmtDollar(revPS) + '</td>' +
-                '<td id="fd-cat-tot-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-2 whitespace-nowrap">' + fmtDollar(revTot) + '</td>' +
+                '<td id="fd-cat-rev-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-1 whitespace-nowrap">' + fmtMoney(revPS) + '</td>' +
+                '<td id="fd-cat-tot-' + tc.id + '-' + i + '" class="py-1 text-right text-[11px] text-emerald-400 pr-2 whitespace-nowrap">' + fmtMoney(revTot) + '</td>' +
                 '<td class="py-1 pr-1"><button onclick="fdRemoveCityCategory(\'' + tc.id + '\',' + i + ')" class="text-slate-600 hover:text-red-400 p-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>' +
               '</tr>';
             }).join('');
@@ -8173,14 +8296,14 @@ function fdRenderLive(p) {
               // ── Live summary footer ──
               '<div id="fd-city-footer-' + tc.id + '" class="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-between text-[9px] text-slate-500">' +
                 '<span class="flex gap-3">' +
-                  '<span>Ticket rev: <span class="text-emerald-400 font-semibold">' + fmtDollar(cc.rev_per_show) + '/show</span></span>' +
+                  '<span>Ticket rev: <span class="text-emerald-400 font-semibold">' + fmtMoney(cc.rev_per_show) + '/show</span></span>' +
                   '<span class="text-slate-600">·</span>' +
                   '<span>' + fmtNum(cc.seats_per_show) + ' seats' + (cc.occ>0 ? ' · <span class="text-amber-400">' + (cc.occ*100).toFixed(0) + '% occ</span>' : '') + '</span>' +
                 '</span>' +
                 '<span class="flex gap-3">' +
-                  '<span>Cost/show: <span class="text-red-400 font-semibold">' + fmtDollar(cc.cpp) + '</span></span>' +
+                  '<span>Cost/show: <span class="text-red-400 font-semibold">' + fmtMoney(cc.cpp) + '</span></span>' +
                   '<span class="text-slate-600">·</span>' +
-                  '<span>' + shows + ' show' + (shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtDollar(cc.total_op_cost) + '</span></span>' +
+                  '<span>' + shows + ' show' + (shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtMoney(cc.total_op_cost) + '</span></span>' +
                 '</span>' +
               '</div>' +
             '</div>';
@@ -8189,7 +8312,7 @@ function fdRenderLive(p) {
       </div>
       <div class="mt-3 pt-3 border-t border-white/5 flex items-center justify-between text-[10px]">
         <span class="text-slate-500">${c.num_cities} cit${c.num_cities>1?'ies':'y'} · ${n} total show${n!==1?'s':''}</span>
-        <span class="text-slate-500">Total op. costs: <span class="text-red-400 font-semibold">${fmtDollar(c.total_op_costs)}</span></span>
+        <span class="text-slate-500">Total op. costs: <span class="text-red-400 font-semibold">${fmtMoney(c.total_op_costs)}</span></span>
       </div>
     </div>
 
@@ -8200,7 +8323,7 @@ function fdRenderLive(p) {
         <div>
           <label class="${FD_LABEL}">Merch per Head ($)</label>
           <input type="number" class="${FD_INPUT}" min="0" step="0.5" value="${p.additional_revenue?.merch_per_head||0}" oninput="fdPatch('additional_revenue.merch_per_head',Number(this.value));fdUpdateLive()">
-          <div class="text-[9px] text-slate-600 mt-1">× ${fmtNum(c.total_attendance)} att. = ${fmtDollar((p.additional_revenue?.merch_per_head||0)*(p.additional_revenue?.merch_split_pct||0)*c.total_attendance)} net</div>
+          <div class="text-[9px] text-slate-600 mt-1">× ${fmtNum(c.total_attendance)} att. = ${fmtMoney((p.additional_revenue?.merch_per_head||0)*(p.additional_revenue?.merch_split_pct||0)*c.total_attendance)} net</div>
         </div>
         <div>
           <label class="${FD_LABEL}">Promoter Merch Split (%)</label>
@@ -8232,7 +8355,7 @@ function fdRenderLive(p) {
       <div id="fd-support-acts-section">${fdSupportActsHTML(p.support_acts||[])}</div>
       ${(c.support_act_total||0)>0?`<div class="flex justify-between pt-2 border-t border-white/5 mt-2">
         <span class="text-xs font-semibold text-slate-300">Total Support Act Cost</span>
-        <span class="text-xs font-semibold text-red-400">${fmtDollar(c.support_act_total)}</span>
+        <span class="text-xs font-semibold text-red-400">${fmtMoney(c.support_act_total)}</span>
       </div>`:''}
     </div>
 
@@ -8243,7 +8366,7 @@ function fdRenderLive(p) {
       <div class="grid grid-cols-3 gap-4">
         <div><label class="${FD_LABEL}">Agency Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.agency_fees||0}" oninput="fdPatch('costs.agency_fees',Number(this.value));fdUpdateLive()"></div>
         <div><label class="${FD_LABEL}">BluFin Fees — One-time ($)</label><input type="number" class="${FD_INPUT}" min="0" value="${p.costs?.blufin_fees||0}" oninput="fdPatch('costs.blufin_fees',Number(this.value));fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">project cost, before waterfall</div></div>
-        <div><label class="${FD_LABEL}">Effective Tax Rate (%)</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="0.5" value="${((p.costs?.tax_rate||0)*100).toFixed(1)}" oninput="fdPatch('costs.tax_rate',Number(this.value)/100);fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">${c.tax_rate>0?'Tax: '+fmtDollar(c.tax_amount)+' · Post-tax: '+fmtDollar(c.blufin_net_profit_after_tax):'Applied to BluFin pre-tax profit only'}</div></div>
+        <div><label class="${FD_LABEL}">Effective Tax Rate (%)</label><input type="number" class="${FD_INPUT}" min="0" max="100" step="0.5" value="${((p.costs?.tax_rate||0)*100).toFixed(1)}" oninput="fdPatch('costs.tax_rate',Number(this.value)/100);fdUpdateLive()"><div class="text-[9px] text-slate-600 mt-1">${c.tax_rate>0?'Tax: '+fmtMoney(c.tax_amount)+' · Post-tax: '+fmtMoney(c.blufin_net_profit_after_tax):'Applied to BluFin pre-tax profit only'}</div></div>
       </div>
       <div id="fd-costs-summary">${fdCostSummaryHTML(c)}</div>
     </div>
@@ -8365,7 +8488,7 @@ function fdFestivalLineupHTML(p) {
   var roleAddOpts = roles.map(function(r) { return '<option value="' + r + '">' + r + '</option>'; }).join('');
   var tableHTML = fas.length > 0
     ? '<div class="overflow-x-auto"><table class="w-full"><thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider"><th class="text-left py-1.5 px-1">Artist</th><th class="text-left py-1.5 px-1">Role</th><th class="text-left py-1.5 px-1">MG ($)</th><th class="text-center py-1.5 px-1">Demand</th><th class="text-left py-1.5 px-1">Touring</th><th class="py-1.5 px-1"></th></tr></thead><tbody>' + rowsHTML + '</tbody></table></div>' +
-      '<div class="flex items-center justify-between mt-2 pt-2 border-t border-white/5"><span class="text-[10px] text-slate-500">' + fas.length + ' artist' + (fas.length !== 1 ? 's' : '') + '</span><span class="text-xs font-semibold text-red-400">Total MG: ' + fmtDollar(totalMG) + '</span></div>'
+      '<div class="flex items-center justify-between mt-2 pt-2 border-t border-white/5"><span class="text-[10px] text-slate-500">' + fas.length + ' artist' + (fas.length !== 1 ? 's' : '') + '</span><span class="text-xs font-semibold text-red-400">Total MG: ' + fmtMoney(totalMG) + '</span></div>'
     : '<div class="text-center py-4 text-[11px] text-slate-600">No lineup artists yet — search and add below</div>';
   return '<div class="glass rounded-xl p-4">' +
     '<div class="flex items-center justify-between mb-3"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">🎪 Festival Lineup</h3><span class="text-[10px] text-slate-500">MG costs replace Artist MG field below</span></div>' +
@@ -8705,7 +8828,17 @@ function fdSuggestCityPrices(tcId) {
   });
   const cityMult = cityEntry ? (cityEntry.city_tier===1?1.30:cityEntry.city_tier===3?0.80:1.0) : 1.0;
   const capMult  = cap<2000?1.35:cap<5000?1.15:cap<12000?1.0:cap<30000?0.90:0.80;
-  const m = cityMult * capMult;
+
+  // Use Ticketmaster market data if available for a more accurate base price
+  let tmMult = 1.0;
+  const cityName = (tc.city_name||'').toLowerCase().split(',')[0].trim();
+  const tmEvents = Object.values(eventsMap).flat().filter(e => (e.city||'').toLowerCase().includes(cityName) && e.priceMin);
+  if (tmEvents.length >= 3) {
+    const avgMin = tmEvents.reduce((s,e) => s + Number(e.priceMin||0), 0) / tmEvents.length;
+    if (avgMin > 0) tmMult = Math.min(2.5, Math.max(0.5, avgMin / 75)); // normalize against $75 baseline
+  }
+
+  const m = cityMult * capMult * tmMult * activeFxRate; // apply active currency FX
   const tier = d.tier;
   let cats;
   if (tier==='mega-stadium'||tier==='stadium') {
@@ -8725,7 +8858,8 @@ function fdSuggestCityPrices(tcId) {
   }
   tc.seat_categories = cats;
   fdSetMain(p);
-  fdToast('\u{1F4A1} Prices suggested for ' + (tc.city_name||'this city') + ' \u00b7 city tier \u00d7' + cityMult.toFixed(2) + ' cap \u00d7' + capMult.toFixed(2));
+  const tmNote = tmEvents.length >= 3 ? ' \u00b7 \uD83C\uDFAB TM data used' : '';
+  fdToast('\u{1F4A1} Prices suggested in ' + activeCurrency + ' for ' + (tc.city_name||'this city') + tmNote);
 }
 function fdAddMGSchedule() {
   if (!fdState.draftProfile) return;
@@ -8788,9 +8922,9 @@ function fdPatchInvestorInScen(scenId, invId, field, val) {
     const retPct = investor.expected_return_pct !== undefined ? investor.expected_return_pct : 20;
     const oblAmt = eqAmt * (retPct / 100);
     const eqCell = document.getElementById('fd-inv-' + investor.id + '-eq');
-    if (eqCell) eqCell.textContent = eqAmt > 0 ? fmtDollar(eqAmt) : '—';
+    if (eqCell) eqCell.textContent = eqAmt > 0 ? fmtMoney(eqAmt) : '—';
     const oblCell = document.getElementById('fd-inv-' + investor.id + '-obl');
-    if (oblCell) oblCell.textContent = oblAmt > 0 ? '(' + fmtDollar(oblAmt) + ')' : '—';
+    if (oblCell) oblCell.textContent = oblAmt > 0 ? '(' + fmtMoney(oblAmt) + ')' : '—';
   }
   const totalPctEl = document.getElementById('fd-scen-' + scenId + '-inv-total-pct');
   if (totalPctEl) {
@@ -8822,8 +8956,8 @@ function fdScenInvTableHTML(scen) {
       <td class="py-1 pr-1"><input id="fd-inv-${inv.id}-name" type="text" class="${FD_INPUT} text-xs py-1 w-full" placeholder="Investor name" value="${(inv.name||'').replace(/"/g,'&quot;')}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','name',this.value)"></td>
       <td class="py-1 px-1"><input id="fd-inv-${inv.id}-pct" type="number" class="${FD_INPUT} text-xs py-1 w-14" min="0" max="100" step="0.1" value="${inv.pct||0}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','pct',Number(this.value))"></td>
       <td class="py-1 px-1"><input id="fd-inv-${inv.id}-ret" type="number" class="${FD_INPUT} text-xs py-1 w-14" min="0" max="200" step="1" value="${retPct}" oninput="fdPatchInvestorInScen('${scen.id}','${inv.id}','expected_return_pct',Number(this.value))"></td>
-      <td id="fd-inv-${inv.id}-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right whitespace-nowrap">${eqAmt > 0 ? fmtDollar(eqAmt) : '—'}</td>
-      <td id="fd-inv-${inv.id}-obl" class="py-1 px-1 text-[10px] text-amber-400/70 text-right whitespace-nowrap">${oblAmt > 0 ? '(' + fmtDollar(oblAmt) + ')' : '—'}</td>
+      <td id="fd-inv-${inv.id}-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right whitespace-nowrap">${eqAmt > 0 ? fmtMoney(eqAmt) : '—'}</td>
+      <td id="fd-inv-${inv.id}-obl" class="py-1 px-1 text-[10px] text-amber-400/70 text-right whitespace-nowrap">${oblAmt > 0 ? '(' + fmtMoney(oblAmt) + ')' : '—'}</td>
       ${investors.length > 1 ? `<td class="py-1 pl-1"><button onclick="fdRemoveInvestorFromScen('${scen.id}','${inv.id}')" class="text-slate-600 hover:text-red-400 p-0.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></td>` : '<td class="py-1 pl-1 w-5"></td>'}
     </tr>`;
   }).join('');
@@ -8841,7 +8975,7 @@ function fdScenInvTableHTML(scen) {
       <td class="py-1 pr-1 text-[10px] font-semibold text-slate-400">Total</td>
       <td id="fd-scen-${scen.id}-inv-total-pct" class="py-1 px-1 text-[10px] font-semibold ${pctWarn ? 'text-amber-400' : 'text-slate-400'}">${sumPct.toFixed(1)}%</td>
       <td class="py-1 px-1"></td>
-      <td id="fd-scen-${scen.id}-inv-total-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right">${scen.equity ? fmtDollar(scen.equity) : '—'}</td>
+      <td id="fd-scen-${scen.id}-inv-total-eq" class="py-1 px-1 text-[10px] text-slate-400 text-right">${scen.equity ? fmtMoney(scen.equity) : '—'}</td>
       <td class="py-1 px-1"></td>
       <td class="py-1 pl-1 w-5"></td>
     </tr></tfoot>
@@ -8941,7 +9075,7 @@ function buildCompareHTML(ids) {
       country: mb.country || '',
       demandScore: demand?.demandScore,
       tierLabel: demand?.tierLabel,
-      mgRange: (demand?.mgMin != null && demand?.mgMax != null) ? fmtDollar(demand.mgMin) + ' \u2013 ' + fmtDollar(demand.mgMax) : '\u2014',
+      mgRange: (demand?.mgMin != null && demand?.mgMax != null) ? fmtMoney(demand.mgMin) + ' \u2013 ' + fmtMoney(demand.mgMax) : '\u2014',
       wlTag: watchlist[sid] || '',
       heatScore: artistMeta[sid]?.heat_score != null ? Number(artistMeta[sid].heat_score) : null,
     };
@@ -9064,10 +9198,10 @@ function rpKPIBar(computed) {
   const kpi = (label, value, sub, color) => `<div class="kpi-card p-4 flex flex-col gap-1"><div class="kpi-label-text">${label}</div><div class="kpi-num ${color}" style="font-size:1.4rem">${value}</div><div class="kpi-label-text" style="color:rgba(255,255,255,0.18);margin-top:6px">${sub}</div></div>`;
   return `<div class="grid grid-cols-5 gap-4">
     ${kpi('Active Deals', active.length, computed.length + ' total \u00b7 ' + totalShows + ' shows', 'text-white')}
-    ${kpi('MG Committed', fmtDollar(totalMG), withStage.length + ' staged deal' + (withStage.length !== 1 ? 's' : ''), 'text-red-400')}
-    ${kpi('Portfolio Net', fmtDollar(totalNet), 'across all models', totalNet >= 0 ? 'text-emerald-400' : 'text-red-400')}
+    ${kpi('MG Committed', fmtMoney(totalMG), withStage.length + ' staged deal' + (withStage.length !== 1 ? 's' : ''), 'text-red-400')}
+    ${kpi('Portfolio Net', fmtMoney(totalNet), 'across all models', totalNet >= 0 ? 'text-emerald-400' : 'text-red-400')}
     ${kpi('Avg ROI', (avgROI * 100).toFixed(1) + '%', 'per model', avgROI >= 0 ? 'text-cyan-400' : 'text-red-400')}
-    ${nextPmt ? kpi('Next Payment Due', fmtDollar(nextPmt.amt), nextPmt.label, 'text-amber-400') : kpi('Next Payment Due', '\u2014', 'Add concert dates to see', 'text-slate-500')}
+    ${nextPmt ? kpi('Next Payment Due', fmtMoney(nextPmt.amt), nextPmt.label, 'text-amber-400') : kpi('Next Payment Due', '\u2014', 'Add concert dates to see', 'text-slate-500')}
   </div>`;
 }
 function rpCycleStage(id, dir, evt) {
@@ -9099,8 +9233,8 @@ function rpDealCard(x) {
       </div>
       ${cityStr ? `<div class="text-[9px] text-slate-500 mb-1.5 truncate">${cityStr}</div>` : '<div class="mb-1.5"></div>'}
       <div class="flex justify-between items-center text-[10px]">
-        <span class="text-slate-400">MG <span class="text-red-400 font-medium">${fmtDollar(c.artist_mg_cost)}</span></span>
-        <span class="${isPos ? 'text-emerald-400' : 'text-red-400'} font-medium">${isPos ? '+' : ''}${fmtDollar(c.net_profit)}</span>
+        <span class="text-slate-400">MG <span class="text-red-400 font-medium">${fmtMoney(c.artist_mg_cost)}</span></span>
+        <span class="${isPos ? 'text-emerald-400' : 'text-red-400'} font-medium">${isPos ? '+' : ''}${fmtMoney(c.net_profit)}</span>
       </div>
       ${c.n > 0 ? `<div class="text-[9px] text-slate-600 mt-1">${c.n} show${c.n!==1?'s':''} \u00b7 ROI ${(c.roi*100).toFixed(0)}%</div>` : ''}
     </div>
@@ -9122,7 +9256,7 @@ function rpPipelineBoard(computed) {
   const colsHTML = DEAL_STAGES.map(ds => {
     const deals = byStage[ds.label];
     const stageMG = deals.reduce((s, x) => s + x.c.artist_mg_cost, 0);
-    return `<div class="flex-1 min-w-[150px]"><div class="mb-2.5"><div class="flex items-center justify-between mb-1"><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full border ${ds.active}">${ds.label}</span><span class="text-[9px] text-slate-600">${deals.length||''}</span></div>${stageMG>0?`<div class="text-[9px] text-slate-600">${fmtDollar(stageMG)}</div>`:''}</div><div class="space-y-2">${deals.length?deals.map(x=>rpDealCard(x)).join(''):`<div class="border border-dashed border-white/6 rounded-lg py-5 text-center text-[9px] text-slate-700">\u2014</div>`}</div></div>`;
+    return `<div class="flex-1 min-w-[150px]"><div class="mb-2.5"><div class="flex items-center justify-between mb-1"><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full border ${ds.active}">${ds.label}</span><span class="text-[9px] text-slate-600">${deals.length||''}</span></div>${stageMG>0?`<div class="text-[9px] text-slate-600">${fmtMoney(stageMG)}</div>`:''}</div><div class="space-y-2">${deals.length?deals.map(x=>rpDealCard(x)).join(''):`<div class="border border-dashed border-white/6 rounded-lg py-5 text-center text-[9px] text-slate-700">\u2014</div>`}</div></div>`;
   }).join('<div class="w-px bg-white/5 flex-shrink-0"></div>');
   const unassignedHTML = unassigned.length ? `<div class="mt-5 pt-4 border-t border-white/5"><div class="text-[9px] text-slate-600 uppercase tracking-wider mb-2">No Stage Set (${unassigned.length})</div><div class="flex flex-wrap gap-2">${unassigned.map(x=>rpDealCard(x)).join('')}</div></div>` : '';
   return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Deal Pipeline</h3><button onclick="showPage('finbuilder')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">+ New Model \u2192</button></div><div class="flex gap-3 overflow-x-auto pb-2">${colsHTML}</div>${unassignedHTML}</div>`;
@@ -9140,10 +9274,10 @@ function rpPLComparison(computed) {
     const isPos = c.net_profit >= 0;
     const isFest = p.festival_mode && (p.festival_artists||[]).length > 0;
     const cities = (p.tour_cities||[]).filter(tc=>tc.city_name).map(tc=>tc.city_name).slice(0,2).join(', ');
-    return `<tr class="border-b border-white/5 hover:bg-white/2 cursor-pointer" onclick="rpOpenDeal('${p.id}')"><td class="py-2.5 pl-4 pr-2"><div class="flex items-center gap-1.5"><span class="text-xs font-medium text-white">${p.artist||'\u2014'}</span>${isFest?'<span class="text-[8px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1 rounded">\uD83C\uDFAA</span>':''}</div>${cities?`<div class="text-[9px] text-slate-500 mt-0.5">${cities}</div>`:''}</td><td class="py-2.5 px-2">${ds?`<span class="text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${ds.active}">${p.deal_stage}</span>`:'<span class="text-[9px] text-slate-700">\u2014</span>'}</td><td class="py-2.5 px-2 text-right text-xs text-slate-400">${c.n}</td><td class="py-2.5 px-2 text-right text-xs text-emerald-400">${fmtDollar(c.total_gross_rev)}</td><td class="py-2.5 px-2 text-right text-xs text-red-400">${fmtDollar(c.artist_mg_cost)}</td><td class="py-2.5 px-2 text-right text-xs text-red-400">${fmtDollar(c.total_costs)}</td><td class="py-2.5 px-2 text-right text-xs font-semibold ${isPos?'text-emerald-400':'text-red-400'}">${isPos?'+':''}${fmtDollar(c.net_profit)}</td><td class="py-2.5 px-2 text-right text-xs ${c.roi>=0?'text-cyan-400':'text-red-400'}">${(c.roi*100).toFixed(1)}%</td><td class="py-2.5 pr-4 text-right text-[9px] text-slate-600">\u2192</td></tr>`;
+    return `<tr class="border-b border-white/5 hover:bg-white/2 cursor-pointer" onclick="rpOpenDeal('${p.id}')"><td class="py-2.5 pl-4 pr-2"><div class="flex items-center gap-1.5"><span class="text-xs font-medium text-white">${p.artist||'\u2014'}</span>${isFest?'<span class="text-[8px] bg-amber-500/15 text-amber-300 border border-amber-500/20 px-1 rounded">\uD83C\uDFAA</span>':''}</div>${cities?`<div class="text-[9px] text-slate-500 mt-0.5">${cities}</div>`:''}</td><td class="py-2.5 px-2">${ds?`<span class="text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${ds.active}">${p.deal_stage}</span>`:'<span class="text-[9px] text-slate-700">\u2014</span>'}</td><td class="py-2.5 px-2 text-right text-xs text-slate-400">${c.n}</td><td class="py-2.5 px-2 text-right text-xs text-emerald-400">${fmtMoney(c.total_gross_rev)}</td><td class="py-2.5 px-2 text-right text-xs text-red-400">${fmtMoney(c.artist_mg_cost)}</td><td class="py-2.5 px-2 text-right text-xs text-red-400">${fmtMoney(c.total_costs)}</td><td class="py-2.5 px-2 text-right text-xs font-semibold ${isPos?'text-emerald-400':'text-red-400'}">${isPos?'+':''}${fmtMoney(c.net_profit)}</td><td class="py-2.5 px-2 text-right text-xs ${c.roi>=0?'text-cyan-400':'text-red-400'}">${(c.roi*100).toFixed(1)}%</td><td class="py-2.5 pr-4 text-right text-[9px] text-slate-600">\u2192</td></tr>`;
   }).join('');
   const netColor = totNet >= 0 ? 'text-emerald-400' : 'text-red-400';
-  return `<div class="glass rounded-xl overflow-hidden"><div class="px-5 py-4 border-b border-white/5"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">P&amp;L Comparison \u2014 All Models</h3></div><div class="overflow-x-auto"><table class="w-full"><thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider bg-white/2"><th class="text-left py-2.5 pl-4 pr-2">Artist / Deal</th><th class="text-left py-2.5 px-2">Stage</th><th class="text-right py-2.5 px-2">Shows</th><th class="text-right py-2.5 px-2">Gross Rev</th><th class="text-right py-2.5 px-2">Artist MG</th><th class="text-right py-2.5 px-2">Total Costs</th><th class="text-right py-2.5 px-2">Net Profit</th><th class="text-right py-2.5 px-2">ROI</th><th class="py-2.5 pr-4"></th></tr></thead><tbody>${rows}</tbody>${computed.length>1?`<tfoot><tr class="bg-white/3 border-t border-white/10"><td class="py-3 pl-4 pr-2 text-xs font-bold text-slate-300" colspan="2">Portfolio Total</td><td class="py-3 px-2 text-right text-xs text-slate-400">${totShows}</td><td class="py-3 px-2 text-right text-xs font-bold text-emerald-400">${fmtDollar(totGross)}</td><td class="py-3 px-2 text-right text-xs font-bold text-red-400">${fmtDollar(totMG)}</td><td class="py-3 px-2 text-right text-xs font-bold text-red-400">${fmtDollar(totCosts)}</td><td class="py-3 px-2 text-right text-xs font-bold ${netColor}">${totNet>=0?'+':''}${fmtDollar(totNet)}</td><td colspan="2"></td></tr></tfoot>`:''}</table></div></div>`;
+  return `<div class="glass rounded-xl overflow-hidden"><div class="px-5 py-4 border-b border-white/5"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">P&amp;L Comparison \u2014 All Models</h3></div><div class="overflow-x-auto"><table class="w-full"><thead><tr class="text-[9px] text-slate-500 uppercase tracking-wider bg-white/2"><th class="text-left py-2.5 pl-4 pr-2">Artist / Deal</th><th class="text-left py-2.5 px-2">Stage</th><th class="text-right py-2.5 px-2">Shows</th><th class="text-right py-2.5 px-2">Gross Rev</th><th class="text-right py-2.5 px-2">Artist MG</th><th class="text-right py-2.5 px-2">Total Costs</th><th class="text-right py-2.5 px-2">Net Profit</th><th class="text-right py-2.5 px-2">ROI</th><th class="py-2.5 pr-4"></th></tr></thead><tbody>${rows}</tbody>${computed.length>1?`<tfoot><tr class="bg-white/3 border-t border-white/10"><td class="py-3 pl-4 pr-2 text-xs font-bold text-slate-300" colspan="2">Portfolio Total</td><td class="py-3 px-2 text-right text-xs text-slate-400">${totShows}</td><td class="py-3 px-2 text-right text-xs font-bold text-emerald-400">${fmtMoney(totGross)}</td><td class="py-3 px-2 text-right text-xs font-bold text-red-400">${fmtMoney(totMG)}</td><td class="py-3 px-2 text-right text-xs font-bold text-red-400">${fmtMoney(totCosts)}</td><td class="py-3 px-2 text-right text-xs font-bold ${netColor}">${totNet>=0?'+':''}${fmtMoney(totNet)}</td><td colspan="2"></td></tr></tfoot>`:''}</table></div></div>`;
 }
 function rpPaymentCalendar(computed) {
   const now = new Date();
@@ -9176,11 +9310,11 @@ function rpPaymentCalendar(computed) {
     const label = month.date.toLocaleDateString('en-US',{month:'long',year:'numeric'});
     const pmtRows = month.pmts.map(pmt => {
       const ds = pmt.deal_stage ? DEAL_STAGES.find(d=>d.label===pmt.deal_stage) : null;
-      return `<div class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0 gap-2"><div class="flex items-center gap-1.5 min-w-0"><div class="text-[10px] font-medium text-slate-300 truncate">${pmt.artist}</div><div class="text-[9px] text-slate-600 flex-shrink-0">${pmt.label}</div></div><div class="flex items-center gap-1.5 flex-shrink-0">${ds?`<span class="text-[8px] px-1 py-0.5 rounded border ${ds.active}">${pmt.deal_stage}</span>`:''}<span class="text-[10px] font-semibold text-red-400">${fmtDollar(pmt.amount)}</span></div></div>`;
+      return `<div class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0 gap-2"><div class="flex items-center gap-1.5 min-w-0"><div class="text-[10px] font-medium text-slate-300 truncate">${pmt.artist}</div><div class="text-[9px] text-slate-600 flex-shrink-0">${pmt.label}</div></div><div class="flex items-center gap-1.5 flex-shrink-0">${ds?`<span class="text-[8px] px-1 py-0.5 rounded border ${ds.active}">${pmt.deal_stage}</span>`:''}<span class="text-[10px] font-semibold text-red-400">${fmtMoney(pmt.amount)}</span></div></div>`;
     }).join('');
-    return `<div class="glass rounded-xl p-3.5 ${isPastMonth?'opacity-40':''}"><div class="flex items-center justify-between mb-2.5"><div class="text-[10px] font-bold ${isPastMonth?'text-slate-600':'text-white'}">${label}</div><div class="text-[10px] font-semibold text-red-400">${fmtDollar(month.total)}</div></div>${pmtRows}</div>`;
+    return `<div class="glass rounded-xl p-3.5 ${isPastMonth?'opacity-40':''}"><div class="flex items-center justify-between mb-2.5"><div class="text-[10px] font-bold ${isPastMonth?'text-slate-600':'text-white'}">${label}</div><div class="text-[10px] font-semibold text-red-400">${fmtMoney(month.total)}</div></div>${pmtRows}</div>`;
   }).join('');
-  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">MG Payment Calendar</h3><div class="text-[10px] text-slate-400">Upcoming obligations: <span class="text-amber-400 font-semibold">${fmtDollar(upcomingTotal)}</span></div></div><div class="grid grid-cols-3 gap-3">${monthCards}</div></div>`;
+  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">MG Payment Calendar</h3><div class="text-[10px] text-slate-400">Upcoming obligations: <span class="text-amber-400 font-semibold">${fmtMoney(upcomingTotal)}</span></div></div><div class="grid grid-cols-3 gap-3">${monthCards}</div></div>`;
 }
 function rpCommitmentExposure(computed) {
   let totalMG = 0;
@@ -9195,9 +9329,9 @@ function rpCommitmentExposure(computed) {
   const rows = stageData.map(({ds,deals,mg}) => {
     const pct = totalMG>0?mg/totalMG:0;
     const color = stageColorMap[ds.label]||'#cc6437';
-    return `<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0"><span class="text-[9px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 w-40 text-center ${ds.active}">${ds.label}</span><div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${(pct*100).toFixed(1)}%;background:${color};opacity:0.6"></div></div><span class="text-[9px] text-slate-500 w-8 text-center flex-shrink-0">${deals.length}</span><span class="text-[10px] font-semibold text-red-400 w-24 text-right flex-shrink-0">${fmtDollar(mg)}</span><span class="text-[9px] text-slate-600 w-10 text-right flex-shrink-0">${(pct*100).toFixed(0)}%</span></div>`;
+    return `<div class="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0"><span class="text-[9px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 w-40 text-center ${ds.active}">${ds.label}</span><div class="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden"><div class="h-full rounded-full transition-all" style="width:${(pct*100).toFixed(1)}%;background:${color};opacity:0.6"></div></div><span class="text-[9px] text-slate-500 w-8 text-center flex-shrink-0">${deals.length}</span><span class="text-[10px] font-semibold text-red-400 w-24 text-right flex-shrink-0">${fmtMoney(mg)}</span><span class="text-[9px] text-slate-600 w-10 text-right flex-shrink-0">${(pct*100).toFixed(0)}%</span></div>`;
   }).join('');
-  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Commitment Exposure by Stage</h3><div class="text-[10px] text-slate-400">Total MG on the table: <span class="text-red-400 font-semibold">${fmtDollar(totalMG)}</span></div></div><div class="flex text-[9px] text-slate-600 uppercase tracking-wider pb-1.5 border-b border-white/5 mb-1"><span class="w-40 flex-shrink-0">Stage</span><span class="flex-1 pl-3">Share of MG</span><span class="w-8 text-center flex-shrink-0">Deals</span><span class="w-24 text-right flex-shrink-0">MG Amount</span><span class="w-10 text-right flex-shrink-0">%</span></div>${rows}</div>`;
+  return `<div class="glass rounded-xl p-5"><div class="flex items-center justify-between mb-4"><h3 class="text-xs font-semibold text-white uppercase tracking-wider">Commitment Exposure by Stage</h3><div class="text-[10px] text-slate-400">Total MG on the table: <span class="text-red-400 font-semibold">${fmtMoney(totalMG)}</span></div></div><div class="flex text-[9px] text-slate-600 uppercase tracking-wider pb-1.5 border-b border-white/5 mb-1"><span class="w-40 flex-shrink-0">Stage</span><span class="flex-1 pl-3">Share of MG</span><span class="w-8 text-center flex-shrink-0">Deals</span><span class="w-24 text-right flex-shrink-0">MG Amount</span><span class="w-10 text-right flex-shrink-0">%</span></div>${rows}</div>`;
 }
 function rpCompetitorBoard() {
   const today = new Date().toISOString().slice(0, 10);
@@ -9244,20 +9378,339 @@ function rpCompetitorBoard() {
     </div>
   </div>`;
 }
+let _rpTab = 'intelligence';
+
+function rpSetTab(tab) {
+  _rpTab = tab;
+  renderReports();
+}
+
 function renderReports() {
   fdLoad();
   const el = document.getElementById('reports-content');
   if (!el) return;
+
+  const tabBar = `<div style="display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.07);margin-bottom:20px;">
+    <button onclick="rpSetTab('intelligence')" style="padding:10px 20px;font-size:11px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;background:transparent;border:none;cursor:pointer;transition:all 0.15s;border-bottom:2px solid ${_rpTab==='intelligence'?'var(--accent)':'transparent'};color:${_rpTab==='intelligence'?'var(--accent)':'rgba(255,255,255,0.35)'};">Intelligence</button>
+    <button onclick="rpSetTab('deals')" style="padding:10px 20px;font-size:11px;font-weight:500;letter-spacing:0.07em;text-transform:uppercase;background:transparent;border:none;cursor:pointer;transition:all 0.15s;border-bottom:2px solid ${_rpTab==='deals'?'var(--accent)':'transparent'};color:${_rpTab==='deals'?'var(--accent)':'rgba(255,255,255,0.35)'};">Deal Pipeline</button>
+  </div>`;
+
+  if (_rpTab === 'intelligence') {
+    el.innerHTML = tabBar + rpIntelligenceSection();
+    return;
+  }
+
+  // Deal pipeline tab
   const profiles = fdState.profiles || [];
-  const profilesHTML = !profiles.length
+  const dealsHTML = !profiles.length
     ? `<div class="flex flex-col items-center justify-center py-24 gap-4"><div class="w-14 h-14 rounded-2xl bg-red-500/10 flex items-center justify-center"><svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div><div class="text-center"><div class="text-white font-semibold text-sm mb-1">No models yet</div><div class="text-slate-500 text-xs">Create a financial model to start tracking your deal pipeline.</div></div><button onclick="showPage('finbuilder')" class="mt-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors">Open Financial Model Builder \u2192</button></div>`
     : (() => {
         const computed = profiles.map(p => ({ p, c: computeProfile(p) }));
         return [rpKPIBar(computed),rpPipelineBoard(computed),rpPLComparison(computed),rpPaymentCalendar(computed),rpCommitmentExposure(computed)].join('');
       })();
-  el.innerHTML = profilesHTML + rpCompetitorBoard();
+  el.innerHTML = tabBar + dealsHTML + rpCompetitorBoard();
 }
 
+function rpIntelligenceSection() {
+  return [rpMarketReport(), rpArtistPerformanceReport(), rpWatchlistReport()].join('');
+}
+
+function rpMarketReport() {
+  const cardStyle = 'background:var(--surface);border:1px solid var(--border);padding:20px;';
+  const hdStyle = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:12px;font-weight:600;';
+
+  // Top artists per region — group by country, join against venue data region mapping
+  const regionMap = {};
+  (venueData && venueData.cities || []).forEach(c => {
+    if (c.country && c.region) regionMap[c.country] = c.region;
+  });
+  const byRegion = {};
+  artists.forEach(a => {
+    const mb = mbMap[a.spotify_id];
+    const country = (mb && mb.country) || a.country || '';
+    const region = regionMap[country] || (country === 'US' ? 'North America' : country === 'GB' || country === 'UK' ? 'Europe' : country === 'JP' ? 'Asia Pacific' : country === 'KR' ? 'Asia Pacific' : 'Other');
+    if (!byRegion[region]) byRegion[region] = [];
+    byRegion[region].push(a);
+  });
+  const regionRows = Object.entries(byRegion)
+    .filter(([r]) => r !== 'Other')
+    .sort((a,b) => b[1].length - a[1].length)
+    .slice(0,6)
+    .map(([region, arts]) => {
+      const top = arts.sort((x,y) => y.monthly_listeners - x.monthly_listeners).slice(0,3);
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+        <td style="padding:8px 0;font-size:11px;color:var(--accent);white-space:nowrap">${region}</td>
+        <td style="padding:8px 0 8px 12px;font-size:10px;color:rgba(255,255,255,0.5)">${arts.length} artists</td>
+        <td style="padding:8px 0 8px 12px;font-size:10px;color:rgba(255,255,255,0.6)">${top.map(a=>a.name).join(', ')}</td>
+      </tr>`;
+    }).join('');
+
+  // Upcoming show density by city
+  const cityShowCounts = {};
+  Object.values(eventsMap).flat().forEach(e => {
+    if (e.city) cityShowCounts[e.city] = (cityShowCounts[e.city]||0) + 1;
+  });
+  const topCities = Object.entries(cityShowCounts)
+    .sort((a,b) => b[1]-a[1]).slice(0,8)
+    .map(([city,cnt]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <span style="font-size:11px;color:rgba(255,255,255,0.7)">${city}</span>
+      <span style="font-size:11px;color:var(--accent);font-weight:600">${cnt} shows</span>
+    </div>`).join('');
+
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div style="${cardStyle}">
+      <div style="${hdStyle}">Top Artists by Region</div>
+      ${regionRows ? `<table style="width:100%">${regionRows}</table>` : '<div style="font-size:11px;color:rgba(255,255,255,0.2)">Run pipeline to populate.</div>'}
+    </div>
+    <div style="${cardStyle}">
+      <div style="${hdStyle}">Upcoming Show Density</div>
+      ${topCities || '<div style="font-size:11px;color:rgba(255,255,255,0.2)">No Ticketmaster data loaded.</div>'}
+    </div>
+  </div>`;
+}
+
+function rpArtistPerformanceReport() {
+  const cardStyle = 'background:var(--surface);border:1px solid var(--border);padding:20px;';
+  const hdStyle = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:12px;font-weight:600;';
+
+  // Segment by 7-day momentum
+  const gaining = [], losing = [], stable = [];
+  artists.forEach(a => {
+    const m7 = a.momentum_7d;
+    const proxy = a.daily_change ? (a.daily_change / (a.monthly_listeners || 1) * 7 * 100) : null;
+    const val = m7 ?? proxy;
+    if (val == null) return;
+    if (val > 5) gaining.push(a);
+    else if (val < -5) losing.push(a);
+    else stable.push(a);
+  });
+  const momRow = (a, color) => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+    <span style="font-size:11px;color:${color};width:14px;flex-shrink:0">${color==='#34d399'?'↑':color==='#f87171'?'↓':'→'}</span>
+    <span style="font-size:11px;color:rgba(255,255,255,0.7);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</span>
+    <span style="font-size:10px;color:rgba(255,255,255,0.3)">${fmt(a.monthly_listeners)}</span>
+  </div>`;
+
+  const momHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:9px;color:#34d399;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Gaining &gt;5% (${gaining.length})</div>
+      ${gaining.sort((x,y)=>(y.momentum_7d||y.daily_change||0)-(x.momentum_7d||x.daily_change||0)).slice(0,5).map(a=>momRow(a,'#34d399')).join('') || '<div style="font-size:10px;color:rgba(255,255,255,0.2)">None</div>'}
+    </div>
+    <div>
+      <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Stable (${stable.length})</div>
+      ${stable.sort((x,y)=>y.monthly_listeners-x.monthly_listeners).slice(0,5).map(a=>momRow(a,'#94a3b8')).join('')}
+    </div>
+    <div>
+      <div style="font-size:9px;color:#f87171;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px">Dropping &gt;5% (${losing.length})</div>
+      ${losing.sort((x,y)=>(x.momentum_7d||x.daily_change||0)-(y.momentum_7d||y.daily_change||0)).slice(0,5).map(a=>momRow(a,'#f87171')).join('') || '<div style="font-size:10px;color:rgba(255,255,255,0.2)">None</div>'}
+    </div>
+  </div>`;
+
+  // Touring activity summary
+  const touring = artists.filter(a => { const t=touringMap[a.spotify_id]; return t&&t.is_touring; });
+  const avgEvents = touring.length ? Math.round(touring.reduce((s,a)=>{ const t=touringMap[a.spotify_id]; return s+(t?t.recent_event_count:0); },0)/touring.length) : 0;
+  const mostActive = [...touring].sort((a,b)=>(touringMap[b.spotify_id]?.recent_event_count||0)-(touringMap[a.spotify_id]?.recent_event_count||0)).slice(0,5);
+
+  const tourHTML = `<div style="margin-top:12px;border-top:1px solid rgba(255,255,255,0.05);padding-top:12px">
+    <div style="display:flex;gap:16px;margin-bottom:10px">
+      <div style="text-align:center"><div style="font-size:18px;font-weight:600;color:var(--accent)">${touring.length}</div><div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase">Actively Touring</div></div>
+      <div style="text-align:center"><div style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.6)">${avgEvents}</div><div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase">Avg Events / Artist</div></div>
+    </div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Most Active</div>
+    ${mostActive.map(a=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px"><span style="color:rgba(255,255,255,0.6)">${a.name}</span><span style="color:var(--accent)">${touringMap[a.spotify_id]?.recent_event_count||0} shows</span></div>`).join('')}
+  </div>`;
+
+  return `<div style="${cardStyle}margin-bottom:16px;">
+    <div style="${hdStyle}">Artist Performance — Listener Momentum</div>
+    ${momHTML}
+    ${tourHTML}
+  </div>`;
+}
+
+function rpWatchlistReport() {
+  const cardStyle = 'background:var(--surface);border:1px solid var(--border);padding:20px;';
+  const hdStyle = 'font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:12px;font-weight:600;';
+
+  const wlKeys = Object.keys(watchlist || {});
+  if (!wlKeys.length) return `<div style="${cardStyle}margin-bottom:16px;">
+    <div style="${hdStyle}">Watchlist Report</div>
+    <div style="font-size:11px;color:rgba(255,255,255,0.2);text-align:center;padding:20px 0">No artists in watchlist. Tag artists on their profile page.</div>
+  </div>`;
+
+  const TAG_ORDER = ['target','in_discussion','passed','completed'];
+  const TAG_LABELS = { target:'Target', in_discussion:'In Discussion', passed:'Passed', completed:'Completed' };
+  const TAG_COLORS = { target:'#cc6437', in_discussion:'#22d3ee', passed:'#94a3b8', completed:'#34d399' };
+
+  const byTag = {};
+  TAG_ORDER.forEach(t => byTag[t] = []);
+  wlKeys.forEach(sid => {
+    const tag = watchlist[sid];
+    if (byTag[tag]) byTag[tag].push(sid);
+    else byTag['target'] && byTag['target'].push(sid);
+  });
+
+  const sections = TAG_ORDER.map(tag => {
+    const sids = byTag[tag];
+    if (!sids.length) return '';
+    const color = TAG_COLORS[tag];
+    const rows = sids.map(sid => {
+      const a = artists.find(x => x.spotify_id === sid);
+      if (!a) return '';
+      const t = touringMap[sid];
+      const m7 = a.momentum_7d;
+      const m7Color = m7 > 5 ? '#34d399' : m7 < -5 ? '#f87171' : '#94a3b8';
+      const m7Str = m7 != null ? (m7>0?'+':'')+m7+'%' : (a.daily_change > 0 ? '↑' : a.daily_change < 0 ? '↓' : '—');
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
+        <td style="padding:7px 0;font-size:11px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${a.name}</td>
+        <td style="padding:7px 0 7px 12px;font-size:10px;color:rgba(255,255,255,0.4)">${fmt(a.monthly_listeners)}</td>
+        <td style="padding:7px 0 7px 12px;font-size:10px;color:${m7Color}">${m7Str}</td>
+        <td style="padding:7px 0 7px 12px;font-size:10px;color:${t&&t.is_touring?'#34d399':'rgba(255,255,255,0.3)'}">${t&&t.is_touring?'Touring':'—'}</td>
+        <td style="padding:7px 0 7px 12px;font-size:10px;color:rgba(255,255,255,0.3)">${t&&t.last_event_date ? t.last_event_date.slice(0,10) : '—'}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:16px">
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:${color};margin-bottom:6px">${TAG_LABELS[tag]} (${sids.length})</div>
+      <table style="width:100%">
+        <thead><tr style="border-bottom:1px solid rgba(255,255,255,0.07)">
+          <th style="text-align:left;font-size:8px;color:rgba(255,255,255,0.2);text-transform:uppercase;padding-bottom:6px">Artist</th>
+          <th style="text-align:left;font-size:8px;color:rgba(255,255,255,0.2);text-transform:uppercase;padding-bottom:6px;padding-left:12px">Listeners</th>
+          <th style="text-align:left;font-size:8px;color:rgba(255,255,255,0.2);text-transform:uppercase;padding-bottom:6px;padding-left:12px">7d Mom</th>
+          <th style="text-align:left;font-size:8px;color:rgba(255,255,255,0.2);text-transform:uppercase;padding-bottom:6px;padding-left:12px">Touring</th>
+          <th style="text-align:left;font-size:8px;color:rgba(255,255,255,0.2);text-transform:uppercase;padding-bottom:6px;padding-left:12px">Last Show</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  return `<div style="${cardStyle}margin-bottom:16px;">
+    <div style="${hdStyle}">Watchlist Report</div>
+    ${sections}
+  </div>`;
+}
+
+
+// ─── Alerts System ───────────────────────────────────────────────────────────
+let _userAlerts = [];
+
+async function syncAlerts() {
+  try {
+    const res = await fetch('/api/alerts/sync', { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      _userAlerts = data.alerts || [];
+      updateBellBadge();
+    }
+  } catch(e) {}
+}
+
+function updateBellBadge() {
+  const unread = _userAlerts.filter(a => !a.read && !a.dismissed).length;
+  const badge = document.getElementById('bell-badge');
+  if (!badge) return;
+  if (unread > 0) {
+    badge.textContent = unread > 99 ? '99+' : unread;
+    badge.style.display = 'flex';
+  } else {
+    badge.style.display = 'none';
+  }
+  // Also update the footer alert count to show unread alerts
+  const footerCount = document.getElementById('alert-count');
+  if (footerCount) footerCount.textContent = unread + ' alert' + (unread !== 1 ? 's' : '');
+}
+
+function toggleAlertPanel() {
+  const panel = document.getElementById('alert-panel');
+  if (!panel) return;
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    panel.style.display = 'none';
+  } else {
+    panel.classList.add('open');
+    panel.style.display = 'block';
+    renderAlertPanel();
+  }
+}
+
+// Close alert panel when clicking outside
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('alert-panel');
+  const btn = document.getElementById('alerts-bell-btn');
+  if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.classList.remove('open');
+    panel.style.display = 'none';
+  }
+});
+
+const ALERT_ICONS = {
+  listener_spike: '📈',
+  listener_drop:  '📉',
+  new_tour:       '🎤',
+  news_mention:   '📰',
+};
+const ALERT_COLORS = {
+  listener_spike: '#34d399',
+  listener_drop:  '#f87171',
+  new_tour:       '#cc6437',
+  news_mention:   '#94a3b8',
+};
+
+function renderAlertPanel() {
+  const list = document.getElementById('alert-panel-list');
+  if (!list) return;
+  const visible = _userAlerts.filter(a => !a.dismissed).slice(0, 30);
+  if (!visible.length) {
+    list.innerHTML = '<div style="padding:24px 16px;text-align:center;font-size:11px;color:rgba(255,255,255,0.2);">No alerts yet. Alerts appear after the next data refresh.</div>';
+    return;
+  }
+  list.innerHTML = visible.map(a => {
+    const icon = ALERT_ICONS[a.type] || '🔔';
+    const col = ALERT_COLORS[a.type] || '#94a3b8';
+    const timeAgo = (() => {
+      const dt = new Date(a.generated_at);
+      const diff = Date.now() - dt;
+      const h = Math.floor(diff/3600000);
+      if (h < 1) return 'just now';
+      if (h < 24) return h + 'h ago';
+      return Math.floor(h/24) + 'd ago';
+    })();
+    return `<div style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:flex-start;gap:10px;${a.read?'opacity:0.5':''}">
+      <span style="font-size:14px;flex-shrink:0;margin-top:1px">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:#f5f5f5;line-height:1.4;${!a.read?'font-weight:500':''}">${a.message}</div>
+        ${a.url ? `<a href="${a.url}" target="_blank" style="font-size:10px;color:rgba(255,255,255,0.3);display:block;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.3)'">Read article →</a>` : ''}
+        <div style="font-size:9px;color:rgba(255,255,255,0.2);margin-top:4px;">${timeAgo}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${!a.read ? `<button onclick="markAlertRead('${a.id}')" style="font-size:9px;color:rgba(255,255,255,0.25);background:none;border:none;cursor:pointer;padding:2px" title="Mark read" onmouseover="this.style.color='rgba(255,255,255,0.6)'" onmouseout="this.style.color='rgba(255,255,255,0.25)'">✓</button>` : ''}
+        <button onclick="dismissAlert('${a.id}')" style="font-size:9px;color:rgba(255,255,255,0.2);background:none;border:none;cursor:pointer;padding:2px" title="Dismiss" onmouseover="this.style.color='rgba(255,255,255,0.5)'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function markAlertRead(id) {
+  const alert = _userAlerts.find(a => a.id === id);
+  if (alert) alert.read = true;
+  updateBellBadge();
+  renderAlertPanel();
+  fetch('/api/alerts/' + id + '/read', { method: 'POST' }).catch(() => {});
+}
+
+async function dismissAlert(id) {
+  const alert = _userAlerts.find(a => a.id === id);
+  if (alert) { alert.dismissed = true; alert.read = true; }
+  updateBellBadge();
+  renderAlertPanel();
+  fetch('/api/alerts/' + id + '/dismiss', { method: 'POST' }).catch(() => {});
+}
+
+async function markAllAlertsRead() {
+  _userAlerts.forEach(a => { a.read = true; });
+  updateBellBadge();
+  renderAlertPanel();
+  fetch('/api/alerts/mark-all-read', { method: 'POST' }).catch(() => {});
+}
 
 // ─── Auth & User State ───────────────────────────────────────────────────────
 let currentUser = null;
@@ -9407,11 +9860,15 @@ async function loadUserData() {
 
       watchlist = data.watchlist || {};
       contacts = data.contacts || {};
+      _userAlerts = data.alerts || [];
+      updateBellBadge();
     }
   } catch(e) {}
 
   finBuilderLoaded = false;
   initDashboardData();
+  // Sync new pipeline alerts in the background after data loads
+  setTimeout(syncAlerts, 2000);
 }
 
 async function saveUserData() {
@@ -9422,7 +9879,7 @@ async function saveUserData() {
     await fetch('/api/user-data', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({profiles: fdState.profiles, watchlist, contacts})
+      body: JSON.stringify({profiles: fdState.profiles, watchlist, contacts, alerts: _userAlerts})
     });
   } catch(e) {}
 }

@@ -100,3 +100,77 @@ def clear_checkpoint(step_name: str) -> None:
     checkpoint_file = RAW_DIR / f".checkpoint_{step_name}"
     if checkpoint_file.exists():
         checkpoint_file.unlink()
+
+
+# ── Listener history helpers ───────────────────────────────────────────────────
+
+HISTORY_FILE = RAW_DIR / "listener_history.json"
+HISTORY_MAX_ENTRIES = 365  # cap per artist
+
+
+def append_listener_snapshot(artists: list[dict]) -> None:
+    """Append today's listener count for each artist to the history file.
+
+    Idempotent: if today's date is already the last entry for an artist, skip it.
+    Caps each artist's history at HISTORY_MAX_ENTRIES entries (drops oldest).
+    """
+    from datetime import date as _date
+    today = _date.today().isoformat()
+
+    # Load existing history
+    history: dict[str, list] = {}
+    if HISTORY_FILE.exists():
+        try:
+            history = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            history = {}
+
+    updated = 0
+    for a in artists:
+        sid = a.get("spotify_id")
+        ml = a.get("monthly_listeners")
+        if not sid or ml is None:
+            continue
+        entries = history.setdefault(sid, [])
+        # Idempotency: skip if last entry is already today
+        if entries and entries[-1].get("date") == today:
+            continue
+        entries.append({
+            "date": today,
+            "listeners": int(ml),
+            "daily_change": int(a.get("daily_change") or 0),
+        })
+        # Trim to cap
+        if len(entries) > HISTORY_MAX_ENTRIES:
+            history[sid] = entries[-HISTORY_MAX_ENTRIES:]
+        updated += 1
+
+    HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    HISTORY_FILE.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+    logger.info(f"Listener history updated: {updated} artists appended (total tracked: {len(history)})")
+
+
+def compute_momentum(history_entries: list[dict]) -> dict:
+    """Compute 7-day and 30-day momentum % from a history list.
+
+    Returns dict with keys: momentum_7d, momentum_30d (floats, percent change).
+    Returns 0.0 if insufficient data.
+    """
+    if not history_entries:
+        return {"momentum_7d": 0.0, "momentum_30d": 0.0}
+
+    now_listeners = history_entries[-1]["listeners"]
+
+    def _pct_change(days: int) -> float:
+        if len(history_entries) < 2:
+            return 0.0
+        target_idx = max(0, len(history_entries) - 1 - days)
+        past = history_entries[target_idx]["listeners"]
+        if not past:
+            return 0.0
+        return round((now_listeners - past) / past * 100, 2)
+
+    return {
+        "momentum_7d": _pct_change(7),
+        "momentum_30d": _pct_change(30),
+    }

@@ -9,18 +9,19 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import OUTPUT_DIR, MANUAL_DIR
+from config import OUTPUT_DIR, MANUAL_DIR, RAW_DIR
 from models import ArtistEnriched
-from utils import load_json
+from utils import load_json, compute_momentum, HISTORY_FILE
 
 logger = logging.getLogger("artist_pipeline.step5")
 
 EXPORT_COLUMNS = [
-    "rank", "name", "spotify_id", "spotify_url", "monthly_listeners",
+    "rank", "name", "spotify_id", "spotify_url", "monthly_listeners", "daily_change",
     "genres", "country", "image_url",
     "instagram", "youtube", "tiktok", "twitter",
     "is_touring", "recent_event_count", "upcoming_event_count",
     "last_event_date", "next_event_date", "touring_source", "scraped_at",
+    "momentum_7d", "momentum_30d", "popularity", "followers",
 ]
 
 
@@ -42,11 +43,30 @@ def load_overrides() -> dict[str, dict]:
 
 
 def merge_all() -> list[dict]:
-    """Merge seed, touring, and MusicBrainz data on spotify_id."""
+    """Merge seed, touring, MusicBrainz, Spotify, and listener history on spotify_id."""
+    import json as _json
     seed = load_json("kworb_seed.json")
     touring = {r["spotify_id"]: r for r in load_json("touring_data.json")}
     mb = {r["spotify_id"]: r for r in load_json("musicbrainz_data.json")}
     overrides = load_overrides()
+
+    # Listener history (optional — may not exist on first run)
+    history: dict = {}
+    if HISTORY_FILE.exists():
+        try:
+            history = _json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            history = {}
+
+    # Spotify enrichment (optional)
+    spotify_map: dict = {}
+    spotify_file = RAW_DIR / "spotify_data.json"
+    if spotify_file.exists():
+        try:
+            for r in _json.loads(spotify_file.read_text(encoding="utf-8")):
+                spotify_map[r["spotify_id"]] = r
+        except Exception:
+            pass
 
     merged = []
     for artist in seed:
@@ -54,9 +74,14 @@ def merge_all() -> list[dict]:
         tr = touring.get(sid, {})
         m = mb.get(sid, {})
         ov = overrides.get(sid, {})
+        sp = spotify_map.get(sid, {})
 
         genres = m.get("genres", [])
         genres_str = ", ".join(genres) if isinstance(genres, list) else str(genres)
+
+        # Momentum from real history
+        hist_entries = history.get(sid, [])
+        mom = compute_momentum(hist_entries)
 
         record = ArtistEnriched(
             rank=artist["rank"],
@@ -64,9 +89,10 @@ def merge_all() -> list[dict]:
             spotify_id=sid,
             spotify_url=f"https://open.spotify.com/artist/{sid}",
             monthly_listeners=artist["monthly_listeners"],
+            daily_change=artist.get("daily_change"),
             genres=genres_str,
             country=ov.get("country") or m.get("country"),
-            image_url=m.get("image_url"),
+            image_url=sp.get("image_url_spotify") or m.get("image_url"),
             instagram=ov.get("instagram") or m.get("instagram"),
             youtube=ov.get("youtube") or m.get("youtube"),
             tiktok=ov.get("tiktok") or m.get("tiktok"),
@@ -78,6 +104,10 @@ def merge_all() -> list[dict]:
             next_event_date=tr.get("next_event_date"),
             touring_source=tr.get("touring_source"),
             scraped_at=artist.get("scraped_at", ""),
+            momentum_7d=mom["momentum_7d"],
+            momentum_30d=mom["momentum_30d"],
+            popularity=sp.get("popularity"),
+            followers=sp.get("followers"),
         )
         merged.append(record.to_dict())
 

@@ -17,6 +17,8 @@ STEPS = {
     4: ("Export CSV/JSON", "pipeline.step5_export"),
     5: ("News mentions", "pipeline.step6_news"),
     6: ("Ticketmaster events", "pipeline.step_ticketmaster"),
+    7: ("Spotify enrichment", "pipeline.step_spotify"),
+    8: ("Generate alerts", "pipeline.step_alerts"),
 }
 
 

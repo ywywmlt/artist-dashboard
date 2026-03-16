@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 from config import KWORB_URL
 from models import ArtistSeed
-from utils import get_session, save_json, http_retry
+from utils import get_session, save_json, http_retry, append_listener_snapshot
 
 logger = logging.getLogger("artist_pipeline.step1")
 
@@ -91,6 +91,7 @@ def run() -> list[dict]:
 
     logger.info(f"Scraped {len(artists)} artists from kworb.net")
     save_json(artists, "kworb_seed.json")
+    append_listener_snapshot(artists)
     return artists
 
 

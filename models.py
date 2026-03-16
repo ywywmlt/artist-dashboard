@@ -55,6 +55,20 @@ class MusicBrainzData:
 
 
 @dataclass
+class SpotifyData:
+    """Artist data fetched directly from the Spotify API."""
+    spotify_id: str
+    popularity: Optional[int] = None           # 0-100
+    spotify_genres: list[str] = field(default_factory=list)
+    followers: Optional[int] = None
+    image_url_spotify: Optional[str] = None
+    top_tracks: list[dict] = field(default_factory=list)  # [{name, preview_url}]
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass
 class ArtistEnriched:
     """Final merged artist record for export."""
     rank: int
@@ -62,6 +76,7 @@ class ArtistEnriched:
     spotify_id: str
     spotify_url: Optional[str] = None
     monthly_listeners: int = 0
+    daily_change: Optional[int] = None
     genres: str = ""  # comma-separated for CSV
     country: Optional[str] = None
     image_url: Optional[str] = None
@@ -76,6 +91,12 @@ class ArtistEnriched:
     next_event_date: Optional[str] = None
     touring_source: Optional[str] = None
     scraped_at: str = ""
+    # Momentum (from listener history)
+    momentum_7d: Optional[float] = None
+    momentum_30d: Optional[float] = None
+    # Spotify API enrichment
+    popularity: Optional[int] = None
+    followers: Optional[int] = None
 
     def to_dict(self) -> dict:
         return asdict(self)

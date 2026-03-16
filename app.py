@@ -101,11 +101,13 @@ def _user_data_path(username):
 def _load_user_data(username):
     p = _user_data_path(username)
     if not p.exists():
-        return {"profiles": [], "watchlist": {}, "contacts": {}}
+        return {"profiles": [], "watchlist": {}, "contacts": {}, "alerts": []}
     try:
-        return json.loads(p.read_text())
+        data = json.loads(p.read_text())
+        data.setdefault("alerts", [])
+        return data
     except Exception:
-        return {"profiles": [], "watchlist": {}, "contacts": {}}
+        return {"profiles": [], "watchlist": {}, "contacts": {}, "alerts": []}
 
 
 def _save_user_data(username, data):
@@ -168,12 +170,14 @@ _refresh = {
 
 
 def _run_refresh():
-    """Run quick refresh: kworb → news → ticketmaster → export."""
+    """Run quick refresh: kworb → spotify → news → ticketmaster → alerts → export."""
     import importlib
     steps = [
-        ("kworb rankings",     "pipeline.step1_seed_kworb",      20),
-        ("news articles",      "pipeline.step6_news",             40),
-        ("ticketmaster events","pipeline.step_ticketmaster",      90),
+        ("kworb rankings",     "pipeline.step1_seed_kworb",      15),
+        ("spotify data",       "pipeline.step_spotify",           30),
+        ("news articles",      "pipeline.step6_news",             45),
+        ("ticketmaster events","pipeline.step_ticketmaster",      85),
+        ("alerts",             "pipeline.step_alerts",            92),
         ("export",             "pipeline.step5_export",          100),
     ]
     try:
@@ -182,7 +186,7 @@ def _run_refresh():
             mod = importlib.import_module(module_path)
             if module_path == "pipeline.step_ticketmaster":
                 def _cb(done, total, msg, _pct=pct_done):
-                    base = 40  # start of TM step
+                    base = 45  # start of TM step
                     _refresh["progress"] = base + int(done / total * (_pct - base)) if total else base
                     _refresh["message"] = msg
                 mod.run(progress_callback=_cb)
@@ -295,8 +299,90 @@ def api_save_user_data():
         "profiles": data.get("profiles", []),
         "watchlist": data.get("watchlist", {}),
         "contacts": data.get("contacts", {}),
+        "alerts": data.get("alerts", []),
     }
     _save_user_data(session["username"], safe)
+    return jsonify({"ok": True}), 200
+
+
+# ── Alert routes ──────────────────────────────────────────────────────────────
+
+@app.route("/api/alerts")
+@login_required
+def api_get_alerts():
+    """Return current user's alerts (non-dismissed)."""
+    data = _load_user_data(session["username"])
+    alerts = [a for a in data.get("alerts", []) if not a.get("dismissed")]
+    return jsonify(alerts), 200
+
+
+@app.route("/api/alerts/sync", methods=["POST"])
+@login_required
+def api_sync_alerts():
+    """Merge new pipeline_alerts.json entries into the user's alert list."""
+    pipeline_file = DATA_DIR / "raw" / "pipeline_alerts.json"
+    if not pipeline_file.exists():
+        return jsonify([]), 200
+
+    try:
+        pipeline_alerts = json.loads(pipeline_file.read_text())
+    except Exception:
+        return jsonify([]), 200
+
+    data = _load_user_data(session["username"])
+    user_alerts = data.get("alerts", [])
+    existing_ids = {a["id"] for a in user_alerts}
+
+    added = 0
+    for alert in pipeline_alerts:
+        if alert["id"] not in existing_ids:
+            user_alerts.append(alert)
+            added += 1
+
+    # Keep at most 200 alerts per user (drop oldest dismissed first, then oldest read)
+    if len(user_alerts) > 200:
+        user_alerts.sort(key=lambda a: (not a.get("dismissed"), not a.get("read"), a.get("generated_at", "")))
+        user_alerts = user_alerts[-200:]
+
+    data["alerts"] = user_alerts
+    _save_user_data(session["username"], data)
+
+    active = [a for a in user_alerts if not a.get("dismissed")]
+    return jsonify({"added": added, "alerts": active}), 200
+
+
+@app.route("/api/alerts/<alert_id>/read", methods=["POST"])
+@login_required
+def api_mark_alert_read(alert_id):
+    data = _load_user_data(session["username"])
+    for a in data.get("alerts", []):
+        if a["id"] == alert_id:
+            a["read"] = True
+            break
+    _save_user_data(session["username"], data)
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/api/alerts/<alert_id>/dismiss", methods=["POST"])
+@login_required
+def api_dismiss_alert(alert_id):
+    data = _load_user_data(session["username"])
+    for a in data.get("alerts", []):
+        if a["id"] == alert_id:
+            a["dismissed"] = True
+            a["read"] = True
+            break
+    _save_user_data(session["username"], data)
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/api/alerts/mark-all-read", methods=["POST"])
+@login_required
+def api_mark_all_read():
+    data = _load_user_data(session["username"])
+    for a in data.get("alerts", []):
+        a["read"] = True
+    _save_user_data(session["username"], data)
     return jsonify({"ok": True}), 200
 
 

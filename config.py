@@ -27,6 +27,11 @@ MUSICBRAINZ_APP_NAME = os.getenv("MUSICBRAINZ_APP_NAME", "ArtistDashboard")
 MUSICBRAINZ_APP_VERSION = os.getenv("MUSICBRAINZ_APP_VERSION", "0.1")
 MUSICBRAINZ_CONTACT = os.getenv("MUSICBRAINZ_CONTACT", "dev@example.com")
 
+# Spotify API
+SPOTIFY_CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID", "")
+SPOTIFY_CLIENT_SECRET = os.getenv("SPOTIFY_CLIENT_SECRET", "")
+SPOTIFY_RATE_LIMIT = 10  # req/sec (conservative; batch endpoint keeps total calls low)
+
 # Rate limits (requests per second)
 SETLISTFM_RATE_LIMIT = 1  # setlist.fm enforces ~1/sec
 MUSICBRAINZ_RATE_LIMIT = 1  # enforced by API
