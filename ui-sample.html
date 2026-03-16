@@ -3255,6 +3255,9 @@ function peerAddSuggest(sid, val) {
 }
 
 function selectArtist(spotifyId) {
+  hideDemandCard();
+  const _dhc = document.getElementById('demand-hover-card');
+  if (_dhc) { _dhc.style.opacity = '0'; _dhc.style.display = 'none'; }
   selectedArtist = artists.find(a => a.spotify_id === spotifyId);
   if (!selectedArtist) return;
   const t = touringMap[spotifyId] || null;
