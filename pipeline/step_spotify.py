@@ -14,8 +14,8 @@ from utils import load_json, save_json, RateLimiter, load_checkpoint, save_check
 
 logger = logging.getLogger("artist_pipeline.step_spotify")
 
-BATCH_SIZE = 25   # Chunk size for checkpoint saves
-TOP_TRACKS_N = 0   # Disable top tracks (separate endpoint, not needed)
+BATCH_SIZE = 25     # Chunk size for checkpoint saves + intermediate writes
+TOP_N_ARTISTS = 500  # Only enrich top-N artists by monthly listeners (~2 min at 10 req/s)
 
 
 def _get_spotify_client():
@@ -102,12 +102,13 @@ def run() -> list[dict]:
         clear_checkpoint("step_spotify")
         done_ids = set()
 
-    # Split into batches
-    all_ids = [a["spotify_id"] for a in seed if a["spotify_id"] not in done_ids]
+    # Only enrich the top N artists — individual calls are ~300ms each
+    target_seed = seed[:TOP_N_ARTISTS]
+    all_ids = [a["spotify_id"] for a in target_seed if a["spotify_id"] not in done_ids]
     batches = [all_ids[i:i + BATCH_SIZE] for i in range(0, len(all_ids), BATCH_SIZE)]
 
-    logger.info(f"Fetching {len(all_ids)} artists in {len(batches)} batches...")
-    for batch_ids in batches:
+    logger.info(f"Fetching top {TOP_N_ARTISTS} artists ({len(all_ids)} remaining) in {len(batches)} batches...")
+    for i, batch_ids in enumerate(batches):
         artists_data = _fetch_batch(sp, batch_ids, limiter)
         for artist in artists_data:
             if not artist:
@@ -119,12 +120,14 @@ def run() -> list[dict]:
                 "spotify_genres": artist.get("genres") or [],
                 "followers": (artist.get("followers") or {}).get("total"),
                 "image_url_spotify": (artist.get("images") or [{}])[0].get("url"),
-                "top_tracks": [],
             }
             save_checkpoint("step_spotify", sid)
+        # Save intermediate results after every batch so progress is visible
+        save_json(list(results.values()), "spotify_data.json")
+        if (i + 1) % 4 == 0:
+            logger.info(f"  {len(results)}/{TOP_N_ARTISTS} artists fetched")
 
-    # Fetch top tracks for top-N artists only
-    top_ids = {a["spotify_id"] for a in seed[:TOP_TRACKS_N]}
+    top_ids = set()  # top tracks disabled
     logger.info(f"Fetching top tracks for top {len(top_ids)} artists...")
     for sid in top_ids:
         if sid in results:
