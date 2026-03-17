@@ -268,13 +268,24 @@ def refresh_status():
 
 @app.route("/api/debug/spotify")
 def debug_spotify():
-    """Diagnostic: test Spotify credentials and return result."""
-    from config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
+    """Diagnostic: test Spotify credentials, checkpoint state, and first batch fetch."""
+    import json as _json
+    from config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET, RAW_DIR
+    from utils import load_checkpoint
     result = {
         "client_id_set": bool(SPOTIFY_CLIENT_ID),
-        "client_secret_set": bool(SPOTIFY_CLIENT_SECRET),
         "client_id_prefix": SPOTIFY_CLIENT_ID[:8] + "..." if SPOTIFY_CLIENT_ID else None,
     }
+    # Checkpoint state
+    done_ids = load_checkpoint("step_spotify")
+    result["checkpoint_count"] = len(done_ids)
+    # spotify_data.json size on disk
+    sp_file = RAW_DIR / "spotify_data.json"
+    try:
+        existing = _json.loads(sp_file.read_text())
+        result["spotify_file_records"] = len(existing)
+    except Exception as e:
+        result["spotify_file_records"] = f"error: {e}"
     if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
         result["status"] = "credentials_missing"
         return jsonify(result)
@@ -282,14 +293,19 @@ def debug_spotify():
         import spotipy
         from spotipy.oauth2 import SpotifyClientCredentials
         sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
-            client_id=SPOTIFY_CLIENT_ID,
-            client_secret=SPOTIFY_CLIENT_SECRET,
+            client_id=SPOTIFY_CLIENT_ID, client_secret=SPOTIFY_CLIENT_SECRET,
         ), requests_timeout=10)
-        # Test with a real API call
-        artist = sp.artist("3TVXtAsR1Inumwj472S9r4")  # Drake
+        # Fetch first real batch from kworb_seed
+        seed_file = RAW_DIR / "kworb_seed.json"
+        seed = _json.loads(seed_file.read_text())[:5]
+        ids = [a["spotify_id"] for a in seed]
+        batch_result = sp.artists(ids)
+        artists_returned = batch_result.get("artists") or []
         result["status"] = "ok"
-        result["test_artist"] = artist.get("name")
-        result["test_followers"] = (artist.get("followers") or {}).get("total")
+        result["batch_test_ids_sent"] = len(ids)
+        result["batch_test_returned"] = len([x for x in artists_returned if x])
+        result["sample"] = [{"name": a.get("name"), "followers": (a.get("followers") or {}).get("total")}
+                            for a in artists_returned if a][:3]
     except Exception as e:
         result["status"] = "error"
         result["error"] = str(e)
