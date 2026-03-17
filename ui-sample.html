@@ -2842,18 +2842,21 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
       </div>
     </div>
 
-    <!-- Rostr Team Intel -->
+    <!-- Team Intelligence (Rostr + Ticketmaster) -->
     ${(() => {
       const ro = window.rostrIntel && window.rostrIntel[a.name.toLowerCase()];
-      if (!ro) return '';
-      const hasTeam = ro.management || ro.agency || ro.label || ro.publisher;
-      const recentSignings = (ro.signings || []).slice(0, 3);
-      if (!hasTeam && !recentSignings.length) return '';
-      const teamRow = (icon, label, val, url) => val ? `
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const upcomingShows = (eventsMap[spotifyId] || []).filter(e => (e.date || '') >= todayStr).slice(0, 5);
+      const hasTeam = ro && (ro.management || ro.agency || ro.label || ro.publisher);
+      const recentSignings = ro ? (ro.signings || []).slice(0, 3) : [];
+      if (!hasTeam && !recentSignings.length && !upcomingShows.length) return '';
+
+      const teamRow = (label, val) => val ? `
         <div class="flex items-start gap-2.5 py-2 border-b border-white/5 last:border-0">
           <span class="text-[10px] text-slate-500 w-[78px] shrink-0 pt-0.5 uppercase tracking-wider">${label}</span>
-          <span class="text-xs text-white font-medium leading-snug">${url ? `<a href="${url}" target="_blank" class="hover:text-[var(--accent)] transition-colors">${val}</a>` : val}</span>
+          <span class="text-xs text-white font-medium leading-snug">${val}</span>
         </div>` : '';
+
       const signingBadge = (s) => {
         const typeColor = s.deal_type === 'management' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
           : s.deal_type === 'touring' ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
@@ -2868,22 +2871,50 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
           </div>
         </div>`;
       };
+
+      const showRow = (e) => {
+        const d = e.date ? new Date(e.date + 'T12:00:00') : null;
+        const dateLabel = d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+        const daysAway = d ? Math.round((d - new Date()) / 86400000) : null;
+        const daysLabel = daysAway !== null ? (daysAway === 0 ? 'Today' : daysAway === 1 ? 'Tomorrow' : `in ${daysAway}d`) : '';
+        const venue = [e.venueName, e.city].filter(Boolean).join(', ');
+        return `<div class="flex items-start gap-2.5 py-2 border-b border-white/5 last:border-0">
+          <div class="shrink-0 text-right w-[60px]">
+            <div class="text-[10px] text-white font-medium">${d ? d.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—'}</div>
+            <div class="text-[9px] text-cyan-400">${daysLabel}</div>
+          </div>
+          <div class="min-w-0">
+            <div class="text-xs text-slate-300 truncate">${venue || '—'}</div>
+            ${e.country ? `<div class="text-[10px] text-slate-600">${e.country}</div>` : ''}
+          </div>
+          ${e.priceMin ? `<div class="shrink-0 text-[10px] text-emerald-400 ml-auto">$${e.priceMin}+</div>` : ''}
+        </div>`;
+      };
+
+      const cols = [hasTeam, recentSignings.length > 0, upcomingShows.length > 0].filter(Boolean).length;
+      const gridClass = cols >= 3 ? 'grid-cols-3' : cols === 2 ? 'grid-cols-2' : 'grid-cols-1';
+
       return `<div class="glass rounded-xl p-5 mb-6">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-white text-sm">Team Intelligence</h3>
           <div class="flex items-center gap-2">
-            ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" class="text-[9px] text-slate-500 hover:text-[var(--accent)] transition-colors uppercase tracking-wider">View on Rostr ↗</a>` : ''}
-            <span class="text-[9px] text-slate-600 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded border border-slate-500/20 uppercase tracking-wide">Rostr</span>
+            ${ro?.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" class="text-[9px] text-slate-500 hover:text-[var(--accent)] transition-colors uppercase tracking-wider">View on Rostr ↗</a>` : ''}
+            ${ro ? `<span class="text-[9px] text-slate-600 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded border border-slate-500/20 uppercase tracking-wide">Rostr</span>` : ''}
+            ${upcomingShows.length ? `<span class="text-[9px] text-cyan-500 font-medium bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20 uppercase tracking-wide">Ticketmaster</span>` : ''}
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid ${gridClass} gap-6">
           ${hasTeam ? `<div>
             <div class="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Current Team</div>
-            ${teamRow('🎯', 'Management', ro.management)}
-            ${teamRow('🎤', 'Agency', ro.agency)}
-            ${teamRow('💿', 'Label', ro.label)}
-            ${teamRow('✍️', 'Publisher', ro.publisher)}
-          </div>` : '<div></div>'}
+            ${teamRow('Management', ro.management)}
+            ${teamRow('Agency', ro.agency)}
+            ${teamRow('Label', ro.label)}
+            ${teamRow('Publisher', ro.publisher)}
+          </div>` : ''}
+          ${upcomingShows.length ? `<div>
+            <div class="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Upcoming Shows <span class="text-slate-700 normal-case">(${upcomingShows.length} next)</span></div>
+            ${upcomingShows.map(showRow).join('')}
+          </div>` : ''}
           ${recentSignings.length ? `<div>
             <div class="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Recent Signings</div>
             ${recentSignings.map(signingBadge).join('')}
