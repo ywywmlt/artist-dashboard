@@ -266,6 +266,36 @@ def refresh_status():
     return jsonify(_refresh)
 
 
+@app.route("/api/debug/spotify")
+def debug_spotify():
+    """Diagnostic: test Spotify credentials and return result."""
+    from config import SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET
+    result = {
+        "client_id_set": bool(SPOTIFY_CLIENT_ID),
+        "client_secret_set": bool(SPOTIFY_CLIENT_SECRET),
+        "client_id_prefix": SPOTIFY_CLIENT_ID[:8] + "..." if SPOTIFY_CLIENT_ID else None,
+    }
+    if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+        result["status"] = "credentials_missing"
+        return jsonify(result)
+    try:
+        import spotipy
+        from spotipy.oauth2 import SpotifyClientCredentials
+        sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+            client_id=SPOTIFY_CLIENT_ID,
+            client_secret=SPOTIFY_CLIENT_SECRET,
+        ), requests_timeout=10)
+        # Test with a real API call
+        artist = sp.artist("3TVXtAsR1Inumwj472S9r4")  # Drake
+        result["status"] = "ok"
+        result["test_artist"] = artist.get("name")
+        result["test_followers"] = (artist.get("followers") or {}).get("total")
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)
+    return jsonify(result)
+
+
 # ── Auth routes ────────────────────────────────────────────────────────────────
 
 @app.route("/api/login", methods=["POST"])
