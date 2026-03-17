@@ -173,10 +173,11 @@ def _run_refresh():
     """Run quick refresh: kworb → spotify → news → ticketmaster → alerts → export."""
     import importlib
     steps = [
-        ("kworb rankings",     "pipeline.step1_seed_kworb",      15),
-        ("spotify data",       "pipeline.step_spotify",           30),
-        ("news articles",      "pipeline.step6_news",             45),
-        ("ticketmaster events","pipeline.step_ticketmaster",      85),
+        ("kworb rankings",     "pipeline.step1_seed_kworb",      12),
+        ("spotify data",       "pipeline.step_spotify",           24),
+        ("news articles",      "pipeline.step6_news",             36),
+        ("ticketmaster events","pipeline.step_ticketmaster",      80),
+        ("rostr intel",        "pipeline.step_rostr",             85),
         ("alerts",             "pipeline.step_alerts",            92),
         ("export",             "pipeline.step5_export",          100),
     ]
