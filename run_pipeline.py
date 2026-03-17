@@ -19,6 +19,7 @@ STEPS = {
     6: ("Ticketmaster events", "pipeline.step_ticketmaster"),
     7: ("Spotify enrichment", "pipeline.step_spotify"),
     8: ("Generate alerts", "pipeline.step_alerts"),
+    9: ("Rostr signings + intel", "pipeline.step_rostr"),
 }
 
 

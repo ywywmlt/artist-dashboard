@@ -30,6 +30,7 @@ STEPS = [
     ("Spotify enrichment",                "pipeline.step_spotify"),
     ("news articles",                     "pipeline.step6_news"),
     ("Ticketmaster events",               "pipeline.step_ticketmaster"),
+    ("Rostr signings + intel",            "pipeline.step_rostr"),
     ("generate alerts",                   "pipeline.step_alerts"),
     ("export CSV/JSON",                   "pipeline.step5_export"),
 ]

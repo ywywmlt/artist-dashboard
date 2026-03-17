@@ -22,6 +22,8 @@ EXPORT_COLUMNS = [
     "is_touring", "recent_event_count", "upcoming_event_count",
     "last_event_date", "next_event_date", "touring_source", "scraped_at",
     "momentum_7d", "momentum_30d", "popularity", "followers",
+    "management_company", "booking_agency", "record_label", "publisher",
+    "rostr_profile_url",
 ]
 
 
@@ -68,6 +70,15 @@ def merge_all() -> list[dict]:
         except Exception:
             pass
 
+    # Rostr intelligence (optional)
+    rostr_map: dict = {}
+    rostr_file = RAW_DIR / "rostr_intel.json"
+    if rostr_file.exists():
+        try:
+            rostr_map = _json.loads(rostr_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
     merged = []
     for artist in seed:
         sid = artist["spotify_id"]
@@ -75,6 +86,7 @@ def merge_all() -> list[dict]:
         m = mb.get(sid, {})
         ov = overrides.get(sid, {})
         sp = spotify_map.get(sid, {})
+        ro = rostr_map.get(artist["name"].lower(), {})
 
         genres = m.get("genres", [])
         genres_str = ", ".join(genres) if isinstance(genres, list) else str(genres)
@@ -108,6 +120,11 @@ def merge_all() -> list[dict]:
             momentum_30d=mom["momentum_30d"],
             popularity=sp.get("popularity"),
             followers=sp.get("followers"),
+            management_company=ro.get("management"),
+            booking_agency=ro.get("agency"),
+            record_label=ro.get("label"),
+            publisher=ro.get("publisher"),
+            rostr_profile_url=ro.get("rostr_profile_url"),
         )
         merged.append(record.to_dict())
 

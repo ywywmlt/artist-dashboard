@@ -888,6 +888,25 @@
         </div>
       </div>
 
+      <!-- Rostr Signings Feed -->
+      <div class="glass rounded-xl p-5" id="rostr-signings-panel">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <h3 class="font-semibold text-white text-sm">Recent Industry Signings</h3>
+            <span class="text-[9px] text-slate-500 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded border border-slate-500/20 uppercase tracking-wide">Rostr</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <div id="rostr-filter-btns" class="flex items-center gap-1 bg-white/5 rounded-lg p-0.5">
+              <button onclick="setRostrFilter('all')" id="rfbtn-all" class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all bg-orange-600/20 text-orange-300">All</button>
+              <button onclick="setRostrFilter('management')" id="rfbtn-management" class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all text-slate-400 hover:text-white">Mgmt</button>
+              <button onclick="setRostrFilter('touring')" id="rfbtn-touring" class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all text-slate-400 hover:text-white">Touring</button>
+              <button onclick="setRostrFilter('records')" id="rfbtn-records" class="text-[10px] px-2.5 py-1 rounded-md font-medium transition-all text-slate-400 hover:text-white">Records</button>
+            </div>
+          </div>
+        </div>
+        <div id="rostr-signings-list" class="space-y-1"></div>
+      </div>
+
       <!-- Momentum Leaderboard + Genre Heat Map -->
       <div class="grid grid-cols-2 gap-4">
         <div class="glass rounded-xl p-5">
@@ -1749,7 +1768,7 @@ function showPage(page) {
 
 // ─── Data Loading ───
 async function loadData() {
-  const [seedRes, touringRes, venueRes, newsRes, mbRes, eventsRes, histRes, spotifyRes] = await Promise.all([
+  const [seedRes, touringRes, venueRes, newsRes, mbRes, eventsRes, histRes, spotifyRes, rostrRes] = await Promise.all([
     fetch('data/raw/kworb_seed.json'),
     fetch('data/raw/touring_data.json'),
     fetch('data/touring-cities-venues.json'),
@@ -1758,6 +1777,7 @@ async function loadData() {
     fetch('data/raw/ticketmaster_events.json').catch(() => null),
     fetch('data/raw/listener_history.json').catch(() => null),
     fetch('data/raw/spotify_data.json').catch(() => null),
+    fetch('data/raw/rostr_intel.json').catch(() => null),
   ]);
   artists = await seedRes.json();
   const touringArr = await touringRes.json();
@@ -1794,6 +1814,11 @@ async function loadData() {
     spArr.forEach(s => { window.spotifyMap[s.spotify_id] = s; });
   } else {
     window.spotifyMap = null;
+  }
+  if (rostrRes && rostrRes.ok) {
+    window.rostrIntel = await rostrRes.json();
+  } else {
+    window.rostrIntel = null;
   }
 
   document.getElementById('page-subtitle').innerHTML =
@@ -2135,10 +2160,68 @@ function renderDashboard() {
     }).join('');
   })();
 
+  renderRostrSignings('all');
   renderMomentumLeaderboard();
   renderGenreHeatmap();
   updateNotifBtn();
   renderArtistTable();
+}
+
+// ─── ROSTR SIGNINGS FEED ───
+let rostrActiveFilter = 'all';
+function setRostrFilter(f) {
+  rostrActiveFilter = f;
+  ['all','management','touring','records'].forEach(t => {
+    const btn = document.getElementById('rfbtn-' + t);
+    if (!btn) return;
+    btn.className = t === f
+      ? 'text-[10px] px-2.5 py-1 rounded-md font-medium transition-all bg-orange-600/20 text-orange-300'
+      : 'text-[10px] px-2.5 py-1 rounded-md font-medium transition-all text-slate-400 hover:text-white';
+  });
+  renderRostrSignings(f);
+}
+function renderRostrSignings(filter) {
+  const el = document.getElementById('rostr-signings-list');
+  if (!el) return;
+  if (!window.rostrIntel) {
+    el.innerHTML = '<div class="text-xs text-slate-600 text-center py-4">Run pipeline step 9 to load Rostr data</div>';
+    return;
+  }
+  // Flatten all signings from intel dict
+  const all = [];
+  for (const [key, intel] of Object.entries(window.rostrIntel)) {
+    const art = artists.find(a => a.name.toLowerCase() === key);
+    for (const s of (intel.signings || [])) {
+      all.push({ ...s, artistName: intel.artist, artistObj: art });
+    }
+  }
+  // Sort newest first (using date string)
+  const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+  all.sort((a, b) => {
+    const parse = d => { const m = d && d.match(/(\w+)\s+(\d+),\s+(\d+)/); return m ? new Date(+m[3], months[m[1]]||0, +m[2]) : new Date(0); };
+    return parse(b.date) - parse(a.date);
+  });
+  const filtered = filter === 'all' ? all : all.filter(s => s.deal_type === filter);
+  const toShow = filtered.slice(0, 12);
+  if (!toShow.length) {
+    el.innerHTML = '<div class="text-xs text-slate-600 text-center py-4">No signings found</div>';
+    return;
+  }
+  const typeColor = t => t === 'management' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+    : t === 'touring' ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
+    : t === 'records' ? 'text-green-400 bg-green-500/10 border-green-500/20'
+    : t === 'publishing' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+    : 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+  el.innerHTML = `<div class="grid grid-cols-3 gap-1">` + toShow.map(s => {
+    const sid = s.artistObj?.spotify_id;
+    return `<div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 transition-colors ${sid ? 'cursor-pointer' : ''}" ${sid ? `onclick="selectArtist('${sid}')"` : ''}>
+      <span class="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded border text-[8px] font-bold uppercase tracking-wide ${typeColor(s.deal_type)}">${s.deal_type === 'management' ? 'MGMT' : s.deal_type === 'touring' ? 'TOUR' : s.deal_type === 'records' ? 'REC' : s.deal_type === 'publishing' ? 'PUB' : s.deal_type.toUpperCase().slice(0,4)}</span>
+      <div class="min-w-0">
+        <div class="text-xs font-medium text-white truncate">${s.artistName}</div>
+        <div class="text-[10px] text-slate-500 truncate">${s.company}${s.date ? ` · ${s.date.replace(/,\s*\d{4}/, '')}` : ''}</div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
 }
 
 // ─── ARTIST TABLE ───
@@ -2759,6 +2842,55 @@ function buildArtistProfileHTML(a, t, mb, spotifyId, { chartId = 'listenerTrendC
       </div>
     </div>
 
+    <!-- Rostr Team Intel -->
+    ${(() => {
+      const ro = window.rostrIntel && window.rostrIntel[a.name.toLowerCase()];
+      if (!ro) return '';
+      const hasTeam = ro.management || ro.agency || ro.label || ro.publisher;
+      const recentSignings = (ro.signings || []).slice(0, 3);
+      if (!hasTeam && !recentSignings.length) return '';
+      const teamRow = (icon, label, val, url) => val ? `
+        <div class="flex items-start gap-2.5 py-2 border-b border-white/5 last:border-0">
+          <span class="text-[10px] text-slate-500 w-[78px] shrink-0 pt-0.5 uppercase tracking-wider">${label}</span>
+          <span class="text-xs text-white font-medium leading-snug">${url ? `<a href="${url}" target="_blank" class="hover:text-[var(--accent)] transition-colors">${val}</a>` : val}</span>
+        </div>` : '';
+      const signingBadge = (s) => {
+        const typeColor = s.deal_type === 'management' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20'
+          : s.deal_type === 'touring' ? 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20'
+          : s.deal_type === 'records' ? 'text-green-400 bg-green-500/10 border-green-500/20'
+          : s.deal_type === 'publishing' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20'
+          : 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+        return `<div class="flex items-start gap-2 py-1.5">
+          <span class="inline-flex shrink-0 items-center px-1.5 py-0.5 rounded border text-[9px] font-bold uppercase tracking-wide ${typeColor}">${s.deal_type}</span>
+          <div>
+            <div class="text-xs text-white leading-snug">${s.company}${s.contact_person ? `<span class="text-slate-500"> via ${s.contact_person}</span>` : ''}</div>
+            ${s.date ? `<div class="text-[10px] text-slate-600 mt-0.5">${s.date}</div>` : ''}
+          </div>
+        </div>`;
+      };
+      return `<div class="glass rounded-xl p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-white text-sm">Team Intelligence</h3>
+          <div class="flex items-center gap-2">
+            ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" class="text-[9px] text-slate-500 hover:text-[var(--accent)] transition-colors uppercase tracking-wider">View on Rostr ↗</a>` : ''}
+            <span class="text-[9px] text-slate-600 font-medium bg-slate-500/10 px-1.5 py-0.5 rounded border border-slate-500/20 uppercase tracking-wide">Rostr</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-6">
+          ${hasTeam ? `<div>
+            <div class="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Current Team</div>
+            ${teamRow('🎯', 'Management', ro.management)}
+            ${teamRow('🎤', 'Agency', ro.agency)}
+            ${teamRow('💿', 'Label', ro.label)}
+            ${teamRow('✍️', 'Publisher', ro.publisher)}
+          </div>` : '<div></div>'}
+          ${recentSignings.length ? `<div>
+            <div class="text-[10px] text-slate-600 uppercase tracking-wider mb-2">Recent Signings</div>
+            ${recentSignings.map(signingBadge).join('')}
+          </div>` : ''}
+        </div>
+      </div>`;
+    })()}
     <!-- Listener Intelligence + Social Platforms -->
     <div class="grid grid-cols-2 gap-4 mb-6">
       <div class="glass rounded-xl p-5">

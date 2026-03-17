@@ -97,6 +97,12 @@ class ArtistEnriched:
     # Spotify API enrichment
     popularity: Optional[int] = None
     followers: Optional[int] = None
+    # Rostr intelligence
+    management_company: Optional[str] = None
+    booking_agency: Optional[str] = None
+    record_label: Optional[str] = None
+    publisher: Optional[str] = None
+    rostr_profile_url: Optional[str] = None
 
     def to_dict(self) -> dict:
         return asdict(self)
