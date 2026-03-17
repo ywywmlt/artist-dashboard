@@ -26,15 +26,22 @@ def _get_spotify_client():
     try:
         import spotipy
         from spotipy.oauth2 import SpotifyClientCredentials
-        return spotipy.Spotify(
+        sp = spotipy.Spotify(
             auth_manager=SpotifyClientCredentials(
                 client_id=SPOTIFY_CLIENT_ID,
                 client_secret=SPOTIFY_CLIENT_SECRET,
             ),
             requests_timeout=15,
         )
+        # Force an auth token fetch immediately so credential errors surface now
+        sp.auth_manager.get_access_token(as_dict=False)
+        logger.info(f"Spotify auth OK (client_id={SPOTIFY_CLIENT_ID[:8]}...)")
+        return sp
     except ImportError:
         logger.warning("spotipy not installed — skipping Spotify step")
+        return None
+    except Exception as e:
+        logger.error(f"Spotify auth FAILED: {e}")
         return None
 
 
