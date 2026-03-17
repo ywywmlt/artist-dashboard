@@ -14,8 +14,8 @@ from utils import load_json, save_json, RateLimiter, load_checkpoint, save_check
 
 logger = logging.getLogger("artist_pipeline.step_spotify")
 
-BATCH_SIZE = 50   # Spotify max per /artists call
-TOP_TRACKS_N = 100  # only fetch top tracks for top-N artists by listeners
+BATCH_SIZE = 25   # Chunk size for checkpoint saves
+TOP_TRACKS_N = 0   # Disable top tracks (separate endpoint, not needed)
 
 
 def _get_spotify_client():
@@ -44,14 +44,17 @@ def _get_spotify_client():
 
 
 def _fetch_batch(sp, ids: list[str], limiter: RateLimiter) -> list[dict]:
-    """Fetch a batch of up to 50 artists from Spotify API."""
-    limiter.wait()
-    try:
-        result = sp.artists(ids)
-        return result.get("artists") or []
-    except Exception as e:
-        logger.warning(f"Spotify batch fetch error: {e}")
-        return []
+    """Fetch artists individually — batch endpoint is restricted in Spotify dev mode."""
+    results = []
+    for sid in ids:
+        limiter.wait()
+        try:
+            artist = sp.artist(sid)
+            if artist:
+                results.append(artist)
+        except Exception as e:
+            logger.warning(f"Spotify fetch error for {sid}: {e}")
+    return results
 
 
 def _fetch_top_tracks(sp, spotify_id: str, limiter: RateLimiter) -> list[dict]:
