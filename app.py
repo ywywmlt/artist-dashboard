@@ -234,7 +234,19 @@ def get_events():
 
 @app.route("/api/events/refresh", methods=["POST"])
 def refresh_events():
-    """Kick off a background job to re-fetch events for all artists."""
+    """Kick off a background job to re-fetch events for all artists.
+
+    Accepts either:
+    - An authenticated browser session (login_required via session), OR
+    - A CRON_SECRET token in the X-Cron-Secret header (for external schedulers).
+    """
+    cron_secret = os.getenv("CRON_SECRET", "")
+    is_authed_session = "username" in session
+    is_cron = cron_secret and request.headers.get("X-Cron-Secret") == cron_secret
+
+    if not is_authed_session and not is_cron:
+        return jsonify({"error": "Authentication required"}), 401
+
     if _refresh["running"]:
         return jsonify({"status": "already_running", **_refresh}), 409
 
