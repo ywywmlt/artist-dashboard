@@ -188,6 +188,8 @@ def run() -> list[dict]:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     export_csv(records, OUTPUT_DIR / "artists_master.csv")
     export_json(records, OUTPUT_DIR / "artists_master.json")
+    # Also write to raw/ so Railway serves it at /data/raw/artists_master.json
+    export_json(records, RAW_DIR / "artists_master.json")
     print_summary(records)
 
     return records
