@@ -33,15 +33,13 @@ def _get_spotify_client():
             ),
             requests_timeout=15,
         )
-        # Force an auth token fetch immediately so credential errors surface now
-        sp.auth_manager.get_access_token(as_dict=False)
-        logger.info(f"Spotify auth OK (client_id={SPOTIFY_CLIENT_ID[:8]}...)")
+        logger.info(f"Spotify client created (client_id={SPOTIFY_CLIENT_ID[:8]}...)")
         return sp
     except ImportError:
         logger.warning("spotipy not installed — skipping Spotify step")
         return None
     except Exception as e:
-        logger.error(f"Spotify auth FAILED: {e}")
+        logger.error(f"Spotify client init FAILED: {e}")
         return None
 
 
