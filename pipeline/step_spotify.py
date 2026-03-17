@@ -31,7 +31,8 @@ def _get_spotify_client():
                 client_id=SPOTIFY_CLIENT_ID,
                 client_secret=SPOTIFY_CLIENT_SECRET,
             ),
-            requests_timeout=15,
+            requests_timeout=5,
+            retries=0,  # Don't retry on 429/5xx — Railway IPs get blocked; fail fast
         )
         logger.info(f"Spotify client created (client_id={SPOTIFY_CLIENT_ID[:8]}...)")
         return sp
@@ -126,6 +127,10 @@ def run() -> list[dict]:
         save_json(list(results.values()), "spotify_data.json")
         if (i + 1) % 4 == 0:
             logger.info(f"  {len(results)}/{TOP_N_ARTISTS} artists fetched")
+        # Fast-fail: if first batch got 0 results, API is blocked — abort
+        if i == 0 and not artists_data:
+            logger.warning("Spotify API returned 0 results on first batch — likely blocked. Aborting Spotify step.")
+            break
 
     top_ids = set()  # top tracks disabled
     logger.info(f"Fetching top tracks for top {len(top_ids)} artists...")
