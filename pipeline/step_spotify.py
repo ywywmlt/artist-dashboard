@@ -88,6 +88,12 @@ def run() -> list[dict]:
     except Exception:
         pass
 
+    # Stale checkpoint guard: if checkpoint claims work is done but file is empty, reset
+    if done_ids and not results:
+        logger.warning("Stale Spotify checkpoint detected (checkpoint non-empty but data file empty) — resetting")
+        clear_checkpoint("step_spotify")
+        done_ids = set()
+
     # Split into batches
     all_ids = [a["spotify_id"] for a in seed if a["spotify_id"] not in done_ids]
     batches = [all_ids[i:i + BATCH_SIZE] for i in range(0, len(all_ids), BATCH_SIZE)]
