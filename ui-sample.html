@@ -5240,12 +5240,12 @@ function fdRender() {
         <!-- Row 2: ARTIST NAME — headline -->
         <div style="font-size:15px;font-weight:600;color:#f5f5f5;letter-spacing:-0.01em;line-height:1.2;margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${p.artist || 'Unnamed Artist'}</div>
 
-        <!-- Row 3: Net profit — dominant financial number -->
-        <div style="font-size:1.4rem;font-weight:300;letter-spacing:-0.04em;color:${profitColorSb};font-variant-numeric:tabular-nums;line-height:1;margin-bottom:10px;">${fmtMoney(c.net_profit)}</div>
+        <!-- Row 3: ROI — dominant financial number -->
+        <div style="font-size:1.4rem;font-weight:300;letter-spacing:-0.04em;color:${adjRoiColorSb};font-variant-numeric:tabular-nums;line-height:1;margin-bottom:4px;">${(adjRoiSb*100).toFixed(1)}%</div>
 
         <!-- Row 4: metadata bar -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05);">
-          <span style="font-size:9px;color:rgba(255,255,255,0.28);">ROI&thinsp;<span style="color:${adjRoiColorSb};font-weight:600;">${(adjRoiSb*100).toFixed(1)}%</span></span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.28);">Rev&thinsp;<span style="color:${profitColorSb};font-weight:600;">${fmtMoney(c.net_profit)}</span></span>
           <span style="font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.02em;">${venueLabel} · ${totalShows}×</span>
         </div>
       </div>`;
