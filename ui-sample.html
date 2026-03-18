@@ -1306,7 +1306,7 @@ let competitorShows = [];
 const COMPETITOR_KEY = 'artist-dashboard-competitor-shows';
 let triggeredAlerts = [];  // in-memory, reset on each data load
 let momentumTab = 'gain';
-let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false };
+let fdSensState = { ticketPriceMult: 1.0, mgMult: 1.0, fillRatePct: 85, fillRateEnabled: false, open: false, cities: {} };
 
 // ─── Helpers ───
 function fmt(n) {
@@ -5369,7 +5369,7 @@ function fdStartCreate() {
     radius_days: 90
   };
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
-  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false; fdSensState.cities = {};
   fdRender();
 }
 
@@ -5380,7 +5380,7 @@ function fdSelectProfile(id) {
   fdState.draftProfile = JSON.parse(JSON.stringify(p));
   fdMigrateProfile(fdState.draftProfile);
   fdSensState.ticketPriceMult = 1.0; fdSensState.mgMult = 1.0;
-  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false;
+  fdSensState.fillRatePct = 85; fdSensState.fillRateEnabled = false; fdSensState.cities = {};
   fdRender();
 }
 
@@ -8110,6 +8110,135 @@ function fdSensApplyToProfile() {
 
 function fdToggleSens() { fdSensState.open = !fdSensState.open; fdUpdateSens(); }
 
+// ─── Per-city sensitivity ─────────────────────────────────────────────────────
+function fdCitySens(tcId) {
+  if (!fdSensState.cities[tcId]) fdSensState.cities[tcId] = { open: false, ticketPriceMult: 1.0 };
+  return fdSensState.cities[tcId];
+}
+
+function fdCitySensToggle(tcId) {
+  fdCitySens(tcId).open = !fdCitySens(tcId).open;
+  fdUpdateCitySens(tcId);
+}
+
+function fdCitySensApply(tcId, val) {
+  fdCitySens(tcId).ticketPriceMult = Number(val);
+  fdUpdateCitySens(tcId);
+}
+
+function fdCitySensReset(tcId) {
+  fdSensState.cities[tcId] = { open: true, ticketPriceMult: 1.0 };
+  fdUpdateCitySens(tcId);
+}
+
+function fdCitySensApplyToCity(tcId) {
+  const p = fdState.draftProfile;
+  const tc = (p?.tour_cities || []).find(t => t.id === tcId);
+  if (!tc) return;
+  const mult = fdCitySens(tcId).ticketPriceMult;
+  if (mult !== 1.0) {
+    for (const cat of (tc.seat_categories || [])) {
+      cat.price = Math.round((Number(cat.price) || 0) * mult * 100) / 100;
+    }
+  }
+  fdSensState.cities[tcId] = { open: false, ticketPriceMult: 1.0 };
+  fdSaveProfile();
+  fdUpdateLive();
+}
+
+function fdUpdateCitySens(tcId) {
+  const el = document.getElementById('fd-city-sens-' + tcId);
+  if (!el) return;
+  const p = fdState.draftProfile;
+  if (!p) return;
+  const tc = (p.tour_cities || []).find(t => t.id === tcId);
+  if (!tc) return;
+  const s = fdCitySens(tcId);
+  const c = computeProfile(p);
+  const ccMap = {};
+  for (const cc of c.cityCalcs) { if (cc.tc.id) ccMap[cc.tc.id] = cc; }
+  const baseCC = ccMap[tcId];
+
+  if (!s.open) {
+    const isModified = s.ticketPriceMult !== 1.0;
+    el.innerHTML = `<div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#cc6437;">⚡ City Sensitivity</span>
+        ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Modified</span>' : '<span class="text-[9px] text-slate-600">Price scenarios for this city</span>'}
+      </div>
+      <button onclick="fdCitySensToggle('${tcId}')" style="font-size:10px;font-weight:600;color:#000;background:#cc6437;border:none;padding:3px 10px;cursor:pointer;border-radius:2px;" onmouseover="this.style.background='#b55630'" onmouseout="this.style.background='#cc6437'">Adjust ↓</button>
+    </div>`;
+    return;
+  }
+
+  // Compute sens profile — apply multiplier only to this city
+  const clone = JSON.parse(JSON.stringify(p));
+  const cloneTc = (clone.tour_cities || []).find(t => t.id === tcId);
+  if (cloneTc && s.ticketPriceMult !== 1.0) {
+    for (const cat of (cloneTc.seat_categories || [])) {
+      cat.price = (Number(cat.price) || 0) * s.ticketPriceMult;
+    }
+  }
+  const sensC = computeProfile(clone);
+  const sensMap = {};
+  for (const cc of sensC.cityCalcs) { if (cc.tc.id) sensMap[cc.tc.id] = cc; }
+  const sensCC = sensMap[tcId];
+
+  const tpPct = Math.round((s.ticketPriceMult - 1) * 100);
+  const tpColor = tpPct > 0 ? '#10b981' : tpPct < 0 ? '#cc6437' : '#6b7280';
+  const isModified = s.ticketPriceMult !== 1.0;
+
+  function miniCard(label, bv, sv, fmtFn, positiveIsGood) {
+    const delta = sv - bv;
+    const noChange = Math.abs(delta) < 0.5;
+    const up = delta > 0;
+    const color = noChange ? 'text-slate-400' : (up === positiveIsGood ? 'text-emerald-400' : 'text-red-400');
+    return `<div class="bg-white/5 rounded p-2 text-center">
+      <div class="text-[8px] text-slate-500 uppercase tracking-wider mb-0.5">${label}</div>
+      <div class="text-xs font-bold ${color}">${fmtFn(sv)}</div>
+      <div class="text-[8px] ${noChange ? 'text-slate-600' : color} mt-0.5">${noChange ? 'no change' : (up?'+':'')+fmtFn(delta)}</div>
+    </div>`;
+  }
+
+  const baseCityNet = baseCC ? baseCC.total_ticket_rev - baseCC.total_op_cost : 0;
+  const sensCityNet = sensCC ? sensCC.total_ticket_rev - sensCC.total_op_cost : 0;
+  const baseBe = baseCC?.break_even_fill ?? null;
+  const sensBe = sensCC?.break_even_fill ?? null;
+  const beFmt = v => v !== null ? (v * 100).toFixed(0) + '%' : '—';
+
+  const actionBtns = isModified
+    ? `<button onclick="fdCitySensReset('${tcId}')" class="text-[10px] text-slate-400 hover:text-white border border-red-900/30 rounded px-2 py-0.5 transition-colors">Reset</button>
+       <button onclick="fdCitySensApplyToCity('${tcId}')" class="text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded px-2 py-0.5 transition-colors font-medium">Save to City</button>`
+    : '';
+
+  el.innerHTML = `
+    <div class="flex items-center justify-between mb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-[10px] font-semibold text-white uppercase tracking-wider">City Sensitivity</span>
+        ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Unsaved scenario</span>' : '<span class="text-[9px] text-slate-600">Drag to preview impact</span>'}
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="fd-cs-btns-${tcId}">${actionBtns}</span>
+        <button onclick="fdCitySensToggle('${tcId}')" style="font-size:10px;color:#6b7280;background:none;border:1px solid rgba(204,100,55,0.2);padding:3px 10px;cursor:pointer;" onmouseover="this.style.color='#f5f5f5'" onmouseout="this.style.color='#6b7280'">Collapse ↑</button>
+      </div>
+    </div>
+    <div class="mb-3">
+      <div class="text-[9px] text-slate-400 uppercase tracking-wider flex justify-between mb-1.5">
+        <span>Ticket Price</span>
+        <span id="fd-cs-tp-${tcId}" style="color:${tpColor}">${tpPct > 0 ? '+' : ''}${tpPct}%</span>
+      </div>
+      <input id="fd-cs-slider-${tcId}" type="range" min="70" max="130" step="1" value="${Math.round(s.ticketPriceMult * 100)}"
+        oninput="fdCitySensApply('${tcId}', this.value/100)"
+        class="w-full accent-red-500 cursor-pointer" style="height:4px">
+      <div class="text-[9px] text-slate-600 mt-1 text-center">±30% range</div>
+    </div>
+    <div class="grid grid-cols-3 gap-2" id="fd-cs-cards-${tcId}">
+      ${miniCard('City Net', baseCityNet, sensCityNet, fmtMoney, true)}
+      ${miniCard('Tour Net', c.net_profit, sensC.net_profit, fmtMoney, true)}
+      ${baseBe !== null ? miniCard('Break-even Fill', baseBe, sensBe, beFmt, false) : '<div></div>'}
+    </div>`;
+}
+
 function fdRenderLive(p) {
   const c = computeProfile(p);
   const n = c.n;
@@ -8468,6 +8597,20 @@ function fdRenderLive(p) {
                   '<span class="text-slate-600">·</span>' +
                   '<span>' + shows + ' show' + (shows>1?'s':'') + ': <span class="text-red-400 font-semibold">' + fmtMoney(cc.total_op_cost) + '</span></span>' +
                 '</span>' +
+              '</div>' +
+              // ── Per-city sensitivity panel ──
+              '<div id="fd-city-sens-' + tc.id + '" class="mt-2 pt-2 border-t border-orange-900/20">' +
+                (function() {
+                  const cs = fdCitySens(tc.id);
+                  const isModified = cs.ticketPriceMult !== 1.0;
+                  return '<div class="flex items-center justify-between">' +
+                    '<div class="flex items-center gap-2">' +
+                      '<span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#cc6437;">⚡ City Sensitivity</span>' +
+                      (isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Modified</span>' : '<span class="text-[9px] text-slate-600">Price scenarios for this city</span>') +
+                    '</div>' +
+                    '<button onclick="fdCitySensToggle(\'' + tc.id + '\')" style="font-size:10px;font-weight:600;color:#000;background:#cc6437;border:none;padding:3px 10px;cursor:pointer;border-radius:2px;" onmouseover="this.style.background=\'#b55630\'" onmouseout="this.style.background=\'#cc6437\'">Adjust ↓</button>' +
+                  '</div>';
+                })() +
               '</div>' +
             '</div>';
           }).join('');
@@ -8847,6 +8990,7 @@ function fdRemoveCity(tcId) {
     alert('A tour must have at least one city.'); return;
   }
   fdState.draftProfile.tour_cities = fdState.draftProfile.tour_cities.filter(c => c.id !== tcId);
+  delete fdSensState.cities[tcId];
   fdSetMain(fdState.draftProfile);
 }
 
