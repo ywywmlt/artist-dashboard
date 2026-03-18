@@ -42,15 +42,15 @@ def main():
     parser = argparse.ArgumentParser(description="Artist Dashboard Scraping Pipeline")
     parser.add_argument(
         "--from", dest="from_step", type=int, default=1,
-        help="Start from this step number (1-5). Default: 1",
+        help="Start from this step number (1-9). Default: 1",
     )
     parser.add_argument(
-        "--to", dest="to_step", type=int, default=5,
-        help="Stop after this step number (1-5). Default: 5",
+        "--to", dest="to_step", type=int, default=9,
+        help="Stop after this step number (1-9). Default: 9",
     )
     parser.add_argument(
         "--step", type=int, default=None,
-        help="Run only this specific step (1-5)",
+        help="Run only this specific step (1-9)",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true",

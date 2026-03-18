@@ -187,7 +187,7 @@ def _run_refresh():
             mod = importlib.import_module(module_path)
             if module_path == "pipeline.step_ticketmaster":
                 def _cb(done, total, msg, _pct=pct_done):
-                    base = 45  # start of TM step
+                    base = 36  # start of TM step (news finishes at 36)
                     _refresh["progress"] = base + int(done / total * (_pct - base)) if total else base
                     _refresh["message"] = msg
                 mod.run(progress_callback=_cb)
