@@ -8123,7 +8123,7 @@ function fdCitySensToggle(tcId) {
 
 function fdCitySensApply(tcId, val) {
   fdCitySens(tcId).ticketPriceMult = Number(val);
-  fdUpdateCitySens(tcId);
+  fdPatchCitySens(tcId);  // patch-only — never replaces the slider DOM
 }
 
 function fdCitySensReset(tcId) {
@@ -8146,48 +8146,31 @@ function fdCitySensApplyToCity(tcId) {
   fdUpdateLive();
 }
 
-function fdUpdateCitySens(tcId) {
-  const el = document.getElementById('fd-city-sens-' + tcId);
-  if (!el) return;
+function _citySensCalc(tcId) {
+  // Shared computation for both full-render and patch paths
   const p = fdState.draftProfile;
-  if (!p) return;
-  const tc = (p.tour_cities || []).find(t => t.id === tcId);
-  if (!tc) return;
   const s = fdCitySens(tcId);
   const c = computeProfile(p);
   const ccMap = {};
   for (const cc of c.cityCalcs) { if (cc.tc.id) ccMap[cc.tc.id] = cc; }
   const baseCC = ccMap[tcId];
-
-  if (!s.open) {
-    const isModified = s.ticketPriceMult !== 1.0;
-    el.innerHTML = `<div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#cc6437;">⚡ City Sensitivity</span>
-        ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Modified</span>' : '<span class="text-[9px] text-slate-600">Price scenarios for this city</span>'}
-      </div>
-      <button onclick="fdCitySensToggle('${tcId}')" style="font-size:10px;font-weight:600;color:#000;background:#cc6437;border:none;padding:3px 10px;cursor:pointer;border-radius:2px;" onmouseover="this.style.background='#b55630'" onmouseout="this.style.background='#cc6437'">Adjust ↓</button>
-    </div>`;
-    return;
-  }
-
-  // Compute sens profile — apply multiplier only to this city
   const clone = JSON.parse(JSON.stringify(p));
   const cloneTc = (clone.tour_cities || []).find(t => t.id === tcId);
   if (cloneTc && s.ticketPriceMult !== 1.0) {
-    for (const cat of (cloneTc.seat_categories || [])) {
-      cat.price = (Number(cat.price) || 0) * s.ticketPriceMult;
-    }
+    for (const cat of (cloneTc.seat_categories || [])) cat.price = (Number(cat.price) || 0) * s.ticketPriceMult;
   }
   const sensC = computeProfile(clone);
   const sensMap = {};
   for (const cc of sensC.cityCalcs) { if (cc.tc.id) sensMap[cc.tc.id] = cc; }
-  const sensCC = sensMap[tcId];
+  return { c, sensC, baseCC, sensCC: sensMap[tcId] };
+}
 
-  const tpPct = Math.round((s.ticketPriceMult - 1) * 100);
-  const tpColor = tpPct > 0 ? '#10b981' : tpPct < 0 ? '#cc6437' : '#6b7280';
-  const isModified = s.ticketPriceMult !== 1.0;
-
+function _citySensMiniCards(tcId, c, sensC, baseCC, sensCC) {
+  const baseCityNet = baseCC ? baseCC.total_ticket_rev - baseCC.total_op_cost : 0;
+  const sensCityNet = sensCC ? sensCC.total_ticket_rev - sensCC.total_op_cost : 0;
+  const baseBe = baseCC?.break_even_fill ?? null;
+  const sensBe = sensCC?.break_even_fill ?? null;
+  const beFmt = v => v !== null ? (v * 100).toFixed(0) + '%' : '—';
   function miniCard(label, bv, sv, fmtFn, positiveIsGood) {
     const delta = sv - bv;
     const noChange = Math.abs(delta) < 0.5;
@@ -8199,13 +8182,34 @@ function fdUpdateCitySens(tcId) {
       <div class="text-[8px] ${noChange ? 'text-slate-600' : color} mt-0.5">${noChange ? 'no change' : (up?'+':'')+fmtFn(delta)}</div>
     </div>`;
   }
+  return miniCard('City Net', baseCityNet, sensCityNet, fmtMoney, true) +
+    miniCard('Tour Net', c.net_profit, sensC.net_profit, fmtMoney, true) +
+    (baseBe !== null ? miniCard('Break-even Fill', baseBe, sensBe, beFmt, false) : '<div></div>');
+}
 
-  const baseCityNet = baseCC ? baseCC.total_ticket_rev - baseCC.total_op_cost : 0;
-  const sensCityNet = sensCC ? sensCC.total_ticket_rev - sensCC.total_op_cost : 0;
-  const baseBe = baseCC?.break_even_fill ?? null;
-  const sensBe = sensCC?.break_even_fill ?? null;
-  const beFmt = v => v !== null ? (v * 100).toFixed(0) + '%' : '—';
+function fdUpdateCitySens(tcId) {
+  // Full re-render — only called on open/close toggle or reset
+  const el = document.getElementById('fd-city-sens-' + tcId);
+  if (!el) return;
+  const p = fdState.draftProfile;
+  if (!p) return;
+  const s = fdCitySens(tcId);
+  const isModified = s.ticketPriceMult !== 1.0;
 
+  if (!s.open) {
+    el.innerHTML = `<div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#cc6437;">⚡ City Sensitivity</span>
+        ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Modified</span>' : '<span class="text-[9px] text-slate-600">Price scenarios for this city</span>'}
+      </div>
+      <button onclick="fdCitySensToggle('${tcId}')" style="font-size:10px;font-weight:600;color:#000;background:#cc6437;border:none;padding:3px 10px;cursor:pointer;border-radius:2px;" onmouseover="this.style.background='#b55630'" onmouseout="this.style.background='#cc6437'">Adjust ↓</button>
+    </div>`;
+    return;
+  }
+
+  const { c, sensC, baseCC, sensCC } = _citySensCalc(tcId);
+  const tpPct = Math.round((s.ticketPriceMult - 1) * 100);
+  const tpColor = tpPct > 0 ? '#10b981' : tpPct < 0 ? '#cc6437' : '#6b7280';
   const actionBtns = isModified
     ? `<button onclick="fdCitySensReset('${tcId}')" class="text-[10px] text-slate-400 hover:text-white border border-red-900/30 rounded px-2 py-0.5 transition-colors">Reset</button>
        <button onclick="fdCitySensApplyToCity('${tcId}')" class="text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded px-2 py-0.5 transition-colors font-medium">Save to City</button>`
@@ -8215,7 +8219,7 @@ function fdUpdateCitySens(tcId) {
     <div class="flex items-center justify-between mb-2">
       <div class="flex items-center gap-2">
         <span class="text-[10px] font-semibold text-white uppercase tracking-wider">City Sensitivity</span>
-        ${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Unsaved scenario</span>' : '<span class="text-[9px] text-slate-600">Drag to preview impact</span>'}
+        <span id="fd-cs-badge-${tcId}">${isModified ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Unsaved scenario</span>' : '<span class="text-[9px] text-slate-600">Drag to preview impact</span>'}</span>
       </div>
       <div class="flex items-center gap-2">
         <span id="fd-cs-btns-${tcId}">${actionBtns}</span>
@@ -8227,16 +8231,44 @@ function fdUpdateCitySens(tcId) {
         <span>Ticket Price</span>
         <span id="fd-cs-tp-${tcId}" style="color:${tpColor}">${tpPct > 0 ? '+' : ''}${tpPct}%</span>
       </div>
-      <input id="fd-cs-slider-${tcId}" type="range" min="70" max="130" step="1" value="${Math.round(s.ticketPriceMult * 100)}"
+      <input type="range" min="70" max="130" step="1" value="${Math.round(s.ticketPriceMult * 100)}"
         oninput="fdCitySensApply('${tcId}', this.value/100)"
         class="w-full accent-red-500 cursor-pointer" style="height:4px">
       <div class="text-[9px] text-slate-600 mt-1 text-center">±30% range</div>
     </div>
     <div class="grid grid-cols-3 gap-2" id="fd-cs-cards-${tcId}">
-      ${miniCard('City Net', baseCityNet, sensCityNet, fmtMoney, true)}
-      ${miniCard('Tour Net', c.net_profit, sensC.net_profit, fmtMoney, true)}
-      ${baseBe !== null ? miniCard('Break-even Fill', baseBe, sensBe, beFmt, false) : '<div></div>'}
+      ${_citySensMiniCards(tcId, c, sensC, baseCC, sensCC)}
     </div>`;
+}
+
+function fdPatchCitySens(tcId) {
+  // Lightweight patch — updates label + cards only, never touches the slider element
+  const s = fdCitySens(tcId);
+  if (!s.open) return;
+  const tpPct = Math.round((s.ticketPriceMult - 1) * 100);
+  const tpColor = tpPct > 0 ? '#10b981' : tpPct < 0 ? '#cc6437' : '#6b7280';
+  const isModified = s.ticketPriceMult !== 1.0;
+  const g = id => document.getElementById(id);
+
+  const tpEl = g('fd-cs-tp-' + tcId);
+  if (tpEl) { tpEl.textContent = (tpPct > 0 ? '+' : '') + tpPct + '%'; tpEl.style.color = tpColor; }
+
+  const badgeEl = g('fd-cs-badge-' + tcId);
+  if (badgeEl) badgeEl.innerHTML = isModified
+    ? '<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">Unsaved scenario</span>'
+    : '<span class="text-[9px] text-slate-600">Drag to preview impact</span>';
+
+  const btnsEl = g('fd-cs-btns-' + tcId);
+  if (btnsEl) btnsEl.innerHTML = isModified
+    ? `<button onclick="fdCitySensReset('${tcId}')" class="text-[10px] text-slate-400 hover:text-white border border-red-900/30 rounded px-2 py-0.5 transition-colors">Reset</button>
+       <button onclick="fdCitySensApplyToCity('${tcId}')" class="text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded px-2 py-0.5 transition-colors font-medium">Save to City</button>`
+    : '';
+
+  const cardsEl = g('fd-cs-cards-' + tcId);
+  if (cardsEl) {
+    const { c, sensC, baseCC, sensCC } = _citySensCalc(tcId);
+    cardsEl.innerHTML = _citySensMiniCards(tcId, c, sensC, baseCC, sensCC);
+  }
 }
 
 function fdRenderLive(p) {
