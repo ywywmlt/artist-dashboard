@@ -1826,7 +1826,7 @@ async function loadData() {
   }
 
   document.getElementById('page-subtitle').innerHTML =
-    `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${new Date(artists[0].scraped_at).toLocaleDateString()} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
+    `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${artists[0] ? new Date(artists[0].scraped_at).toLocaleDateString() : '—'} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
   document.getElementById('refresh-btn')?.classList.remove('hidden');
 
   // Count alerts: artists losing > 200K listeners/day
@@ -1879,7 +1879,7 @@ function renderMomentumLeaderboard() {
       <span class="text-[10px] text-slate-600 w-5 text-right flex-shrink-0">${i+1}</span>
       <div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(a.name)} flex items-center justify-center text-[8px] font-bold text-white flex-shrink-0">${initials(a.name)}</div>
       <div class="flex-1 min-w-0">
-        <div class="text-xs font-medium text-white truncate">${a.name}</div>
+        <div class="text-xs font-medium text-white truncate">${escHtml(a.name)}</div>
         <div class="text-[9px] ${demand.momentumColor}">${demand.momentum}</div>
       </div>
       <div class="text-right flex-shrink-0">
@@ -2240,8 +2240,8 @@ function populateTableFilters() {
   )].sort();
   const gSel = document.getElementById('filter-genre');
   const cSel = document.getElementById('filter-country');
-  if (gSel) gSel.innerHTML = '<option value="">All Genres</option>' + genres.map(g=>`<option value="${g}">${g}</option>`).join('');
-  if (cSel) cSel.innerHTML = '<option value="">All Countries</option>' + countries.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if (gSel) gSel.innerHTML = '<option value="">All Genres</option>' + genres.map(g=>`<option value="${escHtml(g)}">${escHtml(g)}</option>`).join('');
+  if (cSel) cSel.innerHTML = '<option value="">All Countries</option>' + countries.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
 }
 
 function renderArtistTable() {
@@ -3451,7 +3451,7 @@ function populatePeerTable(spotifyId, tableId) {
     return `
       <tr class="${isSelf ? 'bg-red-500/10' : 'artist-row'} border-b border-white/5 cursor-pointer transition-colors" onclick="selectArtist('${pa.spotify_id}')">
         <td class="py-2.5 pl-3 text-sm ${isSelf ? 'text-red-300 font-bold' : 'text-slate-500'}">${pa.rank}</td>
-        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(pa.name)} flex items-center justify-center text-[8px] font-bold text-white">${initials(pa.name)}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${pa.name}</span>${isSelf ? '<span class="bg-red-500/20 text-red-300 text-[9px] px-1.5 py-0.5 rounded font-medium ml-1">You</span>' : ''}</div></td>
+        <td class="py-2.5"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-gradient-to-br ${hashColor(pa.name)} flex items-center justify-center text-[8px] font-bold text-white">${escHtml(initials(pa.name))}</div><span class="text-sm ${isSelf ? 'text-white font-semibold' : 'text-slate-300'}">${escHtml(pa.name)}</span>${isSelf ? '<span class="bg-red-500/20 text-red-300 text-[9px] px-1.5 py-0.5 rounded font-medium ml-1">You</span>' : ''}</div></td>
         <td class="py-2.5 text-right text-sm text-white">${fmt(pa.monthly_listeners)}</td>
         <td class="py-2.5 text-right text-sm ${aUp ? 'trend-up' : 'trend-down'} font-medium">${aUp?'+':''}${fmt(pa.daily_change)}</td>
         <td class="py-2.5 text-right text-sm text-slate-400">${fmt(pa.peak_listeners)}</td>
@@ -3472,7 +3472,7 @@ function renderPeerSetEditor(sid) {
       ${custom ? `<button onclick="psReset('${sid}')" class="text-[9px] text-slate-500 hover:text-red-400 transition-colors">Reset to default</button>` : ''}
     </div>
     <div class="flex flex-wrap gap-1 mb-2">
-      ${customPeers.map(p=>`<span class="text-[9px] bg-black border border-red-900/30 rounded px-1.5 py-0.5 flex items-center gap-1">${p.name}<button onclick="psRemove('${sid}','${p.spotify_id}')" class="text-slate-600 hover:text-red-400">×</button></span>`).join('')}
+      ${customPeers.map(p=>`<span class="text-[9px] bg-black border border-red-900/30 rounded px-1.5 py-0.5 flex items-center gap-1">${escHtml(p.name)}<button onclick="psRemove('${sid}','${p.spotify_id}')" class="text-slate-600 hover:text-red-400">×</button></span>`).join('')}
       ${!custom ? '<span class="text-[9px] text-slate-600">Using rank-adjacent peers</span>' : ''}
     </div>
     <input type="text" id="peer-add-input-${sid}" placeholder="Add artist by name..." class="w-full bg-black border border-red-900/30 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-red-500/50" oninput="peerAddSuggest('${sid}',this.value)" autocomplete="off">
@@ -3911,7 +3911,7 @@ function showDemandCard(e, sid) {
     document.body.appendChild(card);
   }
   card.innerHTML = `<div style="background:#0f0e1a;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;min-width:210px;box-shadow:0 8px 32px rgba(0,0,0,0.7)">
-    <div style="font-size:11px;font-weight:600;color:#f8fafc;margin-bottom:8px">${a.name}</div>
+    <div style="font-size:11px;font-weight:600;color:#f8fafc;margin-bottom:8px">${escHtml(a.name)}</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <span style="font-size:26px;font-weight:800;color:${sc};line-height:1">${d.demandScore}</span>
       <div>
@@ -7567,7 +7567,7 @@ function fdDemandCardHTML(p) {
   return `<div style="display:grid;grid-template-columns:auto 1px 1fr 1px 1fr 1px 1fr;border:1px solid rgba(255,255,255,0.07);background:#070707;cursor:pointer;" onclick="document.getElementById('fd-artist-profile')?.scrollIntoView({behavior:'smooth',block:'nearest'})" title="Jump to full demand analysis">
     <div style="padding:14px 18px;display:flex;align-items:center;gap:10px;border-right:1px solid rgba(255,255,255,0.07);">
       <span style="font-size:8px;font-weight:700;color:#10b981;letter-spacing:0.12em;">✓ LINKED</span>
-      <span style="font-size:9px;color:rgba(255,255,255,0.25);">${a.name}</span>
+      <span style="font-size:9px;color:rgba(255,255,255,0.25);">${escHtml(a.name)}</span>
     </div>
     <div style="background:rgba(255,255,255,0.05);"></div>
     <div style="padding:14px 20px;">
@@ -10173,7 +10173,7 @@ function rpArtistPerformanceReport() {
   });
   const momRow = (a, color) => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
     <span style="font-size:11px;color:${color};width:14px;flex-shrink:0">${color==='#34d399'?'↑':color==='#f87171'?'↓':'→'}</span>
-    <span style="font-size:11px;color:rgba(255,255,255,0.7);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.name}</span>
+    <span style="font-size:11px;color:rgba(255,255,255,0.7);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(a.name)}</span>
     <span style="font-size:10px;color:rgba(255,255,255,0.3)">${fmt(a.monthly_listeners)}</span>
   </div>`;
 
@@ -10203,7 +10203,7 @@ function rpArtistPerformanceReport() {
       <div style="text-align:center"><div style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.6)">${avgEvents}</div><div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase">Avg Events / Artist</div></div>
     </div>
     <div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">Most Active</div>
-    ${mostActive.map(a=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px"><span style="color:rgba(255,255,255,0.6)">${a.name}</span><span style="color:var(--accent)">${touringMap[a.spotify_id]?.recent_event_count||0} shows</span></div>`).join('')}
+    ${mostActive.map(a=>`<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px"><span style="color:rgba(255,255,255,0.6)">${escHtml(a.name)}</span><span style="color:var(--accent)">${touringMap[a.spotify_id]?.recent_event_count||0} shows</span></div>`).join('')}
   </div>`;
 
   return `<div style="${cardStyle}margin-bottom:16px;">
@@ -10247,7 +10247,7 @@ function rpWatchlistReport() {
       const m7Color = m7 > 5 ? '#34d399' : m7 < -5 ? '#f87171' : '#94a3b8';
       const m7Str = m7 != null ? (m7>0?'+':'')+m7+'%' : (a.daily_change > 0 ? '↑' : a.daily_change < 0 ? '↓' : '—');
       return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03)">
-        <td style="padding:7px 0;font-size:11px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${a.name}</td>
+        <td style="padding:7px 0;font-size:11px;color:rgba(255,255,255,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px">${escHtml(a.name)}</td>
         <td style="padding:7px 0 7px 12px;font-size:10px;color:rgba(255,255,255,0.4)">${fmt(a.monthly_listeners)}</td>
         <td style="padding:7px 0 7px 12px;font-size:10px;color:${m7Color}">${m7Str}</td>
         <td style="padding:7px 0 7px 12px;font-size:10px;color:${t&&t.is_touring?'#34d399':'rgba(255,255,255,0.3)'}">${t&&t.is_touring?'Touring':'—'}</td>
