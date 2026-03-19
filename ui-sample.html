@@ -7062,6 +7062,97 @@ function fdUpdateLive() {
   fdUpdateSens();
 }
 
+function fdInvestorViewPopupHTML(p, c) {
+  const pcts = [0.85, 0.95, 1.00];
+  const co = p.costs || {};
+  const feePct = Number(co.ticketing_fee_pct) || 0;
+  const mPS = Number(p.additional_revenue?.merch_per_show) || 0;
+  const fHead = Number(p.additional_revenue?.fnb_per_head) || 0;
+  const fPct = Number(p.additional_revenue?.fnb_pct) || 0;
+  const spPS = Number(p.additional_revenue?.sponsorship_per_show) || 0;
+  let fullTkt = 0, fullSeats = 0;
+  for (const cc of c.cityCalcs) {
+    const cats = cc.cats || [];
+    fullSeats += cats.reduce((s, cat) => s + (Number(cat.count)||0), 0) * cc.shows;
+    fullTkt += cats.reduce((s, cat) => s + (Number(cat.price)||0) * (Number(cat.count)||0), 0) * cc.shows;
+  }
+  const artistMG = c.artist_mg_cost || 0;
+  const opAll = c.total_op_costs || 0;
+  const agFees = Number(co.agency_fees) || 0;
+  const bfFees = Number(co.blufin_fees) || 0;
+  const taxRt = Number(co.tax_rate) || 0;
+  const scens = pcts.map(pct => {
+    const tkt = fullTkt * pct;
+    const fee = tkt * feePct;
+    const fnb = fHead * fPct * (fullSeats * pct);
+    const merch = mPS * c.n;
+    const spon = spPS * c.n;
+    const gross = tkt + merch + fnb + spon;
+    const costs = artistMG + opAll + agFees + bfFees + fee;
+    const net = gross - costs;
+    const tax = net > 0 ? net * taxRt : 0;
+    const netAt = net - tax;
+    const roi = costs > 0 ? net / costs : 0;
+    const att = Math.round(fullSeats * pct);
+    return { gross, costs, net, netAt, roi, att };
+  });
+  const inv = (p.investor_scenarios || []).find(s => Number(s.equity) > 0) || null;
+  const eq = inv ? Number(inv.equity) : 0;
+  const hr = inv ? Number(inv.hurdle_rate) || 0.20 : 0;
+  const sp = inv ? Number(inv.above_hurdle_investor_pct) || 0.50 : 0;
+
+  const th = 'padding:6px 10px;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;';
+  const td = 'padding:5px 10px;font-size:11px;text-align:right;';
+  const tdL = 'padding:5px 10px;font-size:10px;color:#9ca3af;white-space:nowrap;';
+  const bb = 'border-bottom:1px solid rgba(255,255,255,0.04);';
+  const baseBg = 'background:rgba(30,64,175,0.08);';
+
+  function cell(v, fmt, isBase) {
+    const bg = isBase ? baseBg : '';
+    let d;
+    if (fmt==='$') d = fmtMoney(v);
+    else if (fmt==='%') d = (v*100).toFixed(1)+'%';
+    else if (fmt==='x') d = v.toFixed(2)+'x';
+    else d = v.toLocaleString();
+    const fc = fmt==='%' ? 'color:#60a5fa;' : (fmt==='x' ? (v>=1?'color:#34d399;':'color:#f87171;') : (v>=0?'color:#e5e7eb;':'color:#f87171;'));
+    return `<td style="${td}${bb}${bg}${fc}font-weight:500;">${d}</td>`;
+  }
+
+  let moicRow = '', roeRow = '';
+  if (eq > 0) {
+    const roes = scens.map(s => (Math.min(s.netAt, eq*hr) + Math.max(0, s.netAt - eq*hr)*sp) / eq);
+    const moics = scens.map(s => (eq + Math.min(s.netAt, eq*hr) + Math.max(0, s.netAt - eq*hr)*sp) / eq);
+    roeRow = `<tr><td style="${tdL}${bb}">Return on Equity</td>${roes.map((v,i) => cell(v,'%',i===1)).join('')}</tr>`;
+    moicRow = `<tr><td style="${tdL}${bb}font-weight:600;color:#e5e7eb;">MOIC</td>${moics.map((v,i) => cell(v,'x',i===1)).join('')}</tr>`;
+  }
+
+  return `<div id="fd-iv-popup" style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:8px;z-index:9999;width:420px;background:#0c0c0c;border:1px solid rgba(255,255,255,0.1);box-shadow:0 20px 60px rgba(0,0,0,0.8);opacity:0;pointer-events:none;transition:opacity 0.2s ease;" onmouseenter="this.style.opacity='1';this.style.pointerEvents='auto';" onmouseleave="this.style.opacity='0';this.style.pointerEvents='none';">
+    <div style="padding:10px 14px 6px;border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="font-size:9px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.3);">Investor View</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="${th}color:#4b5563;text-align:left;"></th>
+        <th style="${th}color:#6b7280;text-align:right;">85%</th>
+        <th style="${th}color:#93c5fd;text-align:right;${baseBg}">95% ★</th>
+        <th style="${th}color:#6b7280;text-align:right;">100%</th>
+      </tr></thead>
+      <tbody>
+        <tr><td style="${tdL}${bb}">Gross Revenue</td>${scens.map((s,i) => cell(s.gross,'$',i===1)).join('')}</tr>
+        <tr><td style="${tdL}${bb}">Total Costs</td>${scens.map((s,i) => cell(s.costs,'$',i===1)).join('')}</tr>
+        <tr><td style="${tdL}${bb}font-weight:600;color:#e5e7eb;">Net Profit</td>${scens.map((s,i) => cell(s.net,'$',i===1)).join('')}</tr>
+        <tr><td colspan="4" style="height:4px;"></td></tr>
+        <tr><td style="${tdL}${bb}">ROI (Pre-Tax)</td>${scens.map((s,i) => cell(s.roi,'%',i===1)).join('')}</tr>
+        ${roeRow}
+        ${moicRow}
+        <tr><td colspan="4" style="height:4px;"></td></tr>
+        <tr><td style="${tdL}">Attendance</td>${scens.map((s,i) => cell(s.att,'#',i===1)).join('')}</tr>
+      </tbody>
+    </table>
+    <div style="padding:6px 14px 8px;font-size:8px;color:#4b5563;font-style:italic;border-top:1px solid rgba(255,255,255,0.04);">Pre-tax · ${c.n} show${c.n!==1?'s':''} · ${c.num_cities} cit${c.num_cities!==1?'ies':'y'}${inv ? ' · '+escHtml(inv.label||'Scenario A') : ''}</div>
+  </div>`;
+}
+
 function fdKPIStripHTML(c, p) {
   const rc  = c.net_profit >= 0 ? 'text-emerald-400' : 'text-red-400';
   const numCities = c.num_cities || 1;
@@ -7084,7 +7175,7 @@ function fdKPIStripHTML(c, p) {
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Total Costs</span><div class="fd-kpi-num" style="color:rgba(204,100,55,0.85);">${fmtMoney(c.total_costs)}</div><div class="fd-kpi-sub">MG + ticketing + ops</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Net Profit</span><div class="fd-kpi-num ${rc}">${fmtMoney(c.net_profit)}</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">${roiLabel}</span><div class="fd-kpi-num ${roiColor}">${(adjRoi*100).toFixed(2)}%</div><div class="fd-kpi-sub">${c.invested_capital > 0 ? 'on ' + fmtMoney(c.invested_capital) + ' capital' : 'on total costs'}</div>${optimizerBtn}</div>
-    <div class="fd-kpi-cell"><span class="fd-kpi-label">ROI (Absolute)</span><div class="fd-kpi-num ${absColor}">${(absReturn*100).toFixed(2)}%</div><div class="fd-kpi-sub">post-tax ÷ invested capital</div></div>
+    <div class="fd-kpi-cell" style="position:relative;cursor:pointer;" onmouseenter="document.getElementById('fd-iv-popup').style.opacity='1';document.getElementById('fd-iv-popup').style.pointerEvents='auto';" onmouseleave="document.getElementById('fd-iv-popup').style.opacity='0';document.getElementById('fd-iv-popup').style.pointerEvents='none';"><span class="fd-kpi-label">ROI (Absolute)</span><div class="fd-kpi-num ${absColor}">${(absReturn*100).toFixed(2)}%</div><div class="fd-kpi-sub">post-tax ÷ invested capital</div>${fdInvestorViewPopupHTML(p, c)}</div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Break-even Fill</span><div class="fd-kpi-num ${befColor}">${befDisplay}</div><div class="fd-kpi-sub">fill rate to break even</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Best MOIC</span><div class="fd-kpi-num ${mc}">${bestMoic > 0 ? bestMoic.toFixed(2)+'x' : '—'}</div></div>
   </div>`;
