@@ -12,6 +12,8 @@ DATA_DIR = BASE_DIR / "data"
 RAW_DIR = DATA_DIR / "raw"
 OUTPUT_DIR = DATA_DIR / "output"
 MANUAL_DIR = DATA_DIR / "manual"
+PERSISTENT_DIR = Path(os.getenv("USER_DATA_DIR", str(DATA_DIR)))
+DB_PATH = PERSISTENT_DIR / "artist_dashboard.db"
 
 # setlist.fm
 SETLISTFM_API_KEY = os.getenv("SETLISTFM_API_KEY", "")

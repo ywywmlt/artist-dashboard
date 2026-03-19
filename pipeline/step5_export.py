@@ -24,6 +24,7 @@ EXPORT_COLUMNS = [
     "momentum_7d", "momentum_30d", "popularity", "followers",
     "management_company", "booking_agency", "record_label", "publisher",
     "rostr_profile_url",
+    "source",
 ]
 
 
@@ -125,7 +126,11 @@ def merge_all() -> list[dict]:
             record_label=ro.get("label"),
             publisher=ro.get("publisher"),
             rostr_profile_url=ro.get("rostr_profile_url"),
+            source=artist.get("source", "kworb"),
         )
+        # For custom artists, update monthly_listeners from Spotify if available
+        if artist.get("source") == "custom" and sp.get("followers"):
+            record.monthly_listeners = sp.get("followers", 0)
         merged.append(record.to_dict())
 
     # Sort by monthly_listeners descending, re-rank

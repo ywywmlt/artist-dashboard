@@ -43,6 +43,35 @@ def extract_spotify_id(href: str) -> Optional[str]:
     return match.group(1) if match else None
 
 
+def _append_custom_artists(artists: list[dict], scraped_at: str) -> list[dict]:
+    """Append user-added custom artists not already in the kworb seed."""
+    try:
+        from db import get_all_custom_artist_ids
+        custom_ids = get_all_custom_artist_ids()
+    except Exception as e:
+        logger.debug(f"No custom artists loaded: {e}")
+        return artists
+
+    existing_ids = {a["spotify_id"] for a in artists}
+    added = 0
+    for sid, name in custom_ids:
+        if sid in existing_ids:
+            continue
+        artists.append(ArtistSeed(
+            rank=0,  # will be re-ranked in export step
+            name=name or f"Custom ({sid[:8]}...)",
+            spotify_id=sid,
+            monthly_listeners=0,
+            daily_change=0,
+            scraped_at=scraped_at,
+            source="custom",
+        ).to_dict())
+        added += 1
+    if added:
+        logger.info(f"Appended {added} custom artists to seed")
+    return artists
+
+
 def run() -> list[dict]:
     """Scrape kworb.net and return list of ArtistSeed dicts."""
     logger.info("Step 1: Scraping kworb.net top artists...")
@@ -90,6 +119,10 @@ def run() -> list[dict]:
         artists.append(artist.to_dict())
 
     logger.info(f"Scraped {len(artists)} artists from kworb.net")
+
+    # Append user-added custom artists
+    artists = _append_custom_artists(artists, scraped_at)
+
     save_json(artists, "kworb_seed.json")
     append_listener_snapshot(artists)
     return artists

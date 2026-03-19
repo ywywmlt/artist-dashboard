@@ -103,9 +103,12 @@ def run() -> list[dict]:
         clear_checkpoint("step_spotify")
         done_ids = set()
 
-    # Only enrich the top N artists — individual calls are ~300ms each
+    # Enrich top N kworb artists + all custom artists
+    custom_ids = {a["spotify_id"] for a in seed if a.get("source") == "custom"}
     target_seed = seed[:TOP_N_ARTISTS]
-    all_ids = [a["spotify_id"] for a in target_seed if a["spotify_id"] not in done_ids]
+    target_ids = {a["spotify_id"] for a in target_seed}
+    target_ids |= custom_ids  # always include custom artists
+    all_ids = [a["spotify_id"] for a in seed if a["spotify_id"] in target_ids and a["spotify_id"] not in done_ids]
     batches = [all_ids[i:i + BATCH_SIZE] for i in range(0, len(all_ids), BATCH_SIZE)]
 
     logger.info(f"Fetching top {TOP_N_ARTISTS} artists ({len(all_ids)} remaining) in {len(batches)} batches...")

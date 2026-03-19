@@ -18,6 +18,7 @@ class ArtistSeed:
     peak_listeners: Optional[int] = None
     peak_listener_date: Optional[str] = None
     scraped_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    source: str = "kworb"  # "kworb" or "custom"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -103,6 +104,7 @@ class ArtistEnriched:
     record_label: Optional[str] = None
     publisher: Optional[str] = None
     rostr_profile_url: Optional[str] = None
+    source: str = "kworb"  # "kworb" or "custom"
 
     def to_dict(self) -> dict:
         return asdict(self)
