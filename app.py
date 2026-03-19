@@ -17,6 +17,28 @@ from config import TICKETMASTER_API_KEY
 
 import db
 
+_data_cache = {}
+_CACHE_TTL = 60
+
+
+def _load_cached_json(filename):
+    """Load a JSON file from DATA_DIR/raw with 60s cache."""
+    import time as _time
+    key = filename
+    now = _time.time()
+    if key in _data_cache and now - _data_cache[key]["ts"] < _CACHE_TTL:
+        return _data_cache[key]["data"]
+    filepath = DATA_DIR / "raw" / filename
+    if not filepath.exists():
+        return []
+    try:
+        data = json.loads(filepath.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+    _data_cache[key] = {"data": data, "ts": now}
+    return data
+
+
 SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 # Persist the generated key so sessions survive within a single process lifetime
 os.environ.setdefault("SECRET_KEY", SECRET_KEY)
@@ -234,6 +256,28 @@ def refresh_events():
 @app.route("/api/events/refresh/status")
 def refresh_status():
     return jsonify(_refresh)
+
+
+@app.route("/api/events/refresh/stream")
+def refresh_stream():
+    """SSE stream for pipeline refresh progress."""
+    import time as _time
+    def generate():
+        last_state = None
+        while True:
+            state = json.dumps(_refresh)
+            if state != last_state:
+                yield f"data: {state}\n\n"
+                last_state = state
+                if not _refresh["running"] and _refresh["progress"] >= 100:
+                    yield f"data: {json.dumps({**_refresh, 'done': True})}\n\n"
+                    break
+                if _refresh.get("error"):
+                    yield f"data: {json.dumps({**_refresh, 'done': True})}\n\n"
+                    break
+            _time.sleep(0.5)
+    return app.response_class(generate(), mimetype='text/event-stream',
+                               headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 @app.route("/api/debug/spotify")
@@ -523,6 +567,121 @@ def api_delete_custom_artist(spotify_id):
     if not db.delete_custom_artist(session["username"], spotify_id):
         return jsonify({"error": "Artist not found"}), 404
     return jsonify({"ok": True}), 200
+
+
+# ── Artist search/filter API ──────────────────────────────────────────────────
+
+def _merge_artist_data():
+    """Load and merge seed + touring + musicbrainz data by spotify_id."""
+    seed = _load_cached_json("kworb_seed.json")
+    touring = _load_cached_json("touring_data.json")
+    mb = _load_cached_json("musicbrainz_data.json")
+
+    touring_map = {t["spotify_id"]: t for t in touring if isinstance(t, dict) and "spotify_id" in t}
+    mb_map = {m["spotify_id"]: m for m in mb if isinstance(m, dict) and "spotify_id" in m}
+
+    merged = []
+    for artist in seed:
+        if not isinstance(artist, dict) or "spotify_id" not in artist:
+            continue
+        sid = artist["spotify_id"]
+        entry = {**artist}
+        if sid in touring_map:
+            entry["touring"] = touring_map[sid]
+        if sid in mb_map:
+            entry["mb"] = mb_map[sid]
+        merged.append(entry)
+    return merged
+
+
+@app.route("/api/artists")
+def api_artists():
+    """Paginated, filtered artist search endpoint."""
+    # Parse query params
+    q = (request.args.get("q") or "").strip().lower()
+    genre = (request.args.get("genre") or "").strip().lower()
+    country = (request.args.get("country") or "").strip()
+    touring_filter = (request.args.get("touring") or "").strip().lower()
+    sort = (request.args.get("sort") or "rank").strip().lower()
+    try:
+        limit = min(int(request.args.get("limit", 25)), 100)
+    except (ValueError, TypeError):
+        limit = 25
+    if limit < 1:
+        limit = 25
+    try:
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (ValueError, TypeError):
+        offset = 0
+
+    artists = _merge_artist_data()
+
+    # Filter by text search on name
+    if q:
+        artists = [a for a in artists if q in a.get("name", "").lower()]
+
+    # Filter by genre (from musicbrainz data)
+    if genre:
+        artists = [a for a in artists
+                   if any(genre == g.lower() for g in a.get("mb", {}).get("genres", []))]
+
+    # Filter by country (from musicbrainz data)
+    if country:
+        artists = [a for a in artists
+                   if a.get("mb", {}).get("country", "").upper() == country.upper()]
+
+    # Filter by touring status
+    if touring_filter == "true":
+        artists = [a for a in artists if a.get("touring", {}).get("is_touring")]
+    elif touring_filter == "false":
+        artists = [a for a in artists if not a.get("touring", {}).get("is_touring")]
+
+    # Sort
+    if sort == "listeners":
+        artists.sort(key=lambda a: a.get("monthly_listeners", 0), reverse=True)
+    elif sort == "change":
+        artists.sort(key=lambda a: a.get("daily_change", 0), reverse=True)
+    elif sort == "events":
+        artists.sort(key=lambda a: a.get("touring", {}).get("recent_event_count", 0), reverse=True)
+    else:
+        # Default: sort by rank
+        artists.sort(key=lambda a: a.get("rank", 99999))
+
+    total = len(artists)
+    page = artists[offset:offset + limit]
+
+    return jsonify({"artists": page, "total": total, "limit": limit, "offset": offset})
+
+
+@app.route("/api/artists/summary")
+def api_artists_summary():
+    """Return KPI summary data without sending all artists."""
+    artists = _merge_artist_data()
+    total = len(artists)
+    touring_count = sum(1 for a in artists if a.get("touring", {}).get("is_touring"))
+
+    genres_set = set()
+    countries_set = set()
+    for a in artists:
+        mb = a.get("mb", {})
+        for g in mb.get("genres", []):
+            if g:
+                genres_set.add(g)
+        c = mb.get("country")
+        if c:
+            countries_set.add(c)
+
+    # Top 10 by rank
+    by_rank = sorted(artists, key=lambda a: a.get("rank", 99999))
+    top10 = by_rank[:10]
+
+    return jsonify({
+        "total": total,
+        "touring": touring_count,
+        "genres": len(genres_set),
+        "countries": len(countries_set),
+        "top10": top10,
+    })
 
 
 if __name__ == "__main__":

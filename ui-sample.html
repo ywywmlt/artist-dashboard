@@ -4321,8 +4321,20 @@ function showCityDetail(rank) {
   detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// ─── SSE refresh stream helper ───
+function startRefreshStream(onProgress, onComplete) {
+  const es = new EventSource('/api/events/refresh/stream');
+  es.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    if (onProgress) onProgress(d);
+    if (d.done) { es.close(); if (onComplete) onComplete(d); }
+  };
+  es.onerror = () => { es.close(); if (onComplete) onComplete({error: 'Connection lost'}); };
+  return es;
+}
+
 // ─── TOUR CALENDAR ───
-let _refreshPollTimer = null;
+let _refreshEventSource = null;
 
 async function loadCalendarData() {
   calendarLoaded = true;
@@ -4362,14 +4374,14 @@ async function startRefresh() {
     return;
   }
 
-  if (_refreshPollTimer) clearInterval(_refreshPollTimer);
-  _refreshPollTimer = setInterval(async () => {
-    const s = await fetch('/api/events/refresh/status').then(r => r.json());
-    bar.style.width = s.progress + '%';
-    document.getElementById('cal-status').textContent = s.message || '';
-
-    if (!s.running) {
-      clearInterval(_refreshPollTimer);
+  if (_refreshEventSource) { _refreshEventSource.close(); _refreshEventSource = null; }
+  _refreshEventSource = startRefreshStream(
+    (s) => {
+      bar.style.width = s.progress + '%';
+      document.getElementById('cal-status').textContent = s.message || '';
+    },
+    (s) => {
+      _refreshEventSource = null;
       barWrap.classList.add('hidden');
       btn.disabled = false;
       btn.textContent = 'Refresh Events';
@@ -4380,7 +4392,7 @@ async function startRefresh() {
         document.getElementById('cal-status').textContent = 'Error: ' + s.error;
       }
     }
-  }, 2000);
+  );
 }
 
 function renderCalendarKPIs(events) {
@@ -10939,7 +10951,7 @@ async function accountChangePassword() {
 
 // ─── Settings handlers ──────────────────────────────────────────────────────
 
-let _stnRefreshTimer = null;
+let _stnRefreshStream = null;
 function settingsStartRefresh() {
   const btn  = document.getElementById('stn-refresh-btn');
   const bar  = document.getElementById('stn-refresh-bar');
@@ -10952,22 +10964,24 @@ function settingsStartRefresh() {
   if (msg) msg.textContent = 'Starting pipeline…';
   fetch('/api/events/refresh', { method: 'POST' })
     .then(r => r.json())
-    .then(d => { if (d.status === 'started' || d.status === 'already_running') _stnPollRefresh(); })
+    .then(d => {
+      if (d.status === 'started' || d.status === 'already_running') {
+        if (_stnRefreshStream) { _stnRefreshStream.close(); _stnRefreshStream = null; }
+        _stnRefreshStream = startRefreshStream(
+          (s) => {
+            const bar = document.getElementById('stn-refresh-bar');
+            const msg = document.getElementById('stn-refresh-msg');
+            if (bar) bar.style.width = (s.progress || 0) + '%';
+            if (msg) msg.textContent = s.message || '';
+          },
+          (s) => {
+            _stnRefreshStream = null;
+            _stnRefreshDone(s.error ? ('Error: ' + s.error) : ('Done — ' + (s.last_run ? new Date(s.last_run).toLocaleTimeString() : '')));
+          }
+        );
+      }
+    })
     .catch(() => _stnRefreshDone('Error starting refresh'));
-}
-
-function _stnPollRefresh() {
-  clearTimeout(_stnRefreshTimer);
-  _stnRefreshTimer = setTimeout(() => {
-    fetch('/api/events/refresh/status').then(r => r.json()).then(d => {
-      const bar = document.getElementById('stn-refresh-bar');
-      const msg = document.getElementById('stn-refresh-msg');
-      if (bar) bar.style.width = (d.progress || 0) + '%';
-      if (msg) msg.textContent = d.message || '';
-      if (d.running) { _stnPollRefresh(); return; }
-      _stnRefreshDone(d.error ? ('Error: ' + d.error) : ('Done — ' + (d.last_run ? new Date(d.last_run).toLocaleTimeString() : '')));
-    }).catch(() => _stnRefreshDone('Connection error'));
-  }, 2000);
 }
 
 function _stnRefreshDone(text) {
@@ -11062,7 +11076,7 @@ async function settingsLoadApiStatus() {
 }
 
 // ─── Refresh ────────────────────────────────────────────────────────────────
-let _dataRefreshTimer = null;
+let _dataRefreshStream = null;
 function refreshData() {
   const btn = document.getElementById('refresh-btn');
   const icon = document.getElementById('refresh-icon');
@@ -11073,26 +11087,30 @@ function refreshData() {
   if (lbl) lbl.textContent = 'Refreshing\u2026';
   fetch('/api/events/refresh', { method: 'POST' })
     .then(r => r.json())
-    .then(d => { if (d.status === 'started' || d.status === 'already_running') _pollRefreshStatus(); })
+    .then(d => {
+      if (d.status === 'started' || d.status === 'already_running') {
+        if (_dataRefreshStream) { _dataRefreshStream.close(); _dataRefreshStream = null; }
+        _dataRefreshStream = startRefreshStream(
+          (s) => {
+            const lbl = document.getElementById('refresh-label');
+            if (lbl && s.message) lbl.textContent = s.progress < 100 ? s.progress + '% \u2014 ' + s.message.slice(0, 28) : 'Done!';
+          },
+          (s) => {
+            _dataRefreshStream = null;
+            if (s.error) { _refreshDone('Error'); return; }
+            Promise.all([
+              fetch('data/raw/kworb_seed.json').then(r => r.json()).catch(() => null),
+              fetch('data/raw/news_alerts.json').then(r => r.json()).catch(() => null),
+              fetch('data/raw/ticketmaster_events.json').then(r => r.json()).catch(() => null),
+            ]).then(([seed, news, events]) => {
+              if (seed) { location.reload(); return; }
+              _refreshDone('Refresh');
+            }).catch(() => _refreshDone('Error'));
+          }
+        );
+      }
+    })
     .catch(e => _refreshDone('Error'));
-}
-function _pollRefreshStatus() {
-  clearTimeout(_dataRefreshTimer);
-  _dataRefreshTimer = setTimeout(() => {
-    fetch('/api/events/refresh/status').then(r => r.json()).then(d => {
-      const lbl = document.getElementById('refresh-label');
-      if (lbl && d.message) lbl.textContent = d.progress < 100 ? d.progress + '% \u2014 ' + d.message.slice(0, 28) : 'Done!';
-      if (d.running) { _pollRefreshStatus(); return; }
-      Promise.all([
-        fetch('data/raw/kworb_seed.json').then(r => r.json()).catch(() => null),
-        fetch('data/raw/news_alerts.json').then(r => r.json()).catch(() => null),
-        fetch('data/raw/ticketmaster_events.json').then(r => r.json()).catch(() => null),
-      ]).then(([seed, news, events]) => {
-        if (seed) { location.reload(); return; }
-        _refreshDone(d.error ? 'Error' : 'Refresh');
-      }).catch(() => _refreshDone('Error'));
-    }).catch(() => _refreshDone('Error'));
-  }, 2500);
 }
 function _refreshDone(label) {
   const btn = document.getElementById('refresh-btn');
