@@ -1793,6 +1793,29 @@ async function loadData() {
   window.rostrIntel = null;
   window.listenerHistory = null;
 
+  document.getElementById('page-subtitle').innerHTML =
+    `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${artists[0] ? new Date(artists[0].scraped_at).toLocaleDateString() : '—'} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
+  document.getElementById('refresh-btn')?.classList.remove('hidden');
+
+  // Count alerts: artists losing > 200K listeners/day
+  const alertCount = artists.filter(a => a.daily_change < -200000).length;
+  document.getElementById('alert-count').textContent = alertCount;
+
+  // Apply stored display preferences
+  const _gkPrefs = (() => { try { return JSON.parse(localStorage.getItem('gk_prefs') || '{}'); } catch(e) { return {}; } })();
+  if (_gkPrefs.per_page) artistsPerPage = parseInt(_gkPrefs.per_page, 10) || 25;
+
+  watchlistLoad();
+  contactsLoad();
+  amLoad(); mhLoad(); csLoad(); psLoad();
+  populateTableFilters();
+  triggeredAlerts = checkThresholds();
+  fireThresholdNotifications(triggeredAlerts);
+  renderDashboard();
+  renderVenuesPage();
+  // If artist page is already active (unlikely but safe), populate the grid now
+  if (document.getElementById('page-artist')?.classList.contains('active')) showArtistList();
+
   // Load heavy files in background after dashboard renders
   loadDeferredData();
 }
@@ -1849,30 +1872,6 @@ function renderDashboardDeferred() {
   }
   // Re-render rostr signings
   if (window.rostrIntel && typeof renderRostrSignings === 'function') renderRostrSignings('all');
-}
-
-  document.getElementById('page-subtitle').innerHTML =
-    `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${artists[0] ? new Date(artists[0].scraped_at).toLocaleDateString() : '—'} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
-  document.getElementById('refresh-btn')?.classList.remove('hidden');
-
-  // Count alerts: artists losing > 200K listeners/day
-  const alertCount = artists.filter(a => a.daily_change < -200000).length;
-  document.getElementById('alert-count').textContent = alertCount;
-
-  // Apply stored display preferences
-  const _gkPrefs = (() => { try { return JSON.parse(localStorage.getItem('gk_prefs') || '{}'); } catch(e) { return {}; } })();
-  if (_gkPrefs.per_page) artistsPerPage = parseInt(_gkPrefs.per_page, 10) || 25;
-
-  watchlistLoad();
-  contactsLoad();
-  amLoad(); mhLoad(); csLoad(); psLoad();
-  populateTableFilters();
-  triggeredAlerts = checkThresholds();
-  fireThresholdNotifications(triggeredAlerts);
-  renderDashboard();
-  renderVenuesPage();
-  // If artist page is already active (unlikely but safe), populate the grid now
-  if (document.getElementById('page-artist')?.classList.contains('active')) showArtistList();
 }
 
 // ─── Momentum Leaderboard ───
