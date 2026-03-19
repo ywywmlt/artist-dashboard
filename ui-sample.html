@@ -7000,6 +7000,8 @@ function fdRefreshScen(scenId) {
   // KPI strip shows best MOIC across all scenarios
   const kpi = document.getElementById('fd-kpi-strip');
   if (kpi) kpi.innerHTML = fdKPIStripHTML(c, p);
+  const ivEl = document.getElementById('fd-investor-view');
+  if (ivEl) ivEl.innerHTML = fdInvestorViewHTML(p, c);
   fdUpdateSens();
   // Restore focus to whichever investor input was active
   if (aeId) {
@@ -7019,6 +7021,7 @@ function fdUpdateLive() {
   upd('fd-addl-derived', fdAddlDerivedHTML(p, c));
   upd('fd-costs-summary',fdCostSummaryHTML(c));
   upd('fd-pl-summary',   fdPLSummaryHTML(p, c));
+  upd('fd-investor-view', fdInvestorViewHTML(p, c));
   upd('fd-cf-section',   fdCashFlowHTML(p, c));
   upd('fd-completeness',    fdCompletenessHTML(p));
   upd('fd-artist-profile',  fdArtistProfileHTML(p));
@@ -7235,6 +7238,123 @@ function fdScenResultHTML(c, scen) {
 
   html += `</div>`;
   return html;
+}
+
+function fdInvestorViewHTML(p, c) {
+  // Compute sell-through scenarios at 85%, 95%, 100%
+  const pcts = [0.85, 0.95, 1.00];
+  const labels = ['Conservative', 'Base Case', 'Upside'];
+  const co = p.costs || {};
+  const feePct = Number(co.ticketing_fee_pct) || 0;
+  const mPS = Number(p.additional_revenue?.merch_per_show) || 0;
+  const fHead = Number(p.additional_revenue?.fnb_per_head) || 0;
+  const fPct = Number(p.additional_revenue?.fnb_pct) || 0;
+  const spPS = Number(p.additional_revenue?.sponsorship_per_show) || 0;
+
+  // Full-capacity baselines from city calcs
+  let fullTkt = 0, fullSeats = 0;
+  for (const cc of c.cityCalcs) {
+    const cats = cc.cats || [];
+    fullSeats += cats.reduce((s, cat) => s + (Number(cat.count)||0), 0) * cc.shows;
+    fullTkt += cats.reduce((s, cat) => s + (Number(cat.price)||0) * (Number(cat.count)||0), 0) * cc.shows;
+  }
+  const artistMG = c.artist_mg_cost || 0;
+  const opAll = c.total_op_costs || 0;
+  const agFees = Number(co.agency_fees) || 0;
+  const bfFees = Number(co.blufin_fees) || 0;
+  const taxRt = Number(co.tax_rate) || 0;
+
+  const scens = pcts.map(pct => {
+    const tkt = fullTkt * pct;
+    const fee = tkt * feePct;
+    const fnb = fHead * fPct * (fullSeats * pct);
+    const merch = mPS * c.n;
+    const spon = spPS * c.n;
+    const gross = tkt + merch + fnb + spon;
+    const costs = artistMG + opAll + agFees + bfFees + fee;
+    const net = gross - costs;
+    const tax = net > 0 ? net * taxRt : 0;
+    const netAt = net - tax;
+    const roi = costs > 0 ? net / costs : 0;
+    const att = Math.round(fullSeats * pct);
+    return { pct, gross, costs, net, netAt, roi, att };
+  });
+
+  // First investor scenario
+  const invScen = (p.investor_scenarios || []).find(s => Number(s.equity) > 0) || null;
+  const eq = invScen ? Number(invScen.equity) : 0;
+  const hr = invScen ? Number(invScen.hurdle_rate) || 0.20 : 0;
+  const sp = invScen ? Number(invScen.above_hurdle_investor_pct) || 0.50 : 0;
+
+  function ivCell(val, fmt, isBase, opts) {
+    opts = opts || {};
+    const bg = isBase ? 'background:rgba(30,64,175,0.06);' : '';
+    const fc = opts.color || (isBase ? '#1e40af' : '#e5e7eb');
+    const fw = opts.bold ? 'font-weight:700;' : 'font-weight:500;';
+    const fs = opts.large ? 'font-size:15px;' : 'font-size:12px;';
+    let display;
+    if (fmt === '$') display = fmtMoney(val);
+    else if (fmt === '%') display = (val * 100).toFixed(1) + '%';
+    else if (fmt === 'x') display = val.toFixed(2) + 'x';
+    else display = val.toLocaleString();
+    return `<td style="padding:10px 16px;text-align:right;${bg}${fw}${fs}color:${fc};border-bottom:1px solid rgba(255,255,255,0.04);">${display}</td>`;
+  }
+
+  const rows = [];
+  // Gross Revenue
+  rows.push('<tr>' + '<td style="padding:10px 16px;color:#9ca3af;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">Gross Revenue</td>' +
+    scens.map((s,i) => ivCell(s.gross, '$', i===1)).join('') + '</tr>');
+  // Total Costs
+  rows.push('<tr>' + '<td style="padding:10px 16px;color:#9ca3af;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">Total Costs</td>' +
+    scens.map((s,i) => ivCell(s.costs, '$', i===1)).join('') + '</tr>');
+  // Net Profit
+  rows.push('<tr>' + '<td style="padding:10px 16px;color:#f5f5f5;font-size:11px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.08);">Net Profit</td>' +
+    scens.map((s,i) => ivCell(s.net, '$', i===1, {bold:true, color: s.net >= 0 ? '#10b981' : '#ef4444'})).join('') + '</tr>');
+  // Spacer
+  rows.push('<tr><td colspan="4" style="height:6px;"></td></tr>');
+  // ROI
+  rows.push('<tr>' + '<td style="padding:10px 16px;color:#9ca3af;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">ROI (Pre-Tax)</td>' +
+    scens.map((s,i) => ivCell(s.roi, '%', i===1, {color:'#3b82f6'})).join('') + '</tr>');
+
+  if (eq > 0) {
+    const roes = scens.map(s => {
+      const net = s.netAt;
+      return (Math.min(net, eq * hr) + Math.max(0, net - eq * hr) * sp) / eq;
+    });
+    const moics = scens.map(s => {
+      const net = s.netAt;
+      return (eq + Math.min(net, eq * hr) + Math.max(0, net - eq * hr) * sp) / eq;
+    });
+    rows.push('<tr>' + `<td style="padding:10px 16px;color:#9ca3af;font-size:11px;border-bottom:1px solid rgba(255,255,255,0.04);">Return on Equity (${escHtml(invScen.label||'Scenario A')})</td>` +
+      roes.map((v,i) => ivCell(v, '%', i===1, {color:'#3b82f6'})).join('') + '</tr>');
+    rows.push('<tr>' + `<td style="padding:10px 16px;color:#f5f5f5;font-size:11px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.08);">Investor MOIC (${escHtml(invScen.label||'Scenario A')})</td>` +
+      moics.map((v,i) => ivCell(v, 'x', i===1, {bold:true, large:true, color: v >= 1 ? '#10b981' : '#ef4444'})).join('') + '</tr>');
+  }
+
+  // Spacer + Attendance
+  rows.push('<tr><td colspan="4" style="height:6px;"></td></tr>');
+  rows.push('<tr>' + '<td style="padding:10px 16px;color:#9ca3af;font-size:11px;">Implied Attendance</td>' +
+    scens.map((s,i) => ivCell(s.att, '#', i===1)).join('') + '</tr>');
+
+  const hdrStyle = 'padding:12px 16px;text-align:center;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;';
+  return `<div style="border:1px solid rgba(255,255,255,0.07);background:#0a0a0a;overflow:hidden;">
+    <div style="padding:20px 20px 4px;border-bottom:1px solid rgba(255,255,255,0.05);">
+      <div style="font-size:10px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:4px;">Investor View</div>
+      <div style="font-size:9px;color:#6b7280;">Pre-tax sell-through scenario analysis${eq > 0 ? ' · ' + escHtml(invScen.label) + ' (' + fmtMoney(eq) + ' equity)' : ''}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr>
+        <th style="${hdrStyle}color:#6b7280;text-align:left;background:#0f0f0f;"></th>
+        <th style="${hdrStyle}color:#9ca3af;background:#0f0f0f;">85%</th>
+        <th style="${hdrStyle}color:#93c5fd;background:rgba(30,64,175,0.12);border-left:1px solid rgba(30,64,175,0.15);border-right:1px solid rgba(30,64,175,0.15);">95% ★</th>
+        <th style="${hdrStyle}color:#9ca3af;background:#0f0f0f;">100%</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+    <div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,0.05);font-size:9px;color:#6b7280;font-style:italic;">
+      All figures pre-tax, based on ${c.n} show${c.n!==1?'s':''} across ${c.num_cities} cit${c.num_cities!==1?'ies':'y'}.
+    </div>
+  </div>`;
 }
 
 function fdCashFlowHTML(p, c) {
@@ -8875,6 +8995,9 @@ function fdRenderLive(p) {
       <div class="text-[9px] text-slate-500 mb-3 leading-relaxed">Waterfall: ① Return of capital → ② Preferred return (100% investor up to hurdle) → ③ Above hurdle: investor % / (100% − investor %) BluFin</div>
       <div class="flex gap-3 flex-wrap">${scenCards}</div>
     </div>
+
+    <!-- Investor View — Sell-Through Scenarios -->
+    <div id="fd-investor-view">${fdInvestorViewHTML(p,c)}</div>
 
     <!-- Monthly Cash Flow -->
     <div class="glass rounded-xl p-4">
