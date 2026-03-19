@@ -40,20 +40,33 @@ def get_session() -> requests.Session:
 
 
 def save_json(data: Any, filename: str, directory: Path = RAW_DIR) -> Path:
-    """Save data as JSON to the specified directory."""
+    """Save data as JSON to the specified directory (atomic write)."""
     directory.mkdir(parents=True, exist_ok=True)
     filepath = directory / filename
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    tmp = filepath.with_suffix(filepath.suffix + ".tmp")
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        tmp.replace(filepath)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     logger.info(f"Saved {filepath} ({len(data) if isinstance(data, list) else 'object'} records)")
     return filepath
 
 
 def load_json(filename: str, directory: Path = RAW_DIR) -> Any:
-    """Load JSON from the specified directory."""
+    """Load JSON from the specified directory. Returns [] on missing/corrupt files."""
     filepath = directory / filename
-    with open(filepath, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if not filepath.exists():
+        logger.warning(f"File not found: {filepath}")
+        return []
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"Failed to load {filepath}: {e}")
+        return []
 
 
 class RateLimiter:
@@ -146,7 +159,13 @@ def append_listener_snapshot(artists: list[dict]) -> None:
         updated += 1
 
     HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    HISTORY_FILE.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+    tmp = HISTORY_FILE.with_suffix(".json.tmp")
+    try:
+        tmp.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(HISTORY_FILE)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     logger.info(f"Listener history updated: {updated} artists appended (total tracked: {len(history)})")
 
 

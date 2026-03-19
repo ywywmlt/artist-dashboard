@@ -50,7 +50,8 @@ def generate_listener_alerts(seed: list[dict], history: dict) -> list[dict]:
         mom = compute_momentum(entries)
         m7 = mom["momentum_7d"]
         if m7 >= SPIKE_THRESHOLD_7D:
-            listeners_gained = entries[-1]["listeners"] - entries[max(0, len(entries)-8)]["listeners"]
+            idx_past = max(0, len(entries) - 1 - 7)
+            listeners_gained = entries[-1]["listeners"] - entries[idx_past]["listeners"]
             alerts.append({
                 "id": f"spike_{sid}_{entries[-1]['date']}",
                 "type": "listener_spike",
@@ -62,7 +63,8 @@ def generate_listener_alerts(seed: list[dict], history: dict) -> list[dict]:
                 "dismissed": False,
             })
         elif m7 <= DROP_THRESHOLD_7D:
-            listeners_lost = entries[-1]["listeners"] - entries[max(0, len(entries)-8)]["listeners"]
+            idx_past = max(0, len(entries) - 1 - 7)
+            listeners_lost = entries[-1]["listeners"] - entries[idx_past]["listeners"]
             alerts.append({
                 "id": f"drop_{sid}_{entries[-1]['date']}",
                 "type": "listener_drop",
@@ -113,8 +115,14 @@ def generate_touring_alerts(seed: list[dict]) -> list[dict]:
                 "dismissed": False,
             })
 
-    # Save new state as the next prev
-    prev_file.write_text(json.dumps(new_state, ensure_ascii=False), encoding="utf-8")
+    # Save new state as the next prev (atomic write)
+    tmp = prev_file.with_suffix(".json.tmp")
+    try:
+        tmp.write_text(json.dumps(new_state, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(prev_file)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
     return alerts
 
 

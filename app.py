@@ -1,6 +1,9 @@
 import os
 import json
+import re
 import secrets
+import time
+from collections import defaultdict
 from functools import wraps
 from pathlib import Path
 from flask import Flask, send_file, jsonify, request, session
@@ -10,10 +13,32 @@ import threading
 from datetime import datetime
 from config import TICKETMASTER_API_KEY
 
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
+SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+# Persist the generated key so sessions survive within a single process lifetime
+os.environ.setdefault("SECRET_KEY", SECRET_KEY)
 
 app = Flask(__name__, static_folder="data", static_url_path="/data")
 app.secret_key = SECRET_KEY
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+
+# ── Username validation ───────────────────────────────────────────────────────
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+def _validate_username(username: str) -> str | None:
+    """Return an error message if username is invalid, else None."""
+    if not username:
+        return "Username required"
+    if not _USERNAME_RE.match(username):
+        return "Username must be 1-64 characters: letters, digits, hyphens, underscores only"
+    return None
+
+
+# ── Login rate limiting ───────────────────────────────────────────────────────
+_login_attempts: dict[str, list[float]] = defaultdict(list)
+_LOGIN_WINDOW = 300    # 5 minutes
+_LOGIN_MAX_ATTEMPTS = 10
 
 TICKETMASTER_BASE = "https://app.ticketmaster.com/discovery/v2/events.json"
 
@@ -85,7 +110,13 @@ def _load_users():
 
 def _save_users(users):
     _ensure_dirs()
-    USERS_FILE.write_text(json.dumps(users, indent=2))
+    tmp = USERS_FILE.with_suffix(".json.tmp")
+    try:
+        tmp.write_text(json.dumps(users, indent=2))
+        tmp.replace(USERS_FILE)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def _get_user(username):
@@ -94,8 +125,12 @@ def _get_user(username):
 
 def _user_data_path(username):
     user_dir = USERS_DATA_DIR / username
-    user_dir.mkdir(exist_ok=True)
-    return user_dir / "data.json"
+    # Guard against path traversal — resolve and verify it stays inside USERS_DATA_DIR
+    resolved = user_dir.resolve()
+    if not str(resolved).startswith(str(USERS_DATA_DIR.resolve())):
+        raise ValueError(f"Invalid username path: {username}")
+    resolved.mkdir(exist_ok=True)
+    return resolved / "data.json"
 
 
 def _load_user_data(username):
@@ -112,7 +147,13 @@ def _load_user_data(username):
 
 def _save_user_data(username, data):
     p = _user_data_path(username)
-    p.write_text(json.dumps(data, indent=2))
+    tmp = p.with_suffix(".json.tmp")
+    try:
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.replace(p)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def _seed_admin():
@@ -160,6 +201,7 @@ def admin_required(f):
 
 
 # ── Refresh job state ──────────────────────────────────────────────────────────
+_refresh_lock = threading.Lock()
 _refresh = {
     "running": False,
     "progress": 0,       # 0–100
@@ -201,7 +243,8 @@ def _run_refresh():
         _refresh["error"] = str(e)
         _refresh["message"] = f"Error: {e}"
     finally:
-        _refresh["running"] = False
+        with _refresh_lock:
+            _refresh["running"] = False
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -248,13 +291,14 @@ def refresh_events():
     if not is_authed_session and not is_cron:
         return jsonify({"error": "Authentication required"}), 401
 
-    if _refresh["running"]:
-        return jsonify({"status": "already_running", **_refresh}), 409
+    with _refresh_lock:
+        if _refresh["running"]:
+            return jsonify({"status": "already_running", **_refresh}), 409
 
-    _refresh["running"] = True
-    _refresh["progress"] = 0
-    _refresh["error"] = None
-    _refresh["message"] = "Starting..."
+        _refresh["running"] = True
+        _refresh["progress"] = 0
+        _refresh["error"] = None
+        _refresh["message"] = "Starting..."
 
     thread = threading.Thread(target=_run_refresh, daemon=True)
     thread.start()
@@ -316,6 +360,15 @@ def debug_spotify():
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
+    # Rate limiting by IP
+    ip = request.remote_addr or "unknown"
+    now = time.time()
+    attempts = _login_attempts[ip]
+    # Prune old attempts
+    _login_attempts[ip] = [t for t in attempts if now - t < _LOGIN_WINDOW]
+    if len(_login_attempts[ip]) >= _LOGIN_MAX_ATTEMPTS:
+        return jsonify({"error": "Too many login attempts. Try again later."}), 429
+
     data = request.get_json(force=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
@@ -323,6 +376,7 @@ def api_login():
         return jsonify({"error": "Username and password required"}), 400
     user = _get_user(username)
     if not user or not check_password_hash(user["password_hash"], password):
+        _login_attempts[ip].append(now)
         return jsonify({"error": "Invalid credentials"}), 401
     session["username"] = username
     session["role"] = user["role"]
@@ -461,8 +515,11 @@ def api_create_user():
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
     role = data.get("role", "user")
-    if not username or not password:
-        return jsonify({"error": "Username and password required"}), 400
+    err = _validate_username(username)
+    if err:
+        return jsonify({"error": err}), 400
+    if not password or len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
     if role not in ("admin", "user"):
         return jsonify({"error": "Role must be 'admin' or 'user'"}), 400
     users = _load_users()
@@ -511,8 +568,9 @@ def api_reset_password(username):
 def api_change_username():
     data = request.get_json(force=True) or {}
     new_username = (data.get("username") or "").strip()
-    if not new_username:
-        return jsonify({"error": "Username required"}), 400
+    err = _validate_username(new_username)
+    if err:
+        return jsonify({"error": err}), 400
     users = _load_users()
     if any(u["username"] == new_username for u in users):
         return jsonify({"error": "Username already taken"}), 409
@@ -525,7 +583,7 @@ def api_change_username():
     # Move user data directory
     old_dir = USERS_DATA_DIR / old_username
     new_dir = USERS_DATA_DIR / new_username
-    if old_dir.exists():
+    if old_dir.exists() and not new_dir.exists():
         old_dir.rename(new_dir)
     session["username"] = new_username
     return jsonify({"ok": True, "username": new_username}), 200
