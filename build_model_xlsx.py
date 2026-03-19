@@ -997,14 +997,188 @@ for i, (label, fa, fb, fmt, clr) in enumerate(inv_rows):
     r += 1
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB — INVESTOR VIEW  (clean 3-scenario sell-through presentation)
+# ═══════════════════════════════════════════════════════════════════════════════
+ws = wb.create_sheet("Investor View")
+ws.sheet_view.showGridLines = False
+
+# Column widths
+for c, w in [(1, 3), (2, 36), (3, 24), (4, 24), (5, 24)]:
+    cw(ws, c, w)
+
+# Styles specific to this sheet
+IV_BG       = fill("FFFFFF")
+IV_HDR_BG   = fill("111827")   # near-black header
+IV_BASE_BG  = fill("EFF6FF")   # light blue highlight for Base Case column
+IV_BASE_HDR = fill("1E40AF")   # darker blue for Base Case header
+IV_LABEL_FT = Font(size=11, color="374151")
+IV_VAL_FT   = Font(size=12, color="111827", bold=True)
+IV_PCT_FT   = Font(size=12, color="1D4ED8", bold=True)
+IV_MOIC_FT  = Font(size=14, color="065F46", bold=True)
+IV_NOTE_FT  = Font(size=9, color="6B7280", italic=True)
+IV_THIN     = Border(bottom=Side(style="thin", color="E5E7EB"))
+
+r = 1
+
+# ── Title block ──────────────────────────────────────────────────────────────
+ws.merge_cells("B1:E1")
+c = ws.cell(row=1, column=2, value="INVESTOR VIEW — PROJECT JUSTIN")
+c.font = Font(bold=True, color="111827", size=16)
+c.alignment = al("left", "center")
+rh(ws, 1, 36)
+r += 1
+
+ws.merge_cells("B2:E2")
+c = ws.cell(row=2, column=2, value="Pre-Tax Scenario Analysis  ·  Scenario A ($12M Equity)")
+c.font = Font(size=10, color="6B7280", italic=True)
+c.alignment = al("left")
+rh(ws, 2, 20)
+r += 2   # r = 4
+
+# ── Column headers ───────────────────────────────────────────────────────────
+for ci, (label, bg_) in [
+    (2, ("", IV_HDR_BG)),
+    (3, ("Conservative", IV_HDR_BG)),
+    (4, ("Base Case", IV_BASE_HDR)),
+    (5, ("Upside", IV_HDR_BG)),
+]:
+    c = ws.cell(row=r, column=ci, value=label)
+    c.fill = bg_
+    c.font = Font(bold=True, color="FFFFFF", size=11)
+    c.alignment = al("center", "center")
+    c.border = ALL
+rh(ws, r, 28)
+r += 1   # r = 5
+
+# ── Sell-Through % row ───────────────────────────────────────────────────────
+lbl(ws, r, 2, "Sell-Through Rate", bold=True, color="6B7280")
+for ci, pct, is_base in [(3, 0.85, False), (4, 0.95, True), (5, 1.00, False)]:
+    c = ws.cell(row=r, column=ci, value=pct)
+    c.fill = IV_BASE_BG if is_base else IV_BG
+    c.font = Font(bold=True, color="1D4ED8" if is_base else "374151", size=11)
+    c.alignment = al("center"); c.number_format = "0%"; c.border = IV_THIN
+rh(ws, r, 22)
+r += 1   # r = 6
+
+# Thin separator
+rh(ws, r, 8)
+r += 1   # r = 7
+
+# ── Helper to write a data row ───────────────────────────────────────────────
+def iv_row(ws, row, label, formulas, fmt="#,##0", font_override=None, is_bold=False):
+    """Write label + 3 formula cells (Conservative / Base / Upside)."""
+    lc = ws.cell(row=row, column=2, value=label)
+    lc.font = Font(bold=is_bold, size=11, color="111827" if is_bold else "374151")
+    lc.alignment = al("left", "center"); lc.border = IV_THIN
+    for ci, formula in [(3, formulas[0]), (4, formulas[1]), (5, formulas[2])]:
+        is_base = (ci == 4)
+        c = ws.cell(row=row, column=ci, value=formula)
+        c.fill = IV_BASE_BG if is_base else IV_BG
+        if font_override:
+            c.font = font_override
+        else:
+            c.font = Font(bold=is_bold, size=12 if is_bold else 11,
+                          color="111827" if not is_base else "1E40AF")
+        c.alignment = al("right", "center"); c.number_format = fmt; c.border = IV_THIN
+    rh(ws, row, 26)
+
+# ── Financial rows ───────────────────────────────────────────────────────────
+# Gross Revenue = (Ticket Rev at 100% × sell-through%) + Merch + Sponsorship
+# Revenue!F16 = ticket total (3 shows, 100%), Revenue!E21 = merch, Revenue!E23 = sponsorship
+iv_row(ws, r, "Gross Revenue", [
+    "=('Revenue'!F16*C5)+'Revenue'!E21+'Revenue'!E23",
+    "=('Revenue'!F16*D5)+'Revenue'!E21+'Revenue'!E23",
+    "=('Revenue'!F16*E5)+'Revenue'!E21+'Revenue'!E23",
+], fmt='"$"#,##0')
+r += 1   # r = 8
+
+# Total Costs (Scenario A: MG + Agency + BluFin)
+# Inputs!C26=MG, Inputs!C33=Agency(A), Inputs!C34=BluFin(A)
+iv_row(ws, r, "Total Costs", [
+    "=Inputs!C26+Inputs!C33+Inputs!C34",
+    "=Inputs!C26+Inputs!C33+Inputs!C34",
+    "=Inputs!C26+Inputs!C33+Inputs!C34",
+], fmt='"$"#,##0')
+r += 1   # r = 9
+
+# Net Profit = Gross Revenue - Total Costs
+iv_row(ws, r, "Net Profit", [
+    "=C7-C8", "=D7-D8", "=E7-E8",
+], fmt='"$"#,##0', is_bold=True)
+r += 1   # r = 10
+
+# Separator
+rh(ws, r, 10)
+r += 1   # r = 11
+
+# ROI (Pre-Tax) = Net Profit / Total Costs
+iv_row(ws, r, "ROI (Pre-Tax)", [
+    "=C9/C8", "=D9/D8", "=E9/E8",
+], fmt="0.0%", font_override=IV_PCT_FT)
+r += 1   # r = 12
+
+# Return on Equity (Scenario A) = Net Profit / Investor Equity
+# Inputs!C35 = Investor Equity ($12M)
+iv_row(ws, r, "Return on Equity (Scenario A)", [
+    "=C9/Inputs!C35", "=D9/Inputs!C35", "=E9/Inputs!C35",
+], fmt="0.0%", font_override=IV_PCT_FT)
+r += 1   # r = 13
+
+# Investor MOIC (Scenario A) = (Equity + Net Profit) / Equity
+iv_row(ws, r, "Investor MOIC (Scenario A)", [
+    "=(Inputs!C35+C9)/Inputs!C35",
+    "=(Inputs!C35+D9)/Inputs!C35",
+    "=(Inputs!C35+E9)/Inputs!C35",
+], fmt='0.00"x"', font_override=IV_MOIC_FT)
+r += 1   # r = 14
+
+# Separator
+rh(ws, r, 10)
+r += 1   # r = 15
+
+# Implied Attendance = Capacity × Shows × Sell-Through%
+# Inputs!C7=capacity, Inputs!C6=shows
+iv_row(ws, r, "Implied Attendance", [
+    "=Inputs!C7*Inputs!C6*C5",
+    "=Inputs!C7*Inputs!C6*D5",
+    "=Inputs!C7*Inputs!C6*E5",
+], fmt="#,##0")
+r += 2   # r = 17
+
+# ── Footer note ──────────────────────────────────────────────────────────────
+ws.merge_cells(f"B{r}:E{r}")
+note_cell = ws.cell(row=r, column=2,
+    value='All figures pre-tax, based on '
+          '=TEXT(Inputs!C5,"0")&" shows"')
+# Can't embed formula in a merged note cleanly — use static reference approach
+note_cell.value = "All figures pre-tax. Show count and venue capacity per Inputs tab."
+note_cell.font = IV_NOTE_FT
+note_cell.alignment = al("left", "center")
+rh(ws, r, 20)
+r += 1
+
+ws.merge_cells(f"B{r}:E{r}")
+note2 = ws.cell(row=r, column=2,
+    value="Costs reflect Scenario A structure (MG + Agency + BluFin fees). "
+          "Variable costs embedded in net operating figures.")
+note2.font = Font(size=8, color="9CA3AF", italic=True)
+note2.alignment = al("left", "center")
+
+# Print area
+ws.print_area = f"B1:E{r}"
+
+
 # ── Save ──────────────────────────────────────────────────────────────────────
 out = "data/Project_Justin_Korea_Investor_Model.xlsx"
 wb.save(out)
 
-# Tab order: Inputs first
-tab_order = ["Inputs","Summary","Revenue","Artist Fee","Cost Assumptions","Investor Scenarios","Cash Flow"]
+# Tab order: Investor View prominent
+tab_order = ["Inputs","Summary","Investor View","Revenue","Artist Fee",
+             "Cost Assumptions","Investor Scenarios","Cash Flow"]
+tab_colors = ["FEF3C7","E0E7FF","DBEAFE","DCFCE7","FEE2E2","FEE2E2","EDE9FE","DBEAFE"]
 for i, name in enumerate(tab_order):
-    wb[name].sheet_properties.tabColor = ["FEF3C7","E0E7FF","DCFCE7","FEE2E2","FEE2E2","EDE9FE","DBEAFE"][i]
+    wb[name].sheet_properties.tabColor = tab_colors[i]
 wb.save(out)
 
 import os
