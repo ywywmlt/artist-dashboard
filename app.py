@@ -26,6 +26,16 @@ app.secret_key = SECRET_KEY
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 
+from flask_compress import Compress
+Compress(app)
+
+
+@app.after_request
+def add_cache_headers(response):
+    if request.path.startswith("/data/") and request.path.endswith(".json"):
+        response.headers["Cache-Control"] = "public, max-age=300"
+    return response
+
 # ── Username validation ───────────────────────────────────────────────────────
 _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 

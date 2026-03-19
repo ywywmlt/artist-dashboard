@@ -1772,30 +1772,37 @@ function showPage(page) {
 
 // ─── Data Loading ───
 async function loadData() {
-  const [seedRes, touringRes, venueRes, newsRes, mbRes, eventsRes, histRes, spotifyRes, rostrRes] = await Promise.all([
+  // Critical path — fetch only what's needed for initial dashboard render
+  const [seedRes, touringRes, venueRes, newsRes, mbRes, spotifyRes] = await Promise.all([
     fetch('data/raw/kworb_seed.json').catch(() => null),
     fetch('data/raw/touring_data.json').catch(() => null),
     fetch('data/touring-cities-venues.json').catch(() => null),
     fetch('data/raw/news_alerts.json').catch(() => null),
     fetch('data/raw/musicbrainz_data.json').catch(() => null),
-    fetch('data/raw/ticketmaster_events.json').catch(() => null),
-    fetch('data/raw/listener_history.json').catch(() => null),
     fetch('data/raw/spotify_data.json').catch(() => null),
-    fetch('data/raw/rostr_intel.json').catch(() => null),
   ]);
   artists = (seedRes && seedRes.ok) ? await seedRes.json().catch(() => []) : [];
   const touringArr = (touringRes && touringRes.ok) ? await touringRes.json().catch(() => []) : [];
   touringArr.forEach(t => { touringMap[t.spotify_id] = t; });
   venueData = (venueRes && venueRes.ok) ? await venueRes.json().catch(() => ({ cities: [] })) : { cities: [] };
-  if (newsRes && newsRes.ok) {
-    window.newsAlerts = await newsRes.json();
-  } else {
-    window.newsAlerts = null;
-  }
-  if (mbRes && mbRes.ok) {
-    const mbArr = await mbRes.json();
-    mbArr.forEach(m => { mbMap[m.spotify_id] = m; });
-  }
+  if (newsRes && newsRes.ok) { window.newsAlerts = await newsRes.json(); } else { window.newsAlerts = null; }
+  if (mbRes && mbRes.ok) { const mbArr = await mbRes.json(); mbArr.forEach(m => { mbMap[m.spotify_id] = m; }); }
+  if (spotifyRes && spotifyRes.ok) { const spArr = await spotifyRes.json(); window.spotifyMap = {}; spArr.forEach(s => { window.spotifyMap[s.spotify_id] = s; }); } else { window.spotifyMap = null; }
+
+  // Deferred data — not needed for initial render
+  window.rostrIntel = null;
+  window.listenerHistory = null;
+
+  // Load heavy files in background after dashboard renders
+  loadDeferredData();
+}
+
+async function loadDeferredData() {
+  const [eventsRes, histRes, rostrRes] = await Promise.all([
+    fetch('data/raw/ticketmaster_events.json').catch(() => null),
+    fetch('data/raw/listener_history.json').catch(() => null),
+    fetch('data/raw/rostr_intel.json').catch(() => null),
+  ]);
   if (eventsRes && eventsRes.ok) {
     const eventsArr = await eventsRes.json();
     eventsArr.forEach(e => {
@@ -1804,26 +1811,45 @@ async function loadData() {
       if (!eventsMap[id]) eventsMap[id] = [];
       eventsMap[id].push(e);
     });
-    // Sort each artist's events by date ascending
     Object.values(eventsMap).forEach(arr => arr.sort((a, b) => a.date.localeCompare(b.date)));
   }
-  if (histRes && histRes.ok) {
-    window.listenerHistory = await histRes.json();
-  } else {
-    window.listenerHistory = null;
+  if (histRes && histRes.ok) { window.listenerHistory = await histRes.json(); } else { window.listenerHistory = null; }
+  if (rostrRes && rostrRes.ok) { window.rostrIntel = await rostrRes.json(); } else { window.rostrIntel = null; }
+  // Re-render dashboard sections that depend on deferred data
+  renderDashboardDeferred();
+}
+
+function renderDashboardDeferred() {
+  // Re-render upcoming shows now that eventsMap is populated
+  const upEl = document.getElementById('dashboard-upcoming');
+  if (upEl && Object.keys(eventsMap).length > 0) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const upcoming = [];
+    for (const [sid, evts] of Object.entries(eventsMap)) {
+      for (const e of evts) { if ((e.date || '') >= todayStr) upcoming.push({ ...e, _sid: sid }); }
+    }
+    upcoming.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const toShow = upcoming.slice(0, 8);
+    if (toShow.length) {
+      const upBadge = document.getElementById('upcoming-badge');
+      if (upBadge) { upBadge.textContent = 'LIVE'; upBadge.style.color = '#4ade80'; upBadge.style.background = 'rgba(34,197,94,0.1)'; upBadge.style.borderColor = 'rgba(34,197,94,0.2)'; }
+      upEl.innerHTML = toShow.map(e => {
+        const a = artists.find(x => x.spotify_id === e._sid);
+        const name = a ? a.name : (e.artistName || 'Unknown Artist');
+        const venue = [e.venueName, e.city, e.country].filter(Boolean).join(', ');
+        const dateLabel = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+        const priceLabel = e.priceMin ? `<div class="text-[10px] text-emerald-400">From $${e.priceMin}</div>` : `<div class="text-[10px] text-slate-500">On Sale</div>`;
+        return `<div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="${a ? "selectArtist('" + e._sid + "')" : ''}">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">${escHtml(initials(name))}</div>
+          <div class="flex-1 min-w-0"><div class="text-sm font-medium text-white truncate">${escHtml(name)}</div><div class="text-[10px] text-slate-500 truncate">${escHtml(venue)}</div></div>
+          <div class="text-right flex-shrink-0"><div class="text-xs text-slate-300">${dateLabel}</div>${priceLabel}</div>
+        </div>`;
+      }).join('');
+    }
   }
-  if (spotifyRes && spotifyRes.ok) {
-    const spArr = await spotifyRes.json();
-    window.spotifyMap = {};
-    spArr.forEach(s => { window.spotifyMap[s.spotify_id] = s; });
-  } else {
-    window.spotifyMap = null;
-  }
-  if (rostrRes && rostrRes.ok) {
-    window.rostrIntel = await rostrRes.json();
-  } else {
-    window.rostrIntel = null;
-  }
+  // Re-render rostr signings
+  if (window.rostrIntel && typeof renderRostrSignings === 'function') renderRostrSignings('all');
+}
 
   document.getElementById('page-subtitle').innerHTML =
     `${fmtFull(artists.length)} artists &middot; ${venueData.cities.length} cities &middot; Scraped ${artists[0] ? new Date(artists[0].scraped_at).toLocaleDateString() : '—'} <span class="pulse-dot inline-block w-1.5 h-1.5 rounded-full bg-green-400 ml-1"></span>`;
