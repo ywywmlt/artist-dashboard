@@ -882,7 +882,7 @@
         <div class="glass rounded-xl p-5">
           <div class="flex items-center justify-between mb-4">
             <h3 class="font-semibold text-white text-sm">Upcoming Shows</h3>
-            <span style="font-size:10px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:0.12em;color:var(--accent);background:var(--accent-dim);padding:3px 8px;border:1px solid rgba(204,100,55,0.2);">FPO DATA</span>
+            <span id="upcoming-badge" style="font-size:10px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:0.12em;color:var(--accent);background:var(--accent-dim);padding:3px 8px;border:1px solid rgba(204,100,55,0.2);">FPO DATA</span>
           </div>
           <div id="dashboard-upcoming"></div>
         </div>
@@ -2140,10 +2140,12 @@ function renderDashboard() {
     upcoming.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const toShow = upcoming.slice(0, 8);
     const el = document.getElementById('dashboard-upcoming');
+    const upBadge = document.getElementById('upcoming-badge');
     if (!toShow.length) {
       el.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">No upcoming events — fetch data in Tour Calendar</div>';
       return;
     }
+    if (upBadge) { upBadge.textContent = 'LIVE'; upBadge.style.color = '#4ade80'; upBadge.style.background = 'rgba(34,197,94,0.1)'; upBadge.style.borderColor = 'rgba(34,197,94,0.2)'; }
     el.innerHTML = toShow.map(e => {
       const a = artists.find(x => x.spotify_id === e._sid);
       const name = a ? a.name : (e.artistName || 'Unknown Artist');
@@ -2151,10 +2153,10 @@ function renderDashboard() {
       const dateLabel = e.date ? new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
       const priceLabel = e.priceMin ? `<div class="text-[10px] text-emerald-400">From $${e.priceMin}</div>` : `<div class="text-[10px] text-slate-500">On Sale</div>`;
       return `<div class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer" onclick="${a ? `selectArtist('${e._sid}')` : ''}">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">${initials(name)}</div>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br ${hashColor(name)} flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0">${escHtml(initials(name))}</div>
         <div class="flex-1 min-w-0">
-          <div class="text-sm font-medium text-white truncate">${name}</div>
-          <div class="text-[10px] text-slate-500 truncate">${venue}</div>
+          <div class="text-sm font-medium text-white truncate">${escHtml(name)}</div>
+          <div class="text-[10px] text-slate-500 truncate">${escHtml(venue)}</div>
         </div>
         <div class="text-right flex-shrink-0">
           <div class="text-xs text-slate-300">${dateLabel}</div>
