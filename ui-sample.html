@@ -6158,6 +6158,103 @@ async function fdExportExcel() {
     }
   }
 
+  // ── Sheet: Investor View (clean 3-scenario presentation) ─────────────────
+  const wsIV = wb.addWorksheet('Investor View');
+  wsIV.views = [{ showGridLines:false, zoomScale:115 }];
+  wsIV.columns = [{ width:36 },{ width:22 },{ width:22 },{ width:22 }];
+  wsIV.properties.tabColor = { argb:'FF1E40AF' };
+  wsIV.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:1 };
+
+  // Pick the 3 scenarios: 85%, 95%, 100% from spScens
+  const ivScens = [spScens[1], spScens[3], spScens[4]]; // 85%, 95%, 100%
+  const ivLabels = ['Conservative','Base Case','Upside'];
+  const ivPcts = [0.85, 0.95, 1.00];
+
+  // First investor scenario for MOIC/ROE
+  const ivInv = invScens.length > 0 ? invScens[0] : null;
+  const ivEq = ivInv ? (Number(ivInv.equity)||0) : 0;
+  const ivHr = ivInv ? (Number(ivInv.hurdle_rate)||0.20) : 0.20;
+  const ivSp = ivInv ? (Number(ivInv.above_hurdle_investor_pct)||0.50) : 0.50;
+
+  let ir = 1;
+  // Title
+  wsIV.mergeCells('A'+ir+':D'+ir);
+  sc(wsIV.getCell('A'+ir),{font:{bold:true,size:16,color:{argb:'FF111827'}},align:{horizontal:'left',vertical:'middle'}}).value='INVESTOR VIEW \u2014 '+(p.artist||'Artist').toUpperCase();
+  wsIV.getRow(ir).height=36; ir++;
+
+  wsIV.mergeCells('A'+ir+':D'+ir);
+  sc(wsIV.getCell('A'+ir),{font:{size:10,italic:true,color:{argb:'FF6B7280'}},align:{horizontal:'left'}}).value
+    ='Pre-Tax Scenario Analysis'+(ivInv?('  \u00b7  '+ivInv.label+' ('+fmtMoney(ivEq)+' equity)'):'');
+  wsIV.getRow(ir).height=20; ir++; ir++;
+
+  // Column headers
+  const ivHdrBg = 'FF111827';
+  const ivBaseBg = 'FF1E40AF';
+  sc(wsIV.getCell(ir,1),{fill:ivHdrBg,font:{bold:true,size:11,color:{argb:'FFFFFFFF'}},align:{horizontal:'center'},border:bBot('FF374151')}).value='';
+  ivLabels.forEach((lbl2,i)=>{
+    const bg = i===1 ? ivBaseBg : ivHdrBg;
+    sc(wsIV.getCell(ir,i+2),{fill:bg,font:{bold:true,size:11,color:{argb:'FFFFFFFF'}},align:{horizontal:'center'},border:bBot('FF374151')}).value=lbl2;
+  });
+  wsIV.getRow(ir).height=28; ir++;
+
+  // Sell-through row
+  sc(wsIV.getCell(ir,1),{font:{bold:true,size:11,color:{argb:'FF6B7280'}}}).value='Sell-Through Rate';
+  ivPcts.forEach((pct,i)=>{
+    const bg = i===1 ? 'FFEFF6FF' : undefined;
+    sc(wsIV.getCell(ir,i+2),{fill:bg,font:{bold:true,size:11,color:{argb:i===1?'FF1D4ED8':'FF374151'}},align:{horizontal:'right'},numFmt:'0%',border:bBot('FFE5E7EB')}).value=pct;
+  });
+  wsIV.getRow(ir).height=22; ir++;
+
+  // Separator
+  wsIV.getRow(ir).height=8; ir++;
+
+  // Helper for data rows
+  function ivRow(label, vals, numFmt, opts) {
+    opts = opts || {};
+    sc(wsIV.getCell(ir,1),{font:{bold:!!opts.bold,size:11,color:{argb:opts.bold?'FF111827':'FF374151'}},border:bBot('FFE5E7EB')}).value=label;
+    vals.forEach((v,i)=>{
+      const isBase = i===1;
+      const bg = isBase ? 'FFEFF6FF' : undefined;
+      const fc = opts.bold ? (isBase?'FF1E40AF':'FF111827') : (isBase?'FF1E40AF':'FF374151');
+      sc(wsIV.getCell(ir,i+2),{fill:bg,font:{bold:!!opts.bold,size:opts.large?14:(opts.bold?12:11),color:{argb:opts.pctColor||fc}},align:{horizontal:'right'},numFmt,border:bBot('FFE5E7EB')}).value=v;
+    });
+    wsIV.getRow(ir).height=opts.large?30:26; ir++;
+  }
+
+  // Financial rows
+  ivRow('Gross Revenue', ivScens.map(s=>s.gross), '$#,##0');
+  ivRow('Total Costs', ivScens.map(s=>s.costs), '$#,##0');
+  ivRow('Net Profit', ivScens.map(s=>s.net), '$#,##0', {bold:true});
+
+  wsIV.getRow(ir).height=10; ir++; // separator
+
+  ivRow('ROI (Pre-Tax)', ivScens.map(s=>s.roi), '0.0%', {pctColor:'FF1D4ED8'});
+
+  if (ivEq > 0) {
+    const ivROEs = ivScens.map(s => {
+      const net = s.netAt;
+      return (Math.min(net, ivEq * ivHr) + Math.max(0, net - ivEq * ivHr) * ivSp) / ivEq;
+    });
+    const ivMOICs = ivScens.map(s => {
+      const net = s.netAt;
+      return (ivEq + Math.min(net, ivEq * ivHr) + Math.max(0, net - ivEq * ivHr) * ivSp) / ivEq;
+    });
+    ivRow('Return on Equity ('+(ivInv.label||'Scenario A')+')', ivROEs, '0.0%', {pctColor:'FF1D4ED8'});
+    ivRow('Investor MOIC ('+(ivInv.label||'Scenario A')+')', ivMOICs, '0.00"x"', {bold:true,large:true,pctColor:'FF065F46'});
+  }
+
+  wsIV.getRow(ir).height=10; ir++; // separator
+  ivRow('Implied Attendance', ivScens.map(s=>s.att), '#,##0');
+
+  ir++; // blank row
+  wsIV.mergeCells('A'+ir+':D'+ir);
+  sc(wsIV.getCell('A'+ir),{font:{size:9,italic:true,color:{argb:'FF6B7280'}}}).value
+    ='All figures pre-tax, based on '+n+' show'+(n!==1?'s':'')+' across '+c.num_cities+' cit'+(c.num_cities!==1?'ies':'y')+'.';
+  ir++;
+  wsIV.mergeCells('A'+ir+':D'+ir);
+  sc(wsIV.getCell('A'+ir),{font:{size:8,italic:true,color:{argb:'FF9CA3AF'}}}).value
+    ='Costs include Artist MG, operating costs, and fixed fees. Variable ticketing fees included per scenario.';
+
   // ── Sheet 3: Cash Flow Timeline ──────────────────────────────────────────
   const ws3 = wb.addWorksheet('Cash Flow');
   ws3.views = [{ state:'frozen', xSplit:1, ySplit:4, showGridLines:false, zoomScale:110, activeCell:'B5' }];
