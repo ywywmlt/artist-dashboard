@@ -268,6 +268,33 @@ r += 1
 title(ws, r, 2, "LEGEND:  🟡 Yellow = Input (you edit)   🔵 Blue = Formula (auto-calculates)   Do NOT edit blue cells",
       end_col=5, bg="F8FAFC", fg="475569", sz=9)
 
+# ── ACTUAL ROW REFERENCE MAP ─────────────────────────────────────────────────
+# The Inputs tab labels (I5, I10, etc.) are aspirational — actual rows shift
+# due to section headers. These are the CORRECT Excel cell references.
+# Every formula in subsequent tabs MUST use these, not the label numbers.
+I = {
+    "shows":       "Inputs!C6",   "capacity":    "Inputs!C7",   "date":        "Inputs!C8",
+    "ga_pr":       "Inputs!C12",  "ga_ct":       "Inputs!D12",
+    "sa_pr":       "Inputs!C13",  "sa_ct":       "Inputs!D13",
+    "sb_pr":       "Inputs!C14",  "sb_ct":       "Inputs!D14",
+    "vip_pr":      "Inputs!C15",  "vip_ct":      "Inputs!D15",
+    "vvip_pr":     "Inputs!C16",  "vvip_ct":     "Inputs!D16",
+    "merch_ps":    "Inputs!C20",  "merch_pct":   "Inputs!C21",  "sponsor_ps":  "Inputs!C22",
+    "mg":          "Inputs!C26",  "pmt1":        "Inputs!C27",  "pmt2":        "Inputs!C28",
+    "pmt3":        "Inputs!C29",  "royalty":     "Inputs!C30",
+    "ag_a":        "Inputs!C33",  "bf_a":        "Inputs!C34",  "eq_a":        "Inputs!C35",
+    "hr_a":        "Inputs!C36",  "di_a":        "Inputs!C37",  "db_a":        "Inputs!C38",
+    "ag_b":        "Inputs!C41",  "bf_b":        "Inputs!C42",  "eq_b":        "Inputs!C43",
+    "hr_b":        "Inputs!C44",  "di_b":        "Inputs!C45",  "db_b":        "Inputs!C46",
+    "nop_feb_a":   "Inputs!C51",  "nop_may_a":   "Inputs!C52",  "nop_jun_a":   "Inputs!C53",
+    "nop_jul_a":   "Inputs!C54",  "nop_sep_a":   "Inputs!C55",
+    "nop_feb_b":   "Inputs!D51",  "nop_may_b":   "Inputs!D52",  "nop_jun_b":   "Inputs!D53",
+    "nop_jul_b":   "Inputs!D54",  "nop_sep_b":   "Inputs!D55",
+}
+# Seat pricing refs as lists (used by Revenue tab)
+price_refs = [I["ga_pr"], I["sa_pr"], I["sb_pr"], I["vip_pr"], I["vvip_pr"]]
+count_refs = [I["ga_ct"], I["sa_ct"], I["sb_ct"], I["vip_ct"], I["vvip_ct"]]
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — REVENUE  (formula-driven from Inputs)
@@ -292,9 +319,9 @@ hdr(ws, r, 6, "Total (3 Shows)"); hdr(ws, r, 7, "Avg / Show")
 r += 1
 
 overview_rows = [
-    ("Venue Capacity",      "=Inputs!C6",    "#,##0",          "059669"),
+    ("Venue Capacity",      f"={I['capacity']}",    "#,##0",          "059669"),
     ("Occupancy Rate",      "100%",          "0%",             "000000"),
-    ("Expected Attendance", "=Inputs!C6",    "#,##0",          "000000"),
+    ("Expected Attendance", f"={I['capacity']}",    "#,##0",          "000000"),
     ("Avg Ticket Price",    "",              '"$"#,##0.00',    "1D4ED8"),  # computed below
     ("Ticket Revenue",      "",              '"$"#,##0',       "059669"),  # computed below
 ]
@@ -302,17 +329,17 @@ overview_rows = [
 # Capacity row
 lbl(ws, r, 2, "Venue Capacity", bold=True)
 for ci in [3,4,5]:
-    calc(ws, r, ci, "=Inputs!C6", "#,##0", bold=True, color="059669")
-calc(ws, r, 6, "=Inputs!C5*Inputs!C6", "#,##0", bold=True, color="059669")
-calc(ws, r, 7, "=Inputs!C6", "#,##0", color="94A3B8")
+    calc(ws, r, ci, f"={I['capacity']}", "#,##0", bold=True, color="059669")
+calc(ws, r, 6, f"={I['shows']}*{I['capacity']}", "#,##0", bold=True, color="059669")
+calc(ws, r, 7, f"={I['capacity']}", "#,##0", color="94A3B8")
 r += 1
 
 # Attendance row (same as capacity at 100%)
 lbl(ws, r, 2, "Expected Attendance", bold=True)
 for ci in [3,4,5]:
-    calc(ws, r, ci, "=Inputs!C6", "#,##0")
-calc(ws, r, 6, "=Inputs!C5*Inputs!C6", "#,##0", bold=True)
-calc(ws, r, 7, "=Inputs!C6", "#,##0", color="94A3B8")
+    calc(ws, r, ci, f"={I['capacity']}", "#,##0")
+calc(ws, r, 6, f"={I['shows']}*{I['capacity']}", "#,##0", bold=True)
+calc(ws, r, 7, f"={I['capacity']}", "#,##0", color="94A3B8")
 r += 2
 
 # ── Seat Pricing & Revenue per category ──────────────────────────────────────
@@ -322,8 +349,8 @@ hdr(ws, r, 5, "Rev / Show"); hdr(ws, r, 6, "Total 3 Shows"); hdr(ws, r, 7, "% of
 r += 1
 
 # Price cells in Inputs: C10..C14, Count cells: D10..D14
-price_refs = ["Inputs!C10","Inputs!C11","Inputs!C12","Inputs!C13","Inputs!C14"]
-count_refs = ["Inputs!D10","Inputs!D11","Inputs!D12","Inputs!D13","Inputs!D14"]
+price_refs = [f"{I['ga_pr']}",f"{I['sa_pr']}",f"{I['sb_pr']}",f"{I['vip_pr']}",f"{I['vvip_pr']}"]
+count_refs = [f"{I['ga_ct']}",f"{I['sa_ct']}",f"{I['sb_ct']}",f"{I['vip_ct']}",f"{I['vvip_ct']}"]
 cat_names  = ["GA Standing (avg GA1–GA4)","Seating A — Lower Bowl",
                "Seating B — Mid Deck","VIP Lounge","VVIP / Pre-Show Party Package"]
 
@@ -339,7 +366,7 @@ for i, (cat, pr, cr) in enumerate(zip(cat_names, price_refs, count_refs)):
     rev_cell = f"E{r}"   # revenue per show
     calc(ws, r, 5, f"={pr}*{cr}", '"$"#,##0', color="1D4ED8", bg=fill(bg))
     rev_per_show_cells.append(f"E{r}")
-    calc(ws, r, 6, f"=E{r}*Inputs!C5", '"$"#,##0', bold=True, color="059669", bg=fill(bg))
+    calc(ws, r, 6, f"=E{r}*{I['shows']}", '"$"#,##0', bold=True, color="059669", bg=fill(bg))
     r += 1
 
 # Totals row
@@ -353,7 +380,7 @@ ws.cell(row=r, column=3).value = f"=SUMPRODUCT({','.join(price_refs)},{','.join(
 calc(ws, r, 4, f"=SUM({','.join(count_refs)})", "#,##0", bold=True, bg=SECTION_FILL)
 ticket_per_show_row = r
 calc(ws, r, 5, f"={'+'.join(rev_per_show_cells)}", '"$"#,##0', bold=True, color="059669", bg=SECTION_FILL)
-calc(ws, r, 6, f"=E{r}*Inputs!C5", '"$"#,##0', bold=True, color="059669", bg=SECTION_FILL)
+calc(ws, r, 6, f"=E{r}*{I['shows']}", '"$"#,##0', bold=True, color="059669", bg=SECTION_FILL)
 r += 2
 
 # ── Additional Revenue ────────────────────────────────────────────────────────
@@ -364,29 +391,29 @@ r += 1
 
 # Merch
 lbl(ws, r, 2, "Expected Merch Sales (gross)", bold=True)
-calc(ws, r, 3, "=Inputs!C19", '"$"#,##0')
-calc(ws, r, 4, "=Inputs!C5",  "#,##0")
-calc(ws, r, 5, "=C{0}*Inputs!C5".format(r), '"$"#,##0', color="94A3B8")
+calc(ws, r, 3, f"={I['merch_ps']}", '"$"#,##0')
+calc(ws, r, 4, f"={I['shows']}",  "#,##0")
+calc(ws, r, 5, f"=C{0}*{I['shows']}".format(r), '"$"#,##0', color="94A3B8")
 lbl(ws, r, 6, "Gross expected sales (not promoter revenue)", color="94A3B8"); r += 1
 
 lbl(ws, r, 2, "  → Merch Revenue (promoter's share)", bold=True, color="059669")
-calc(ws, r, 3, "=Inputs!C19*Inputs!C20", '"$"#,##0', color="059669")
-calc(ws, r, 4, "=Inputs!C5",  "#,##0")
+calc(ws, r, 3, f"={I['merch_ps']}*{I['merch_pct']}", '"$"#,##0', color="059669")
+calc(ws, r, 4, f"={I['shows']}",  "#,##0")
 merch_total_cell = f"E{r}"
-calc(ws, r, 5, "=C{0}*Inputs!C5".format(r), '"$"#,##0', bold=True, color="059669")
-lbl(ws, r, 6, f"=Inputs!C20&\" of $\"&TEXT(Inputs!C19,\"#,##0\")&\" / show\"", color="94A3B8"); r += 1
+calc(ws, r, 5, f"=C{0}*{I['shows']}".format(r), '"$"#,##0', bold=True, color="059669")
+lbl(ws, r, 6, f"={I['merch_pct']}&\" of $\"&TEXT({I['merch_ps']},\"#,##0\")&\" / show\"", color="94A3B8"); r += 1
 
 lbl(ws, r, 2, "F&B Revenue", bold=True, color="94A3B8")
 calc(ws, r, 3, 0, '"$"#,##0', color="94A3B8")
-calc(ws, r, 4, "=Inputs!C5", "#,##0", color="94A3B8")
+calc(ws, r, 4, f"={I['shows']}", "#,##0", color="94A3B8")
 calc(ws, r, 5, 0, '"$"#,##0', color="94A3B8")
 lbl(ws, r, 6, "Pending — buyer data required", color="DC2626"); r += 1
 
 lbl(ws, r, 2, "Sponsorship Revenue", bold=True, color="059669")
-calc(ws, r, 3, "=Inputs!C21", '"$"#,##0', color="059669")
-calc(ws, r, 4, "=Inputs!C5", "#,##0")
+calc(ws, r, 3, f"={I['sponsor_ps']}", '"$"#,##0', color="059669")
+calc(ws, r, 4, f"={I['shows']}", "#,##0")
 sponsor_total_cell = f"E{r}"
-calc(ws, r, 5, "=C{0}*Inputs!C5".format(r), '"$"#,##0', bold=True, color="059669")
+calc(ws, r, 5, f"=C{0}*{I['shows']}".format(r), '"$"#,##0', bold=True, color="059669")
 lbl(ws, r, 6, "Confirmed Korea shows", color="94A3B8"); r += 1
 
 # Grand Total
@@ -416,13 +443,13 @@ r += 2
 
 section(ws, r, 2, "MG OVERVIEW", end_col=6); r += 1
 lbl(ws, r, 2, "Total MG — Justin", bold=True)
-calc(ws, r, 3, "=Inputs!C25", '"$"#,##0', bold=True, color="DC2626")
-lbl(ws, r, 6, "Source: Inputs!C25", color="94A3B8"); r += 1
+calc(ws, r, 3, f"={I['mg']}", '"$"#,##0', bold=True, color="DC2626")
+lbl(ws, r, 6, f"Source: {I['mg']}", color="94A3B8"); r += 1
 lbl(ws, r, 2, "Concert Start Date", bold=True)
-calc(ws, r, 3, "=Inputs!C7", "@", bold=True)
+calc(ws, r, 3, f"={I['date']}", "@", bold=True)
 r += 1
 lbl(ws, r, 2, "Sponsorship Royalty", bold=True)
-calc(ws, r, 3, "=Inputs!C29", "0%", bold=True); r += 2
+calc(ws, r, 3, f"={I['royalty']}", "0%", bold=True); r += 2
 
 section(ws, r, 2, "PAYMENT SCHEDULE", end_col=6); r += 1
 hdr(ws, r, 2, "Payment"); hdr(ws, r, 3, "Date"); hdr(ws, r, 4, "% of MG")
@@ -430,9 +457,9 @@ hdr(ws, r, 5, "Amount (USD)"); hdr(ws, r, 6, "Months Before Concert")
 r += 1
 
 pmt_rows = [
-    ("1st Payment", "Feb-26", "=Inputs!C26", "=Inputs!C25*Inputs!C26", "7 months before"),
-    ("2nd Payment", "Mar-26", "=Inputs!C27", "=Inputs!C25*Inputs!C27", "6 months before"),
-    ("3rd Payment", "Jul-26", "=Inputs!C28", "=Inputs!C25*Inputs!C28", "2 months before"),
+    ("1st Payment", "Feb-26", f"={I['pmt1']}", f"={I['mg']}*{I['pmt1']}", "7 months before"),
+    ("2nd Payment", "Mar-26", f"={I['pmt2']}", f"={I['mg']}*{I['pmt2']}", "6 months before"),
+    ("3rd Payment", "Jul-26", f"={I['pmt3']}", f"={I['mg']}*{I['pmt3']}", "2 months before"),
     ("4th Payment", "—",      "0%",          "—",                       "—"),
     ("5th Payment", "—",      "0%",          "—",                       "—"),
 ]
@@ -457,7 +484,7 @@ for i, (pname, pdate, ppct, pamount, ptiming) in enumerate(pmt_rows):
 # Total row
 lbl(ws, r, 2, "TOTAL", bold=True, bg="EEF2FF"); ws.cell(row=r, column=2).fill = SECTION_FILL
 lbl(ws, r, 3, "100%", h="center", bold=True, bg="EEF2FF"); ws.cell(row=r, column=3).fill = SECTION_FILL
-calc(ws, r, 4, "=Inputs!C26+Inputs!C27+Inputs!C28", "0%", bold=True, bg=SECTION_FILL)
+calc(ws, r, 4, f"={I['pmt1']}+{I['pmt2']}+{I['pmt3']}", "0%", bold=True, bg=SECTION_FILL)
 calc(ws, r, 5, f"={'+'.join(pmt_amount_cells)}", '"$"#,##0', bold=True, color="DC2626", bg=SECTION_FILL)
 r += 2
 
@@ -466,11 +493,11 @@ title(ws, r, 2, "✓ Validation: Total payments should equal MG Total",
       end_col=6, bg="F0FDF4", fg="065F46", sz=9)
 r += 1
 lbl(ws, r, 2, "MG Total (Inputs)")
-calc(ws, r, 3, "=Inputs!C25", '"$"#,##0', bold=True, color="DC2626"); r += 1
+calc(ws, r, 3, f"={I['mg']}", '"$"#,##0', bold=True, color="DC2626"); r += 1
 lbl(ws, r, 2, "Sum of Payments")
 calc(ws, r, 3, f"={'+'.join(pmt_amount_cells)}", '"$"#,##0', bold=True, color="DC2626"); r += 1
 lbl(ws, r, 2, "Difference (should be $0)")
-calc(ws, r, 3, f"=Inputs!C25-({'+'.join(pmt_amount_cells)})", '"$"#,##0;[Red]"($"#,##0")"', bold=True)
+calc(ws, r, 3, f"={I['mg']}-({'+'.join(pmt_amount_cells)})", '"$"#,##0;[Red]"($"#,##0")"', bold=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -512,66 +539,66 @@ def scen_row_f(ws, row, label, f_a, f_b, f_pdf, note="", fmt="#,##0", bold=False
     lbl(ws, row, 6, note, color="94A3B8")
 
 scen_row_f(ws, r, "Equity Invested",
-           "=Inputs!C34", "=Inputs!C42", 25000000,
+           f"={I['eq_a']}", f"={I['eq_b']}", 25000000,
            "Total capital deployed", '"$"#,##0'); r += 1
 
 scen_row_f(ws, r, "Agency Fees",
-           "=Inputs!C32", "=Inputs!C40", "—",
+           f"={I['ag_a']}", f"={I['ag_b']}", "—",
            "Paid Jul-26", '"$"#,##0'); r += 1
 
 scen_row_f(ws, r, "BluFin Fees",
-           "=Inputs!C33", "=Inputs!C41", "—",
+           f"={I['bf_a']}", f"={I['bf_b']}", "—",
            "Paid Jul-26", '"$"#,##0'); r += 1
 
 scen_row_f(ws, r, "Total Fees",
-           "=Inputs!C32+Inputs!C33", "=Inputs!C40+Inputs!C41", "—",
+           f"={I['ag_a']}+{I['bf_a']}", f"={I['ag_b']}+{I['bf_b']}", "—",
            "Agency + BluFin", '"$"#,##0'); r += 1
 
 scen_row_f(ws, r, "Hurdle Rate",
-           "=Inputs!C35", "=Inputs!C43", 0.20,
+           f"={I['hr_a']}", f"={I['hr_b']}", 0.20,
            "Min return threshold", "0%"); r += 1
 
 scen_row_f(ws, r, "Return of Capital",
-           "=Inputs!C34", "=Inputs!C42", "—",
+           f"={I['eq_a']}", f"={I['eq_b']}", "—",
            "Full capital returned", '"$"#,##0'); r += 1
 
 scen_row_f(ws, r, "Dist. after Hurdle — Investor",
-           "=Inputs!C36", "=Inputs!C44", "—",
+           f"={I['di_a']}", f"={I['di_b']}", "—",
            "From full waterfall model", '"$"#,##0'); r += 1
 
 scen_row_f(ws, r, "Dist. after Hurdle — BluFin",
-           "=Inputs!C37", "=Inputs!C45", "—",
+           f"={I['db_a']}", f"={I['db_b']}", "—",
            "From full waterfall model", '"$"#,##0'); r += 1
 
 # Total Investor Return = Equity + both distributions
 r_tir = r
 scen_row_f(ws, r, "Total Investor Return",
-           "=Inputs!C34+Inputs!C36+Inputs!C37",
-           "=Inputs!C42+Inputs!C44+Inputs!C45",
+           f"={I['eq_a']}+{I['di_a']}+{I['db_a']}",
+           f"={I['eq_b']}+{I['di_b']}+{I['db_b']}",
            "—",
            "Equity returned + distributions", '"$"#,##0', bold=True); r += 1
 
 # Investor Profit = Total Return - Equity
 r_profit = r
 scen_row_f(ws, r, "Investor Profit",
-           f"=C{r_tir}-Inputs!C34",
-           f"=D{r_tir}-Inputs!C42",
+           f"=C{r_tir}-{I['eq_a']}",
+           f"=D{r_tir}-{I['eq_b']}",
            "—",
            "Net gain on investment", '"$"#,##0', bold=True); r += 1
 
 # MOIC = Total Return / Equity
 r_moic = r
 scen_row_f(ws, r, "MOIC",
-           f"=C{r_tir}/Inputs!C34",
-           f"=D{r_tir}/Inputs!C42",
+           f"=C{r_tir}/{I['eq_a']}",
+           f"=D{r_tir}/{I['eq_b']}",
            1.26,
            "Multiple on Invested Capital", '0.00"x"', bold=True); r += 1
 
 # Absolute Return = Profit / Equity
 r_ret = r
 scen_row_f(ws, r, "Absolute Return",
-           f"=C{r_profit}/Inputs!C34",
-           f"=D{r_profit}/Inputs!C42",
+           f"=C{r_profit}/{I['eq_a']}",
+           f"=D{r_profit}/{I['eq_b']}",
            0.262,
            "", "0.0%", bold=True); r += 2
 
@@ -651,7 +678,7 @@ def cf_row(ws, row, label, month_vals, fmt='"$"#,##0;[Red]"($"#,##0")"', bold=Fa
 r_cap_a = r
 lbl(ws, r, 2, "Investor's Capital", bold=True)
 for mi, m in enumerate(months):
-    val = "=Inputs!C34" if m == "Feb-26" else "-"
+    val = f"={I['eq_a']}" if m == "Feb-26" else "-"
     c = ws.cell(row=r, column=mi+3, value=val)
     c.fill = CALC_FILL if val != "-" else fill("F9FAFB")
     c.font = Font(bold=True, color="059669" if val!= "-" else "CBD5E1", size=10)
@@ -662,8 +689,8 @@ r += 1
 # Net Operating Profit — from Inputs
 r_nop_a = r
 lbl(ws, r, 2, "Net Operating Profit", bold=True)
-nop_a_map = {"Feb-26":"=Inputs!C49","May-26":"=Inputs!C50","Jun-26":"=Inputs!C51",
-             "Jul-26":"=Inputs!C52","Sep-26":"=Inputs!C53"}
+nop_a_map = {"Feb-26":f"={I['nop_feb_a']}","May-26":f"={I['nop_may_a']}","Jun-26":f"={I['nop_jun_a']}",
+             "Jul-26":f"={I['nop_jul_a']}","Sep-26":f"={I['nop_sep_a']}"}
 for mi, m in enumerate(months):
     v = nop_a_map.get(m, None)
     c = ws.cell(row=r, column=mi+3, value=v if v else "-")
@@ -678,9 +705,9 @@ r += 1
 # Justin's Fees (outflows)
 r_jf_a = r
 lbl(ws, r, 2, "Justin's Fees", bold=True)
-jf_a = {"Feb-26":"=-Inputs!C25*Inputs!C26",
-        "Mar-26":"=-Inputs!C25*Inputs!C27",
-        "Jul-26":"=-Inputs!C25*Inputs!C28"}
+jf_a = {"Feb-26":f"=-{I['mg']}*{I['pmt1']}",
+        "Mar-26":f"=-{I['mg']}*{I['pmt2']}",
+        "Jul-26":f"=-{I['mg']}*{I['pmt3']}"}
 for mi, m in enumerate(months):
     v = jf_a.get(m, None)
     c = ws.cell(row=r, column=mi+3, value=v if v else "-")
@@ -696,7 +723,7 @@ r += 1
 r_af_a = r
 lbl(ws, r, 2, "Agency Fees")
 for mi, m in enumerate(months):
-    v = "=-Inputs!C32" if m == "Jul-26" else None
+    v = f"=-{I['ag_a']}" if m == "Jul-26" else None
     c = ws.cell(row=r, column=mi+3, value=v if v else "-")
     if v:
         c.fill = CALC_FILL; c.font = Font(bold=True, color="DC2626", size=10)
@@ -710,7 +737,7 @@ r += 1
 r_bf_a = r
 lbl(ws, r, 2, "BluFin Fees")
 for mi, m in enumerate(months):
-    v = "=-Inputs!C33" if m == "Jul-26" else None
+    v = f"=-{I['bf_a']}" if m == "Jul-26" else None
     c = ws.cell(row=r, column=mi+3, value=v if v else "-")
     if v:
         c.fill = CALC_FILL; c.font = Font(bold=True, color="DC2626", size=10)
@@ -724,7 +751,7 @@ r += 1
 r_roc_a = r
 lbl(ws, r, 2, "Return of Capital")
 for mi, m in enumerate(months):
-    v = "=-Inputs!C34/2" if m in ("Jul-26","Sep-26") else None
+    v = f"=-{I['eq_a']}/2" if m in ("Jul-26","Sep-26") else None
     c = ws.cell(row=r, column=mi+3, value=v if v else "-")
     if v:
         c.fill = CALC_FILL; c.font = Font(bold=True, color="7C3AED", size=10)
@@ -750,12 +777,12 @@ r += 2
 section(ws, r, 2, "SCENARIO A — INVESTOR SUMMARY", end_col=len(months)+2); r += 1
 sum_a_rows = [
     ("Distribution after 20% absolute return", None, None),
-    ("  Investor",  "=Inputs!C36", "059669"),
-    ("  BluFin",    "=Inputs!C37", "059669"),
-    ("Total Investor Return", "=Inputs!C34+Inputs!C36+Inputs!C37", "059669"),
-    ("Investor Profit",       f"=Inputs!C34+Inputs!C36+Inputs!C37-Inputs!C34", "059669"),
-    ("MOIC",                  "(Inputs!C34+Inputs!C36+Inputs!C37)/Inputs!C34", "7C3AED"),
-    ("Absolute Return",       "(Inputs!C34+Inputs!C36+Inputs!C37-Inputs!C34)/Inputs!C34", "7C3AED"),
+    ("  Investor",  f"={I['di_a']}", "059669"),
+    ("  BluFin",    f"={I['db_a']}", "059669"),
+    ("Total Investor Return", f"={I['eq_a']}+{I['di_a']}+{I['db_a']}", "059669"),
+    ("Investor Profit",       f"={I['eq_a']}+{I['di_a']}+{I['db_a']}-{I['eq_a']}", "059669"),
+    ("MOIC",                  f"({I['eq_a']}+{I['di_a']}+{I['db_a']})/{I['eq_a']}", "7C3AED"),
+    ("Absolute Return",       f"({I['eq_a']}+{I['di_a']}+{I['db_a']}-{I['eq_a']})/{I['eq_a']}", "7C3AED"),
 ]
 for label, formula, clr in sum_a_rows:
     is_header = formula is None
@@ -777,16 +804,16 @@ c.fill = fill("4C1D95"); c.font = Font(bold=True, color="FFFFFF", size=11)
 c.alignment = al("center"); rh(ws, r, 20); r += 1
 
 scen_b_lines = [
-    ("Investor's Capital",  {"Feb-26": "=Inputs!C42"}, "059669", '"$"#,##0'),
-    ("Net Operating Profit",{"Feb-26":"=Inputs!C49","May-26":"=Inputs!C50",
-                              "Jun-26":"=Inputs!C51","Jul-26":"=Inputs!C52","Sep-26":"=Inputs!C53"},
+    ("Investor's Capital",  {"Feb-26": f"={I['eq_b']}"}, "059669", '"$"#,##0'),
+    ("Net Operating Profit",{"Feb-26":f"={I['nop_feb_a']}","May-26":f"={I['nop_may_a']}",
+                              "Jun-26":f"={I['nop_jun_a']}","Jul-26":f"={I['nop_jul_a']}","Sep-26":f"={I['nop_sep_a']}"},
                              "1D4ED8", '"$"#,##0;[Red]"($"#,##0")"'),
-    ("Justin's Fees",       {"Feb-26":"=-Inputs!C25*Inputs!C26",
-                              "Mar-26":"=-Inputs!C25*Inputs!C27",
-                              "Jul-26":"=-Inputs!C25*Inputs!C28"}, "DC2626", '"$"#,##0;[Red]"($"#,##0")"'),
-    ("Agency Fees",         {"Jul-26":"=-Inputs!C40"}, "DC2626", '"$"#,##0;[Red]"($"#,##0")"'),
-    ("BluFin Fees",         {"Jul-26":"=-Inputs!C41"}, "DC2626", '"$"#,##0;[Red]"($"#,##0")"'),
-    ("Return of Capital",   {"Jul-26":"=-Inputs!C42/2","Sep-26":"=-Inputs!C42/2"}, "7C3AED", '"$"#,##0;[Red]"($"#,##0")"'),
+    ("Justin's Fees",       {"Feb-26":f"=-{I['mg']}*{I['pmt1']}",
+                              "Mar-26":f"=-{I['mg']}*{I['pmt2']}",
+                              "Jul-26":f"=-{I['mg']}*{I['pmt3']}"}, "DC2626", '"$"#,##0;[Red]"($"#,##0")"'),
+    ("Agency Fees",         {"Jul-26":f"=-{I['ag_b']}"}, "DC2626", '"$"#,##0;[Red]"($"#,##0")"'),
+    ("BluFin Fees",         {"Jul-26":f"=-{I['bf_b']}"}, "DC2626", '"$"#,##0;[Red]"($"#,##0")"'),
+    ("Return of Capital",   {"Jul-26":f"=-{I['eq_b']}/2","Sep-26":f"=-{I['eq_b']}/2"}, "7C3AED", '"$"#,##0;[Red]"($"#,##0")"'),
 ]
 b_row_refs = []
 for label, month_vals, clr, fmt in scen_b_lines:
@@ -819,12 +846,12 @@ r += 2
 # Scenario B Summary
 section(ws, r, 2, "SCENARIO B — INVESTOR SUMMARY", end_col=len(months)+2); r += 1
 for label, formula, clr in [
-    ("  Investor",    "=Inputs!C44", "059669"),
-    ("  BluFin",      "=Inputs!C45", "059669"),
-    ("Total Return",  "=Inputs!C42+Inputs!C44+Inputs!C45", "059669"),
-    ("Profit",        "=Inputs!C44+Inputs!C45", "059669"),
-    ("MOIC",          "=(Inputs!C42+Inputs!C44+Inputs!C45)/Inputs!C42", "7C3AED"),
-    ("Abs. Return",   "=(Inputs!C44+Inputs!C45)/Inputs!C42", "7C3AED"),
+    ("  Investor",    f"={I['di_b']}", "059669"),
+    ("  BluFin",      f"={I['db_b']}", "059669"),
+    ("Total Return",  f"={I['eq_b']}+{I['di_b']}+{I['db_b']}", "059669"),
+    ("Profit",        f"={I['di_b']}+{I['db_b']}", "059669"),
+    ("MOIC",          f"=({I['eq_b']}+{I['di_b']}+{I['db_b']})/{I['eq_b']}", "7C3AED"),
+    ("Abs. Return",   f"=({I['di_b']}+{I['db_b']})/{I['eq_b']}", "7C3AED"),
 ]:
     fmt = '0.00"x"' if label=="MOIC" else ("0.0%" if "Return" in label and label!="Total Return" else '"$"#,##0')
     lbl(ws, r, 2, label, bold=True, bg=SCEN_B_FILL)
@@ -854,9 +881,9 @@ hdr(ws, r, 2, "Line Item"); hdr(ws, r, 3, "Total (3 Shows)"); hdr(ws, r, 4, "Sce
 r += 1
 
 known = [
-    ("Artist MG — Justin",  "=Inputs!C25",             "=Inputs!C25",             "=Inputs!C25",             "Contractual — Inputs!C25"),
-    ("Agency Fees",          "=Inputs!C32",             "=Inputs!C32",             "=Inputs!C40",             "Jul-26 · Scen A vs B differs"),
-    ("BluFin Fees",          "=Inputs!C33",             "=Inputs!C33",             "=Inputs!C41",             "Jul-26 · Scen A vs B differs"),
+    ("Artist MG — Justin",  f"={I['mg']}",             f"={I['mg']}",             f"={I['mg']}",             "Contractual — {I['mg']}"),
+    ("Agency Fees",          f"={I['ag_a']}",             f"={I['ag_a']}",             f"={I['ag_b']}",             "Jul-26 · Scen A vs B differs"),
+    ("BluFin Fees",          f"={I['bf_a']}",             f"={I['bf_a']}",             f"={I['bf_b']}",             "Jul-26 · Scen A vs B differs"),
 ]
 known_rows = []
 for i, (label, ftot, fa, fb, note) in enumerate(known):
@@ -936,7 +963,7 @@ summary_rev = [
     ("Merchandise Revenue",         "='Revenue'!E26",  "='Revenue'!C26",  "20% promoter split"),
     ("F&B Revenue",                 0,                  0,                 "Pending"),
     ("Sponsorship Revenue",         "='Revenue'!E28",  "='Revenue'!C28",  "$150K per show"),
-    ("TOTAL GROSS REVENUE",         "='Revenue'!E30",  "='Revenue'!E30/Inputs!C5", ""),
+    ("TOTAL GROSS REVENUE",         f"='Revenue'!E30",  f"='Revenue'!E30/{I['shows']}", ""),
 ]
 for i, (label, ftot, fper, note) in enumerate(summary_rev):
     is_total = label.startswith("TOTAL")
@@ -955,10 +982,10 @@ hdr(ws, r, 2, "Item"); hdr(ws, r, 3, "Scen A"); hdr(ws, r, 4, "Scen B"); hdr(ws,
 r += 1
 
 summary_cost = [
-    ("Artist MG",          "=Inputs!C25",                     "=Inputs!C25",                      "Justin — contractual"),
-    ("Agency Fees",         "=Inputs!C32",                     "=Inputs!C40",                      "Upfront Jul-26"),
-    ("BluFin Fees",         "=Inputs!C33",                     "=Inputs!C41",                      "Jul-26"),
-    ("Total Known Costs",   "=Inputs!C25+Inputs!C32+Inputs!C33", "=Inputs!C25+Inputs!C40+Inputs!C41", "Excl. variable costs"),
+    ("Artist MG",          f"={I['mg']}",                     f"={I['mg']}",                      "Justin — contractual"),
+    ("Agency Fees",         f"={I['ag_a']}",                     f"={I['ag_b']}",                      "Upfront Jul-26"),
+    ("BluFin Fees",         f"={I['bf_a']}",                     f"={I['bf_b']}",                      "Jul-26"),
+    ("Total Known Costs",   f"={I['mg']}+{I['ag_a']}+{I['bf_a']}", f"={I['mg']}+{I['ag_b']}+{I['bf_b']}", "Excl. variable costs"),
     ("Variable Costs",      "TBD",                             "TBD",                              "Run 3 needed"),
 ]
 for i, (label, fa, fb, note) in enumerate(summary_cost):
@@ -980,11 +1007,11 @@ hdr(ws, r, 2, "Item"); hdr(ws, r, 3, "Scenario A — $12M"); hdr(ws, r, 4, "Scen
 r += 1
 
 inv_rows = [
-    ("Equity Invested",       "=Inputs!C34",  "=Inputs!C42",  "#,##0",        "000000"),
-    ("Total Investor Return",  "='Investor Scenarios'!C14", "='Investor Scenarios'!D14", "#,##0", "059669"),
-    ("Investor Profit",        "='Investor Scenarios'!C15", "='Investor Scenarios'!D15", "#,##0", "059669"),
-    ("MOIC",                   "='Investor Scenarios'!C16", "='Investor Scenarios'!D16", '0.00"x"', "7C3AED"),
-    ("Absolute Return",        "='Investor Scenarios'!C17", "='Investor Scenarios'!D17", "0.0%",   "7C3AED"),
+    ("Equity Invested",       f"={I['eq_a']}",  f"={I['eq_b']}",  "#,##0",        "000000"),
+    ("Total Investor Return",  f"='Investor Scenarios'!C{r_tir}", f"='Investor Scenarios'!D{r_tir}", "#,##0", "059669"),
+    ("Investor Profit",        f"='Investor Scenarios'!C{r_profit}", f"='Investor Scenarios'!D{r_profit}", "#,##0", "059669"),
+    ("MOIC",                   f"='Investor Scenarios'!C{r_moic}", f"='Investor Scenarios'!D{r_moic}", '0.00"x"', "7C3AED"),
+    ("Absolute Return",        f"='Investor Scenarios'!C{r_ret}", f"='Investor Scenarios'!D{r_ret}", "0.0%",   "7C3AED"),
 ]
 for i, (label, fa, fb, fmt, clr) in enumerate(inv_rows):
     is_bold = label in ("MOIC","Absolute Return","Total Investor Return")
@@ -1094,11 +1121,10 @@ iv_row(ws, r, "Gross Revenue", [
 r += 1   # r = 8
 
 # Total Costs (Scenario A: MG + Agency + BluFin)
-# Inputs!C26=MG, Inputs!C33=Agency(A), Inputs!C34=BluFin(A)
 iv_row(ws, r, "Total Costs", [
-    "=Inputs!C26+Inputs!C33+Inputs!C34",
-    "=Inputs!C26+Inputs!C33+Inputs!C34",
-    "=Inputs!C26+Inputs!C33+Inputs!C34",
+    f"={I['mg']}+{I['ag_a']}+{I['bf_a']}",
+    f"={I['mg']}+{I['ag_a']}+{I['bf_a']}",
+    f"={I['mg']}+{I['ag_a']}+{I['bf_a']}",
 ], fmt='"$"#,##0')
 r += 1   # r = 9
 
@@ -1119,17 +1145,16 @@ iv_row(ws, r, "ROI (Pre-Tax)", [
 r += 1   # r = 12
 
 # Return on Equity (Scenario A) = Net Profit / Investor Equity
-# Inputs!C35 = Investor Equity ($12M)
 iv_row(ws, r, "Return on Equity (Scenario A)", [
-    "=C9/Inputs!C35", "=D9/Inputs!C35", "=E9/Inputs!C35",
+    f"=C9/{I['eq_a']}", f"=D9/{I['eq_a']}", f"=E9/{I['eq_a']}",
 ], fmt="0.0%", font_override=IV_PCT_FT)
 r += 1   # r = 13
 
 # Investor MOIC (Scenario A) = (Equity + Net Profit) / Equity
 iv_row(ws, r, "Investor MOIC (Scenario A)", [
-    "=(Inputs!C35+C9)/Inputs!C35",
-    "=(Inputs!C35+D9)/Inputs!C35",
-    "=(Inputs!C35+E9)/Inputs!C35",
+    f"=({I['eq_a']}+C9)/{I['eq_a']}",
+    f"=({I['eq_a']}+D9)/{I['eq_a']}",
+    f"=({I['eq_a']}+E9)/{I['eq_a']}",
 ], fmt='0.00"x"', font_override=IV_MOIC_FT)
 r += 1   # r = 14
 
@@ -1138,19 +1163,17 @@ rh(ws, r, 10)
 r += 1   # r = 15
 
 # Implied Attendance = Capacity × Shows × Sell-Through%
-# Inputs!C7=capacity, Inputs!C6=shows
 iv_row(ws, r, "Implied Attendance", [
-    "=Inputs!C7*Inputs!C6*C5",
-    "=Inputs!C7*Inputs!C6*D5",
-    "=Inputs!C7*Inputs!C6*E5",
+    f"={I['capacity']}*{I['shows']}*C5",
+    f"={I['capacity']}*{I['shows']}*D5",
+    f"={I['capacity']}*{I['shows']}*E5",
 ], fmt="#,##0")
 r += 2   # r = 17
 
 # ── Footer note ──────────────────────────────────────────────────────────────
 ws.merge_cells(f"B{r}:E{r}")
 note_cell = ws.cell(row=r, column=2,
-    value='All figures pre-tax, based on '
-          '=TEXT(Inputs!C5,"0")&" shows"')
+    value='All figures pre-tax, based on shows per Inputs tab')
 # Can't embed formula in a merged note cleanly — use static reference approach
 note_cell.value = "All figures pre-tax. Show count and venue capacity per Inputs tab."
 note_cell.font = IV_NOTE_FT
