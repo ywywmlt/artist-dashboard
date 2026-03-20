@@ -115,11 +115,15 @@ def _seed_volume_from_committed():
 
 
 def _seed_admin():
-    """Ensure the admin account from env vars exists."""
+    """Ensure the admin account from env vars exists with correct password."""
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
     admin_password = os.getenv("ADMIN_PASSWORD", "changeme123")
     existing = db.get_user(admin_username)
     if existing:
+        # Ensure password matches env var (in case it was changed)
+        if not check_password_hash(existing["password_hash"], admin_password):
+            db.update_password(admin_username,
+                generate_password_hash(admin_password, method="pbkdf2:sha256"))
         return
     db.save_user(
         admin_username,
