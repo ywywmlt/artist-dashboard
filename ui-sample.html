@@ -11137,5 +11137,260 @@ document.addEventListener('DOMContentLoaded', () => { gkInitCanvas(); initAuth()
 </div>
 
 </div><!-- /app-shell -->
+
+<!-- ═══ AI CONSULTANT CHAT WIDGET ═══ -->
+<div id="ai-chat-widget" style="display:none;position:fixed;bottom:20px;right:20px;z-index:10000;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <!-- Minimized button -->
+  <button id="ai-chat-min-btn" onclick="aiChatToggle()" style="display:none;width:48px;height:48px;border-radius:50%;background:#cc6437;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(204,100,55,0.4);display:flex;align-items:center;justify-content:center;transition:transform 0.2s,box-shadow 0.2s;" onmouseover="this.style.transform='scale(1.08)';this.style.boxShadow='0 6px 28px rgba(204,100,55,0.5)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(204,100,55,0.4)'">
+    <svg width="22" height="22" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+  </button>
+  <!-- Expanded panel -->
+  <div id="ai-chat-panel" style="width:400px;height:520px;background:#0a0a0a;border:1px solid rgba(204,100,55,0.25);box-shadow:0 12px 48px rgba(0,0,0,0.7);display:flex;flex-direction:column;overflow:hidden;">
+    <!-- Header -->
+    <div style="padding:12px 16px;background:#0f0f0f;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div style="width:28px;height:28px;background:linear-gradient(135deg,#cc6437,#b8572f);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="14" height="14" fill="none" stroke="#fff" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;font-weight:700;color:#f5f5f5;letter-spacing:0.06em;text-transform:uppercase;">GATEKEEP AI</div>
+        <div id="ai-chat-status" style="font-size:9px;color:#6b7280;letter-spacing:0.04em;">Financial Consultant</div>
+      </div>
+      <button onclick="aiChatClearHistory()" title="Clear chat" style="background:none;border:none;cursor:pointer;color:#4b5563;padding:4px;transition:color 0.15s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#4b5563'">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+      </button>
+      <button onclick="aiChatMinimize()" title="Minimize" style="background:none;border:none;cursor:pointer;color:#6b7280;padding:4px;transition:color 0.15s;" onmouseover="this.style.color='#f5f5f5'" onmouseout="this.style.color='#6b7280'">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+    </div>
+    <!-- Messages -->
+    <div id="ai-chat-messages" style="flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+      <div style="background:rgba(204,100,55,0.08);border:1px solid rgba(204,100,55,0.15);padding:10px 12px;font-size:11px;color:#d4a574;line-height:1.5;">
+        I can see your live model. Ask me anything — ROI optimization, deal structure, risk analysis. I can also modify your inputs directly.
+      </div>
+    </div>
+    <!-- Input -->
+    <div style="padding:10px 12px;border-top:1px solid rgba(255,255,255,0.06);background:#0f0f0f;flex-shrink:0;">
+      <div style="display:flex;gap:8px;">
+        <input id="ai-chat-input" type="text" placeholder="Ask about this deal..." style="flex:1;background:#000;border:1px solid rgba(255,255,255,0.08);padding:9px 12px;font-size:12px;color:#f5f5f5;outline:none;transition:border-color 0.15s;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;" onfocus="this.style.borderColor='rgba(204,100,55,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.08)'" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aiChatSend()}">
+        <button id="ai-chat-send-btn" onclick="aiChatSend()" style="background:#cc6437;border:none;cursor:pointer;padding:9px 14px;color:#fff;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;transition:background 0.15s;" onmouseover="this.style.background='#b8572f'" onmouseout="this.style.background='#cc6437'">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── AI Chat Widget ─────────────────────────────────────────────────────────
+const AI_CHAT_KEY = 'gk_ai_chat_';
+let _aiChatOpen = true;
+let _aiChatStreaming = false;
+
+function aiChatProfileKey() {
+  const p = typeof fdState !== 'undefined' && fdState.draftProfile;
+  return AI_CHAT_KEY + (p ? p.id : 'global');
+}
+
+function aiChatLoadHistory() {
+  try { return JSON.parse(localStorage.getItem(aiChatProfileKey()) || '[]'); } catch(e) { return []; }
+}
+
+function aiChatSaveHistory(msgs) {
+  try { localStorage.setItem(aiChatProfileKey(), JSON.stringify(msgs.slice(-50))); } catch(e) {}
+}
+
+function aiChatClearHistory() {
+  try { localStorage.removeItem(aiChatProfileKey()); } catch(e) {}
+  const el = document.getElementById('ai-chat-messages');
+  if (el) el.innerHTML = `<div style="background:rgba(204,100,55,0.08);border:1px solid rgba(204,100,55,0.15);padding:10px 12px;font-size:11px;color:#d4a574;line-height:1.5;">Chat cleared. I still have full context of your current model.</div>`;
+}
+
+function aiChatShow() {
+  const w = document.getElementById('ai-chat-widget');
+  if (w) w.style.display = 'block';
+  // Restore history
+  const msgs = aiChatLoadHistory();
+  if (msgs.length > 0) aiChatRenderAll(msgs);
+}
+
+function aiChatHide() {
+  const w = document.getElementById('ai-chat-widget');
+  if (w) w.style.display = 'none';
+}
+
+function aiChatMinimize() {
+  _aiChatOpen = false;
+  document.getElementById('ai-chat-panel').style.display = 'none';
+  const btn = document.getElementById('ai-chat-min-btn');
+  btn.style.display = 'flex';
+}
+
+function aiChatToggle() {
+  _aiChatOpen = true;
+  document.getElementById('ai-chat-panel').style.display = 'flex';
+  document.getElementById('ai-chat-min-btn').style.display = 'none';
+  const el = document.getElementById('ai-chat-messages');
+  if (el) el.scrollTop = el.scrollHeight;
+  document.getElementById('ai-chat-input')?.focus();
+}
+
+function aiChatRenderAll(msgs) {
+  const el = document.getElementById('ai-chat-messages');
+  if (!el) return;
+  el.innerHTML = msgs.map(m => m.role === 'user' ? aiChatUserBubble(m.content) : aiChatAIBubble(m.content)).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function aiChatUserBubble(text) {
+  return `<div style="align-self:flex-end;max-width:85%;background:rgba(204,100,55,0.15);border:1px solid rgba(204,100,55,0.2);padding:8px 12px;font-size:12px;color:#f5f5f5;line-height:1.5;">${escHtml(text)}</div>`;
+}
+
+function aiChatAIBubble(text) {
+  // Convert markdown-lite: **bold**, `code`, newlines
+  let html = escHtml(text)
+    .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f5f5f5">$1</strong>')
+    .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.06);padding:1px 4px;font-size:11px;color:#cc6437">$1</code>')
+    .replace(/\n/g, '<br>');
+  return `<div style="align-self:flex-start;max-width:90%;background:#111;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;font-size:12px;color:#d1d5db;line-height:1.6;">${html}</div>`;
+}
+
+async function aiChatSend() {
+  if (_aiChatStreaming) return;
+  const input = document.getElementById('ai-chat-input');
+  const text = (input?.value || '').trim();
+  if (!text) return;
+  input.value = '';
+
+  const msgs = aiChatLoadHistory();
+  msgs.push({ role: 'user', content: text });
+
+  const el = document.getElementById('ai-chat-messages');
+  el.innerHTML += aiChatUserBubble(text);
+  el.innerHTML += `<div id="ai-chat-streaming" style="align-self:flex-start;max-width:90%;background:#111;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;font-size:12px;color:#d1d5db;line-height:1.6;"><span style="color:#6b7280;font-style:italic;">Thinking...</span></div>`;
+  el.scrollTop = el.scrollHeight;
+
+  // Gather profile context
+  let profile = {}, computed = {};
+  if (typeof fdState !== 'undefined' && fdState.draftProfile) {
+    profile = fdState.draftProfile;
+    try { computed = computeProfile(profile); } catch(e) { computed = {}; }
+  }
+
+  _aiChatStreaming = true;
+  document.getElementById('ai-chat-status').textContent = 'Thinking...';
+  const sendBtn = document.getElementById('ai-chat-send-btn');
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '...'; }
+
+  let fullResponse = '';
+  try {
+    const resp = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: msgs.slice(-20), profile, computed }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: 'Request failed' }));
+      throw new Error(err.error || 'Request failed');
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    const streamEl = document.getElementById('ai-chat-streaming');
+    streamEl.innerHTML = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const d = JSON.parse(line.slice(6));
+          if (d.type === 'text') {
+            fullResponse += d.content;
+            // Render with markdown-lite
+            let html = escHtml(fullResponse)
+              .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#f5f5f5">$1</strong>')
+              .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.06);padding:1px 4px;font-size:11px;color:#cc6437">$1</code>')
+              .replace(/\n/g, '<br>');
+            streamEl.innerHTML = html;
+            el.scrollTop = el.scrollHeight;
+          } else if (d.type === 'error') {
+            streamEl.innerHTML = `<span style="color:#ef4444">${escHtml(d.content)}</span>`;
+          }
+        } catch(e) {}
+      }
+    }
+
+    // Process any actions in the response
+    aiChatProcessActions(fullResponse);
+
+    // Save to history
+    msgs.push({ role: 'assistant', content: fullResponse });
+    aiChatSaveHistory(msgs);
+
+  } catch(e) {
+    const streamEl = document.getElementById('ai-chat-streaming');
+    if (streamEl) streamEl.innerHTML = `<span style="color:#ef4444">${escHtml(e.message)}</span>`;
+  }
+
+  _aiChatStreaming = false;
+  document.getElementById('ai-chat-status').textContent = 'Financial Consultant';
+  if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send'; }
+}
+
+function aiChatProcessActions(text) {
+  // Extract ```action blocks
+  const actionRegex = /```action\s*\n([\s\S]*?)```/g;
+  let match;
+  let modified = false;
+  while ((match = actionRegex.exec(text)) !== null) {
+    try {
+      const action = JSON.parse(match[1].trim());
+      if (!fdState?.draftProfile) continue;
+      const p = fdState.draftProfile;
+
+      if (action.type === 'set_field') {
+        // Set a nested field: "costs.artist_mg" → p.costs.artist_mg = value
+        const parts = action.path.split('.');
+        let obj = p;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!obj[parts[i]]) obj[parts[i]] = {};
+          obj = obj[parts[i]];
+        }
+        obj[parts[parts.length - 1]] = action.value;
+        modified = true;
+      } else if (action.type === 'set_seat_price') {
+        // Update seat price by index in all cities
+        for (const tc of (p.tour_cities || [])) {
+          if (tc.seat_categories && tc.seat_categories[action.index]) {
+            tc.seat_categories[action.index].price = action.value;
+          }
+        }
+        modified = true;
+      } else if (action.type === 'set_fill_rate') {
+        const tc = (p.tour_cities || [])[action.city_index || 0];
+        if (tc) { tc.fill_rate = action.value; modified = true; }
+      }
+    } catch(e) { console.warn('AI action parse error:', e); }
+  }
+
+  if (modified && typeof fdUpdateLive === 'function') {
+    fdUpdateLive();
+  }
+}
+
+// Show chat when finbuilder page is active
+(function() {
+  const origShowPage = typeof showPage === 'function' ? showPage : null;
+  if (!origShowPage) return;
+  const _origShowPage = origShowPage;
+  window.showPage = function(page) {
+    _origShowPage(page);
+    if (page === 'finbuilder') aiChatShow();
+    else aiChatHide();
+  };
+})();
+</script>
 </body>
 </html>

@@ -684,5 +684,177 @@ def api_artists_summary():
     })
 
 
+# ── AI Consultant chat ────────────────────────────────────────────────────────
+
+_ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+
+_AI_SYSTEM_PROMPT = """You are GATEKEEP AI — a sharp, senior music industry finance consultant embedded in the GATEKEEP Artist Intelligence Platform.
+
+You are looking at a live financial model for a touring deal. The user is a promoter or investor evaluating this deal. Your job is to:
+1. Analyze the numbers they're showing you and give direct, actionable advice
+2. Answer financial questions about the deal structure, ROI, MOIC, break-even, waterfall
+3. Identify risks, missing data, and opportunities to improve returns
+4. When asked, modify the model by returning structured actions
+
+RULES:
+- Be concise and direct. No filler. These are professionals.
+- Always show your math when making claims about numbers
+- If something looks off in the model, flag it proactively
+- Never fabricate numbers — only reference what's in the context
+- When suggesting changes, explain the impact on ROI/MOIC before making them
+
+When you want to MODIFY the profile, include a JSON block in your response like:
+```action
+{"type": "set_field", "path": "costs.artist_mg", "value": 15000000}
+```
+or for seat categories:
+```action
+{"type": "set_seat_price", "index": 0, "value": 200}
+```
+or for fill rate:
+```action
+{"type": "set_fill_rate", "city_index": 0, "value": 0.90}
+```
+
+Multiple actions can be included in one response. The user will see the model update live.
+"""
+
+
+@app.route("/api/ai/chat", methods=["POST"])
+@login_required
+def api_ai_chat():
+    """Stream AI consultant response via SSE."""
+    if not _ANTHROPIC_API_KEY:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
+
+    data = request.get_json(force=True) or {}
+    messages = data.get("messages", [])
+    profile_context = data.get("profile", {})
+    computed_context = data.get("computed", {})
+
+    if not messages:
+        return jsonify({"error": "No messages provided"}), 400
+
+    # Build financial context summary for the system prompt
+    p = profile_context
+    c = computed_context
+    co = p.get("costs", {})
+    ar = p.get("additional_revenue", {})
+
+    context_parts = [_AI_SYSTEM_PROMPT, "\n--- CURRENT MODEL STATE ---\n"]
+
+    # Artist & structure
+    context_parts.append(f"Artist: {p.get('artist', 'Unknown')}")
+    context_parts.append(f"Venue Type: {p.get('venue_type', 'arena')}")
+
+    # Tour cities
+    cities = p.get("tour_cities", [])
+    if cities:
+        for i, tc in enumerate(cities):
+            cats = tc.get("seat_categories", [])
+            cat_str = ", ".join(f"{cat.get('name','?')}: ${cat.get('price',0):,} x {cat.get('count',0):,}" for cat in cats)
+            context_parts.append(
+                f"City {i+1}: {tc.get('city_name','?')} | {tc.get('num_shows',1)} shows | "
+                f"Capacity: {tc.get('capacity',0):,} | Fill: {int((tc.get('fill_rate',1))*100)}% | {cat_str}"
+            )
+
+    # Revenue
+    context_parts.append(f"\nTotal Shows: {c.get('n', 0)}")
+    context_parts.append(f"Total Ticket Revenue: ${c.get('total_ticket_rev', 0):,.0f}")
+    context_parts.append(f"Merch Revenue: ${c.get('merch_rev', 0):,.0f} ({ar.get('merch_per_show', 0):,}/show)")
+    context_parts.append(f"Sponsorship: ${c.get('sponsor_rev', 0):,.0f} ({ar.get('sponsorship_per_show', 0):,}/show)")
+    context_parts.append(f"Total Gross Revenue: ${c.get('total_gross_rev', 0):,.0f}")
+
+    # Costs
+    context_parts.append(f"\nArtist MG: ${c.get('artist_mg_cost', 0):,.0f}")
+    context_parts.append(f"Operating Costs: ${c.get('total_op_costs', 0):,.0f}")
+    context_parts.append(f"Ticketing Fee: ${c.get('ticketing_fee', 0):,.0f} ({(co.get('ticketing_fee_pct', 0))*100:.1f}%)")
+    context_parts.append(f"Agency Fees: ${co.get('agency_fees', 0):,}")
+    context_parts.append(f"BluFin Fees: ${co.get('blufin_fees', 0):,}")
+    context_parts.append(f"Total Costs: ${c.get('total_costs', 0):,.0f}")
+
+    # P&L
+    context_parts.append(f"\nNet Profit: ${c.get('net_profit', 0):,.0f}")
+    context_parts.append(f"ROI: {c.get('roi', 0)*100:.2f}%")
+    context_parts.append(f"Tax Rate: {co.get('tax_rate', 0)*100:.1f}%")
+    context_parts.append(f"Post-Tax Profit: ${c.get('blufin_net_profit_after_tax', c.get('net_profit', 0)):,.0f}")
+    context_parts.append(f"Break-even Fill: {(c.get('tour_break_even_fill') or 0)*100:.1f}%")
+    context_parts.append(f"Invested Capital: ${c.get('invested_capital', 0):,.0f}")
+
+    # Investor scenarios
+    inv_scens = p.get("investor_scenarios", [])
+    for scen in inv_scens:
+        eq = scen.get("equity", 0)
+        if not eq:
+            continue
+        hr = scen.get("hurdle_rate", 0.20)
+        sp = scen.get("above_hurdle_investor_pct", 0.50)
+        context_parts.append(
+            f"\nInvestor Scenario '{scen.get('label', '?')}': "
+            f"Equity ${eq:,} | Hurdle {hr*100:.0f}% | Investor split {sp*100:.0f}%"
+        )
+        investors = scen.get("investors", [])
+        for inv in investors:
+            context_parts.append(
+                f"  → {inv.get('name', '?')}: {inv.get('pct', 0):.1f}% stake, "
+                f"{inv.get('expected_return_pct', 0)}% expected return"
+            )
+
+    # Sell-through scenarios (quick compute)
+    full_tkt = c.get("total_ticket_rev", 0)
+    fill = 1.0
+    for cc in c.get("cityCalcs", []):
+        fill = cc.get("fill_rate", 1.0)
+    merch = c.get("merch_rev", 0)
+    spon = c.get("sponsor_rev", 0)
+    costs = c.get("total_costs", 0)
+
+    context_parts.append("\nSell-Through Scenarios:")
+    for pct in [0.85, 0.95, 1.00]:
+        gross = full_tkt * pct / max(fill, 0.01) + merch + spon
+        net = gross - costs
+        context_parts.append(f"  {pct*100:.0f}%: Gross ${gross:,.0f} | Net ${net:,.0f} | ROI {net/max(costs,1)*100:.1f}%")
+
+    context_parts.append("\n--- END MODEL STATE ---")
+
+    system_prompt = "\n".join(context_parts)
+
+    # Format messages for Claude API
+    api_messages = []
+    for msg in messages[-20:]:  # Keep last 20 messages for context window
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        if role in ("user", "assistant") and content:
+            api_messages.append({"role": role, "content": content})
+
+    if not api_messages:
+        return jsonify({"error": "No valid messages"}), 400
+
+    import anthropic
+
+    def generate():
+        try:
+            client = anthropic.Anthropic(api_key=_ANTHROPIC_API_KEY)
+            with client.messages.stream(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1500,
+                system=system_prompt,
+                messages=api_messages,
+            ) as stream:
+                for text in stream.text_stream:
+                    yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        except anthropic.APIError as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+    return app.response_class(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
