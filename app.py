@@ -836,7 +836,7 @@ def api_ai_chat():
         try:
             client = anthropic.Anthropic(api_key=_ANTHROPIC_API_KEY)
             with client.messages.stream(
-                model="claude-sonnet-4-20250514",
+                model="claude-haiku-4-5-20251001",
                 max_tokens=1500,
                 system=system_prompt,
                 messages=api_messages,
