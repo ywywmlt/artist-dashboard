@@ -115,12 +115,12 @@ def _seed_volume_from_committed():
 
 
 def _seed_admin():
-    """Create default admin if no users exist."""
-    users = db.load_users()
-    if users:
-        return
+    """Ensure the admin account from env vars exists."""
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
     admin_password = os.getenv("ADMIN_PASSWORD", "changeme123")
+    existing = db.get_user(admin_username)
+    if existing:
+        return
     db.save_user(
         admin_username,
         generate_password_hash(admin_password, method="pbkdf2:sha256"),
