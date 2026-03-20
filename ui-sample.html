@@ -671,6 +671,16 @@
   .fd-pl-row.roi-row .fd-pl-lbl { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7); }
   .fd-pl-row.roi-row .fd-pl-val { font-size: 13px; font-weight: 700; }
 
+  /* ── Mobile responsive ── */
+  @media (max-width: 768px) {
+    .fd-kpi-band { grid-template-columns: repeat(2, 1fr) !important; }
+    #gk-nav { padding: 0 12px; }
+    .kpi-card { min-width: auto; }
+    #gk-main { padding-top: calc(var(--nav-h) + 28px); }
+    .col-peak, .col-recent-events { display: none; }
+    .glass { padding: 12px !important; }
+  }
+
 </style>
 </head>
 <body class="min-h-screen">
@@ -802,6 +812,13 @@
   <div id="gk-page-bar">
     <span id="gk-page-index">01</span>
     <span id="page-title">Dashboard</span>
+    <a id="gk-download-csv" href="/data/output/artists_master.csv" download
+       style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;letter-spacing:0.06em;color:rgba(255,255,255,0.35);text-decoration:none;padding:2px 10px;border:1px solid rgba(255,255,255,0.08);transition:all 0.15s;"
+       onmouseover="this.style.color='rgba(255,255,255,0.7)';this.style.borderColor='rgba(255,255,255,0.15)'"
+       onmouseout="this.style.color='rgba(255,255,255,0.35)';this.style.borderColor='rgba(255,255,255,0.08)'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      CSV
+    </a>
     <span id="gk-alert-pill" style="display:none;">0 ALERTS</span>
   </div>
 
@@ -963,9 +980,10 @@
               <th class="text-left pb-3">Artist</th>
               <th class="text-right pb-3">Monthly Listeners</th>
               <th class="text-right pb-3">Daily Change</th>
-              <th class="text-right pb-3">Peak</th>
+              <th class="text-center pb-3 col-sparkline">7d</th>
+              <th class="text-right pb-3 col-peak">Peak</th>
               <th class="text-center pb-3">Touring</th>
-              <th class="text-right pb-3">Recent Events</th>
+              <th class="text-right pb-3 col-recent-events">Recent Events</th>
               <th class="text-right pb-3">Last Show</th>
               <th class="text-right pb-3 pr-3"></th>
             </tr>
@@ -2320,9 +2338,19 @@ function renderArtistTable() {
         </td>
         <td class="py-3 text-right text-sm text-white">${fmt(a.monthly_listeners)}</td>
         <td class="py-3 text-right text-sm ${up ? 'trend-up' : 'trend-down'} font-medium">${up?'+':''}${fmt(a.daily_change)}</td>
-        <td class="py-3 text-right text-sm text-slate-400">${fmt(a.peak_listeners)}${pctOfPeak !== null ? ` <span class="text-[10px] text-slate-500">(${pctOfPeak}%)</span>` : ''}</td>
-        <td class="py-3 text-center">${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">—</span>'}${gapBadge}</td>
-        <td class="py-3 text-right text-sm text-slate-300">${t ? t.recent_event_count : '—'}</td>
+        <td class="py-3 text-center col-sparkline">${(() => {
+          const hist = window.listenerHistory && window.listenerHistory[a.spotify_id];
+          if (!hist || hist.length < 2) return '<span class="text-slate-600">\u2014</span>';
+          const pts = hist.slice(-7).map(h => h.listeners);
+          const mn = Math.min(...pts), mx = Math.max(...pts);
+          const range = mx - mn || 1;
+          const coords = pts.map((v, i) => `${(i / (pts.length - 1)) * 38 + 1},${15 - ((v - mn) / range) * 13 + 1}`).join(' ');
+          const clr = pts[pts.length-1] >= pts[0] ? '#4ade80' : '#f87171';
+          return '<svg width="40" height="16" viewBox="0 0 40 16" style="display:inline-block;vertical-align:middle;"><polyline points="' + coords + '" fill="none" stroke="' + clr + '" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        })()}</td>
+        <td class="py-3 text-right text-sm text-slate-400 col-peak">${fmt(a.peak_listeners)}${pctOfPeak !== null ? ` <span class="text-[10px] text-slate-500">(${pctOfPeak}%)</span>` : ''}</td>
+        <td class="py-3 text-center">${t ? (t.is_touring ? '<span class="badge-green text-[10px] px-2 py-0.5 rounded-full">Active</span>' : '<span class="badge-red text-[10px] px-2 py-0.5 rounded-full">Inactive</span>') : '<span class="text-[10px] text-slate-600">\u2014</span>'}${gapBadge}</td>
+        <td class="py-3 text-right text-sm text-slate-300 col-recent-events">${t ? t.recent_event_count : '\u2014'}</td>
         <td class="py-3 text-right text-sm text-slate-400">${t ? relDate(t.last_event_date) : '—'}</td>
         <td class="py-3 text-right pr-3"><button class="text-red-400 hover:text-red-300 text-xs">View</button></td>
       </tr>`;

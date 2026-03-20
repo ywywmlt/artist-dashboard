@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Railway cron: Add a cron trigger hitting POST /api/events/refresh with X-Cron-Secret header
+# Recommended schedule: 0 6 * * * (daily at 6 AM UTC)
 """Daily pipeline cron job — runs automatically on Railway schedule.
 
 Executes the quick refresh sequence:

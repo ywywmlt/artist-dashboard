@@ -720,10 +720,21 @@ Multiple actions can be included in one response. The user will see the model up
 """
 
 
+_ai_chat_last_request: dict[str, float] = {}
+_AI_CHAT_MIN_INTERVAL = 3  # seconds between requests per user
+
+
 @app.route("/api/ai/chat", methods=["POST"])
 @login_required
 def api_ai_chat():
     """Stream AI consultant response via SSE."""
+    username = session["username"]
+    now = time.time()
+    last = _ai_chat_last_request.get(username, 0)
+    if now - last < _AI_CHAT_MIN_INTERVAL:
+        return jsonify({"error": "Please wait a moment between messages"}), 429
+    _ai_chat_last_request[username] = now
+
     if not _ANTHROPIC_API_KEY:
         return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
 
@@ -819,13 +830,24 @@ def api_ai_chat():
 
     system_prompt = "\n".join(context_parts)
 
-    # Format messages for Claude API
+    # Format messages for Claude API — compress older messages to save tokens
     api_messages = []
-    for msg in messages[-20:]:  # Keep last 20 messages for context window
-        role = msg.get("role", "user")
-        content = msg.get("content", "")
-        if role in ("user", "assistant") and content:
-            api_messages.append({"role": role, "content": content})
+    valid = [m for m in messages if m.get("role") in ("user", "assistant") and m.get("content")]
+    if len(valid) > 8:
+        # Summarize older messages into a single context message
+        older = valid[:-6]
+        summary_parts = []
+        for m in older[-10:]:  # Summarize last 10 of the older batch
+            prefix = "User asked:" if m["role"] == "user" else "You said:"
+            summary_parts.append(f"{prefix} {m['content'][:150]}")
+        summary = "Previous conversation summary:\n" + "\n".join(summary_parts)
+        api_messages.append({"role": "user", "content": summary})
+        api_messages.append({"role": "assistant", "content": "Understood, I have context from our earlier discussion."})
+        for m in valid[-6:]:
+            api_messages.append({"role": m["role"], "content": m["content"]})
+    else:
+        for m in valid:
+            api_messages.append({"role": m["role"], "content": m["content"]})
 
     if not api_messages:
         return jsonify({"error": "No valid messages"}), 400
