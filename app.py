@@ -776,7 +776,8 @@ def api_ai_chat():
     # Revenue
     context_parts.append(f"\nTotal Shows: {c.get('n', 0)}")
     context_parts.append(f"Total Ticket Revenue: ${c.get('total_ticket_rev', 0):,.0f}")
-    context_parts.append(f"Merch Revenue: ${c.get('merch_rev', 0):,.0f} ({ar.get('merch_per_show', 0):,}/show)")
+    merch_split = ar.get('merch_split_pct', 1.0)
+    context_parts.append(f"Merch Revenue: ${c.get('merch_rev', 0):,.0f} (${ar.get('merch_per_show', 0):,} gross/show × {merch_split*100:.0f}% split)")
     context_parts.append(f"Sponsorship: ${c.get('sponsor_rev', 0):,.0f} ({ar.get('sponsorship_per_show', 0):,}/show)")
     context_parts.append(f"Total Gross Revenue: ${c.get('total_gross_rev', 0):,.0f}")
 

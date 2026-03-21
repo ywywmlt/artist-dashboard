@@ -4781,7 +4781,9 @@ function computeProfile(p) {
 
   // Revenue
   const ar = p.additional_revenue || {};
-  const merch_rev   = (Number(ar.merch_per_show)||0) * n;
+  const merch_split_pct = ar.merch_split_pct !== undefined ? Number(ar.merch_split_pct) : 1.0;
+  const merch_gross = (Number(ar.merch_per_show)||0) * n;
+  const merch_rev   = merch_gross * merch_split_pct;
   const fnb_rev     = (Number(ar.fnb_per_head)||0) * (Number(ar.fnb_buyer_pct)||0) * total_attendance;
   const sponsor_rev = (Number(ar.sponsorship_per_show)||0) * n;
   const total_gross_rev = total_ticket_rev + merch_rev + fnb_rev + sponsor_rev;
@@ -5083,7 +5085,7 @@ function fdMigrateProfile(p) {
   if (!p.additional_revenue) p.additional_revenue = {};
   // Migrate old per-head merch model to flat per-show (reset to 0 — user re-enters)
   if (p.additional_revenue.merch_per_show === undefined) p.additional_revenue.merch_per_show = 0;
-  delete p.additional_revenue.merch_split_pct;
+  if (p.additional_revenue.merch_split_pct === undefined) p.additional_revenue.merch_split_pct = 1.0;
 }
 
 function fdSetMain(p) {
@@ -5450,7 +5452,7 @@ function fdStartCreate() {
       fill_rate: 1.0,
       venue_fee: 0, production: 0, hospitality: 0, insurance: 0
     }],
-    additional_revenue: { merch_per_show: 0, fnb_per_head: 0, fnb_buyer_pct: 0, sponsorship_per_show: 0 },
+    additional_revenue: { merch_per_show: 0, merch_split_pct: 1.0, fnb_per_head: 0, fnb_buyer_pct: 0, sponsorship_per_show: 0 },
     costs: {
       artist_mg: 0,
       ticketing_fee_pct: _def.ticketing_fee_pct !== undefined ? _def.ticketing_fee_pct : 0.10,
@@ -5721,8 +5723,10 @@ async function fdExportExcel() {
   const addlACs = [];
   const totAttend = c.total_attendance;
 
-  // Merch (flat per-show × num shows)
-  const mPS = Number(ar.merch_per_show)||0;
+  // Merch (gross per-show × split % × num shows)
+  const mGrossPS = Number(ar.merch_per_show)||0;
+  const mSplitPct = ar.merch_split_pct !== undefined ? Number(ar.merch_split_pct) : 1.0;
+  const mPS = mGrossPS * mSplitPct;
   const mNetTotal = mPS * n;
   sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='Merchandise Revenue (per show)';
   inp(ws.getCell(r,2),mPS,{numFmt:'$#,##0'});
@@ -7131,7 +7135,7 @@ function fdInvestorViewPopupHTML(p, c) {
   const pcts = [0.85, 0.95, 1.00];
   const co = p.costs || {};
   const feePct = Number(co.ticketing_fee_pct) || 0;
-  const mPS = Number(p.additional_revenue?.merch_per_show) || 0;
+  const mPS = (Number(p.additional_revenue?.merch_per_show) || 0) * (p.additional_revenue?.merch_split_pct !== undefined ? Number(p.additional_revenue.merch_split_pct) : 1.0);
   const fHead = Number(p.additional_revenue?.fnb_per_head) || 0;
   const fPct = Number(p.additional_revenue?.fnb_pct) || 0;
   const spPS = Number(p.additional_revenue?.sponsorship_per_show) || 0;
@@ -7295,7 +7299,7 @@ function fdPLSummaryHTML(p, c) {
     <div class="fd-pl-row"><span class="fd-pl-lbl" style="color:rgba(255,255,255,0.65);">Gross Ticket Revenue</span><span class="fd-pl-val neu">${fmtMoney(c.total_ticket_rev)}</span></div>
     ${perCityRevRows}
     ${c.ticketing_fee>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Less: Platform Fee (${((co.ticketing_fee_pct||0)*100).toFixed(0)}%)</span><span class="fd-pl-val neg">(${fmtMoney(c.ticketing_fee)})</span></div>`:''}
-    ${c.merch_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Merch Revenue (${fmtMoney(p.additional_revenue?.merch_per_show||0)}/show × ${c.n} show${c.n!==1?'s':''})</span><span class="fd-pl-val pos">${fmtMoney(c.merch_rev)}</span></div>`:''}
+    ${c.merch_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Merch Revenue (${((p.additional_revenue?.merch_split_pct??1)*100).toFixed(0)}% of ${fmtMoney(p.additional_revenue?.merch_per_show||0)}/show × ${c.n})</span><span class="fd-pl-val pos">${fmtMoney(c.merch_rev)}</span></div>`:''}
     ${c.fnb_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">F&amp;B Revenue</span><span class="fd-pl-val pos">${fmtMoney(c.fnb_rev)}</span></div>`:''}
     ${c.sponsor_rev>0?`<div class="fd-pl-row indent"><span class="fd-pl-lbl">Sponsorship Revenue</span><span class="fd-pl-val pos">${fmtMoney(c.sponsor_rev)}</span></div>`:''}
     <div class="fd-pl-row subtotal"><span class="fd-pl-lbl">Total Gross Revenue</span><span class="fd-pl-val pos">${fmtMoney(c.total_gross_rev)}</span></div>
@@ -7402,7 +7406,7 @@ function fdInvestorViewHTML(p, c) {
   const labels = ['Conservative', 'Base Case', 'Upside'];
   const co = p.costs || {};
   const feePct = Number(co.ticketing_fee_pct) || 0;
-  const mPS = Number(p.additional_revenue?.merch_per_show) || 0;
+  const mPS = (Number(p.additional_revenue?.merch_per_show) || 0) * (p.additional_revenue?.merch_split_pct !== undefined ? Number(p.additional_revenue.merch_split_pct) : 1.0);
   const fHead = Number(p.additional_revenue?.fnb_per_head) || 0;
   const fPct = Number(p.additional_revenue?.fnb_pct) || 0;
   const spPS = Number(p.additional_revenue?.sponsorship_per_show) || 0;
@@ -9070,9 +9074,14 @@ function fdRenderLive(p) {
       <h3 class="text-xs font-semibold text-white mb-3 uppercase tracking-wider">3 — Additional Revenue</h3>
       <div class="grid grid-cols-3 gap-4">
         <div>
-          <label class="${FD_LABEL}">Merch Rev / Show ($)</label>
+          <label class="${FD_LABEL}">Gross Merch Sales / Show ($)</label>
           <input type="number" class="${FD_INPUT}" min="0" step="1" value="${p.additional_revenue?.merch_per_show||0}" oninput="fdPatch('additional_revenue.merch_per_show',Number(this.value));fdUpdateLive()">
-          <div class="text-[9px] text-slate-600 mt-1">× ${n} show${n!==1?'s':''} = ${fmtMoney((p.additional_revenue?.merch_per_show||0)*n)} total</div>
+          <div class="text-[9px] text-slate-600 mt-1">Total gross: ${fmtMoney((p.additional_revenue?.merch_per_show||0)*n)}</div>
+        </div>
+        <div>
+          <label class="${FD_LABEL}">Promoter Merch Split (%)</label>
+          <input type="number" class="${FD_INPUT}" min="0" max="100" step="1" value="${((p.additional_revenue?.merch_split_pct ?? 1.0)*100).toFixed(0)}" oninput="fdPatch('additional_revenue.merch_split_pct',Number(this.value)/100);fdUpdateLive()">
+          <div class="text-[9px] text-slate-600 mt-1">Rev: ${fmtMoney((p.additional_revenue?.merch_per_show||0)*(p.additional_revenue?.merch_split_pct??1.0)*n)}</div>
         </div>
         <div>
           <label class="${FD_LABEL}">Avg F&amp;B Spend / Head ($)</label>
