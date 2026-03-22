@@ -7613,8 +7613,8 @@ function fdArtistProfileHTML(p) {
   if (!name) return `<div class="text-center py-8 text-slate-500 text-xs">Enter an artist name in Section 1 to link their full profile data.</div>`;
   const a = artists.find(x => x.name.toLowerCase() === name.toLowerCase());
   if (!a) {
-    // Check Rostr even without kworb data
-    const ro = window.rostrIntel && window.rostrIntel[name.toLowerCase()];
+    // Check live Rostr lookup + pre-scraped
+    const ro = p._rostrIntel || (window.rostrIntel && window.rostrIntel[name.toLowerCase()]);
     const sigs = ro ? (ro.signings || []).slice(0, 5) : [];
     const hasRostr = ro && (ro.management || ro.agency || ro.label || sigs.length);
     const signingBadge = (s) => {
@@ -7707,8 +7707,8 @@ function fdDemandCardHTML(p) {
   if (!name) return `<div class="text-center py-2 text-[10px] text-slate-600">Type an artist name above to see market demand analysis</div>`;
   const a = artists.find(x => x.name.toLowerCase() === name.toLowerCase());
   if (!a) {
-    // Even without kworb data, check Rostr for team intel
-    const roManual = window.rostrIntel && window.rostrIntel[name.toLowerCase()];
+    // Even without kworb data, check live Rostr lookup + pre-scraped
+    const roManual = p._rostrIntel || (window.rostrIntel && window.rostrIntel[name.toLowerCase()]);
     const roManualSignings = roManual ? (roManual.signings || []).slice(0, 3) : [];
     const hasRostrData = roManual && (roManual.management || roManual.agency || roManual.label || roManualSignings.length);
     return `<div style="border:1px solid rgba(255,255,255,0.07);background:#070707;">
@@ -7737,22 +7737,30 @@ function fdDemandCardHTML(p) {
   const d = computeArtistDemand(a.monthly_listeners, a.peak_listeners, t ? t.is_touring : false, a.daily_change || 0, t ? t.recent_event_count : 0, showEvents);
   const scoreColor = d.demandScore >= 75 ? 'text-emerald-400' : d.demandScore >= 50 ? 'text-cyan-400' : d.demandScore >= 30 ? 'text-amber-400' : 'text-red-400';
 
-  // Rostr intel
-  const ro = window.rostrIntel && window.rostrIntel[a.name.toLowerCase()];
+  // Rostr intel — prefer live lookup, fall back to pre-scraped
+  const ro = p._rostrIntel || (window.rostrIntel && window.rostrIntel[a.name.toLowerCase()]);
   const roTeam = ro && (ro.management || ro.agency || ro.label);
-  const roSignings = ro ? (ro.signings || []).slice(0, 3) : [];
-  const rostrRow = (roTeam || roSignings.length) ? `<div style="padding:8px 18px;border-top:1px solid rgba(255,255,255,0.04);">
+  const roSignings = ro ? (ro.signings || []).slice(0, 4) : [];
+  const roMentions = ro ? (ro.mentions || []).slice(0, 2) : [];
+  const hasRostr = roTeam || roSignings.length || roMentions.length;
+  const rostrRow = hasRostr ? `<div style="padding:8px 18px;border-top:1px solid rgba(255,255,255,0.04);">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span style="font-size:7px;font-weight:700;letter-spacing:0.12em;color:#6b7280;background:rgba(255,255,255,0.04);padding:2px 6px;border:1px solid rgba(255,255,255,0.08);">ROSTR</span>
+      ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.25);text-decoration:none;">Profile ↗</a>` : ''}
+    </div>
     ${roTeam ? `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:${roSignings.length ? '6px' : '0'};">
       ${ro.management ? `<span style="font-size:9px;color:#a78bfa;"><b>Mgmt:</b> ${escHtml(ro.management)}</span>` : ''}
       ${ro.agency ? `<span style="font-size:9px;color:#67e8f9;"><b>Agency:</b> ${escHtml(ro.agency)}</span>` : ''}
       ${ro.label ? `<span style="font-size:9px;color:#86efac;"><b>Label:</b> ${escHtml(ro.label)}</span>` : ''}
-      ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" style="font-size:9px;color:rgba(255,255,255,0.3);text-decoration:none;">Rostr ↗</a>` : ''}
     </div>` : ''}
-    ${roSignings.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;">
+    ${roSignings.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;${roMentions.length ? 'margin-bottom:6px;' : ''}">
       ${roSignings.map(s => {
         const tc = s.deal_type === 'management' ? 'color:#a78bfa' : s.deal_type === 'touring' ? 'color:#67e8f9' : s.deal_type === 'records' ? 'color:#86efac' : 'color:#94a3b8';
-        return `<span style="font-size:8px;${tc};">${escHtml(s.deal_type).toUpperCase()} → ${escHtml(s.company)}${s.contact_person ? ` (${escHtml(s.contact_person.split(',')[0].trim())})` : ''}${s.date ? ` · ${escHtml(s.date.replace(/,\s*\d{4}/, ''))}` : ''}</span>`;
+        return `<a href="${s.source_url || '#'}" target="_blank" style="font-size:8px;${tc};text-decoration:none;" title="Source: Rostr">${escHtml(s.deal_type).toUpperCase()} → ${escHtml(s.company)}${s.contact_person ? ` (${escHtml(s.contact_person.split(',')[0].trim())})` : ''}${s.date ? ` · ${escHtml(s.date.replace(/,\\s*\\d{4}/, ''))}` : ''}</a>`;
       }).join('')}
+    </div>` : ''}
+    ${roMentions.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.3);text-decoration:none;" title="Mentioned in Rostr report">📄 ${escHtml((m.page_headings||[])[0] || 'Report')} — mentioned</a>`).join('')}
     </div>` : ''}
   </div>` : '';
 
@@ -9451,7 +9459,8 @@ function fdUseManualName() {
   const input = document.getElementById('fd-artist-input');
   const dropdown = document.getElementById('fd-artist-dropdown');
   if (dropdown) dropdown.classList.add('hidden');
-  // Name is already set via fdPatch from oninput — just close the dropdown
+  // Trigger real-time Rostr lookup for the manual name
+  if (input && input.value.trim().length >= 2) fdFetchArtistIntel(input.value.trim());
 }
 
 function fdAddSpotifyArtist() {
@@ -9495,6 +9504,22 @@ function fdArtistPick(sid) {
   const dropdown = document.getElementById('fd-artist-dropdown');
   if (dropdown) dropdown.classList.add('hidden');
   fdPatch('artist', a.name);
+  fdFetchArtistIntel(a.name);
+}
+
+function fdFetchArtistIntel(name) {
+  if (!name || name.length < 2) return;
+  fetch('/api/artist-intel?name=' + encodeURIComponent(name))
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data || !data.found) return;
+      // Store on the draft profile for display
+      if (fdState.draftProfile) {
+        fdState.draftProfile._rostrIntel = data;
+        fdUpdateLive();
+      }
+    })
+    .catch(() => {});
 }
 
 function fdFestivalSearch() {

@@ -692,6 +692,172 @@ def api_artists_summary():
     })
 
 
+# ── Artist Intel lookup (real-time Rostr + local data) ────────────────────────
+
+_rostr_index_cache = {"data": None, "ts": 0}
+_ROSTR_INDEX_URLS = [
+    "https://framerusercontent.com/sites/6pZ2Z5K07tDk4PruqQ9sTP/searchIndex-o0mHJZ2Q1RAZ.json",
+    "https://framerusercontent.com/sites/6pZ2Z5K07tDk4PruqQ9sTP/searchIndex-ufVRZYR18aWr.json",
+]
+
+
+def _load_rostr_index():
+    """Load Rostr search indexes with 10-min cache."""
+    now = time.time()
+    if _rostr_index_cache["data"] and now - _rostr_index_cache["ts"] < 600:
+        return _rostr_index_cache["data"]
+    all_pages = {}
+    for url in _ROSTR_INDEX_URLS:
+        try:
+            resp = http_requests.get(url, timeout=15,
+                headers={"User-Agent": "ArtistDashboard/0.1"})
+            if resp.ok:
+                for k, v in resp.json().items():
+                    if k not in all_pages:
+                        all_pages[k] = v
+        except Exception:
+            pass
+    if all_pages:
+        _rostr_index_cache["data"] = all_pages
+        _rostr_index_cache["ts"] = now
+    return all_pages
+
+
+import re as _re
+_SIGNING_RE = _re.compile(
+    r'^(.+?)\s+signed with\s+(.+?)(?:\s+for\s+(.+?))?\.?\s*$',
+    _re.IGNORECASE,
+)
+
+
+def _search_rostr_for_artist(name):
+    """Search Rostr index for a specific artist and extract intel."""
+    pages = _load_rostr_index()
+    if not pages:
+        return None
+    name_lower = name.lower()
+    result = {
+        "artist": name, "management": None, "agency": None,
+        "label": None, "signings": [], "mentions": [], "source": "rostr",
+    }
+    seen_signings = set()
+
+    for url, page in pages.items():
+        page_text = " ".join(
+            str(v) for vals in page.values() if isinstance(vals, list) for v in vals
+        ).lower()
+        if name_lower not in page_text:
+            continue
+
+        # Extract signings mentioning this artist
+        for para in page.get("p", []):
+            if name_lower not in para.lower():
+                continue
+            m = _SIGNING_RE.match(para.strip())
+            if m and name_lower in m.group(1).lower():
+                artist = m.group(1).strip()
+                company = m.group(2).strip()
+                deal_raw = m.group(3)
+                deal_type = "unknown"
+                if deal_raw:
+                    dr = deal_raw.lower()
+                    if "manag" in dr: deal_type = "management"
+                    elif "tour" in dr or "book" in dr: deal_type = "touring"
+                    elif "record" in dr or "label" in dr or "distrib" in dr: deal_type = "records"
+                    elif "publish" in dr: deal_type = "publishing"
+                    else: deal_type = dr.strip()[:30]
+                # Extract contact person
+                contact = None
+                of_match = _re.match(r'^(.+?)\s+of\s+(.+)$', company, _re.IGNORECASE)
+                if of_match:
+                    contact = of_match.group(1).strip()
+                    company = of_match.group(2).strip()
+                key = (company.lower(), deal_type)
+                if key not in seen_signings:
+                    seen_signings.add(key)
+                    date = (page.get("h4") or [""])[0]
+                    result["signings"].append({
+                        "company": company, "contact_person": contact,
+                        "deal_type": deal_type, "date": date,
+                        "source_url": f"https://hq.rostr.cc{url}",
+                    })
+                    # Fill team fields from signings
+                    if deal_type == "management" and not result["management"]:
+                        result["management"] = company
+                    elif deal_type == "touring" and not result["agency"]:
+                        result["agency"] = company
+                    elif deal_type == "records" and not result["label"]:
+                        result["label"] = company
+
+            # Check management reports — "Founded by X... biggest artists: Y, Z"
+            elif name_lower in para.lower() and "/reports/" in url:
+                # This page's h2/h3 usually has the company name
+                company_names = page.get("h2", []) + page.get("h3", [])
+                snippet = para[:200]
+                result["mentions"].append({
+                    "context": snippet,
+                    "source_url": f"https://hq.rostr.cc{url}",
+                    "page_headings": company_names[:3],
+                })
+
+        # Check featured profiles
+        if "/featured-by-rostr/artist/" in url and name_lower in page_text:
+            for para in page.get("p", []):
+                if "Management:" in para or "Agency:" in para or "Label:" in para:
+                    import re as _re2
+                    for m2 in _re2.finditer(
+                        r'Management:\s*(?P<mgmt>[^A-Z]*?)(?=Agency:|Label:|Publisher:|$)'
+                        r'|Agency:\s*(?P<agency>[^A-Z]*?)(?=Management:|Label:|Publisher:|$)'
+                        r'|Label:\s*(?P<label>[^A-Z]*?)(?=Management:|Agency:|Publisher:|$)',
+                        para, _re2.IGNORECASE | _re2.DOTALL
+                    ):
+                        val = (m2.lastgroup and m2.group(m2.lastgroup) or "").strip().rstrip(",")
+                        if val:
+                            if m2.lastgroup == "mgmt" and not result["management"]:
+                                result["management"] = val
+                            elif m2.lastgroup == "agency" and not result["agency"]:
+                                result["agency"] = val
+                            elif m2.lastgroup == "label" and not result["label"]:
+                                result["label"] = val
+            result["rostr_profile_url"] = f"https://hq.rostr.cc{url}"
+
+    # Also check local pre-scraped data
+    local_rostr = _load_cached_json("rostr_intel.json")
+    if isinstance(local_rostr, dict):
+        local = local_rostr.get(name_lower, {})
+        if local:
+            if not result["management"] and local.get("management"):
+                result["management"] = local["management"]
+            if not result["agency"] and local.get("agency"):
+                result["agency"] = local["agency"]
+            if not result["label"] and local.get("label"):
+                result["label"] = local["label"]
+            if not result.get("rostr_profile_url") and local.get("rostr_profile_url"):
+                result["rostr_profile_url"] = local["rostr_profile_url"]
+            # Merge signings
+            for s in local.get("signings", []):
+                key = (s.get("company", "").lower(), s.get("deal_type", ""))
+                if key not in seen_signings:
+                    seen_signings.add(key)
+                    result["signings"].append(s)
+
+    has_data = result["management"] or result["agency"] or result["label"] or result["signings"] or result["mentions"]
+    return result if has_data else None
+
+
+@app.route("/api/artist-intel")
+def api_artist_intel():
+    """Real-time Rostr lookup for a single artist."""
+    name = (request.args.get("name") or "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Name required"}), 400
+    result = _search_rostr_for_artist(name)
+    if not result:
+        return jsonify({"found": False, "artist": name}), 200
+    result["found"] = True
+    return jsonify(result), 200
+
+
 # ── AI Consultant chat ────────────────────────────────────────────────────────
 
 _ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
