@@ -134,9 +134,13 @@ def _seed_admin():
 
 # Initialise on import
 DATA_DIR.mkdir(exist_ok=True)
-_seed_volume_from_committed()
-db.init_db()  # creates tables + migrates JSON if needed
-_seed_admin()
+try:
+    _seed_volume_from_committed()
+    db.init_db()  # creates tables + migrates JSON if needed
+    _seed_admin()
+except Exception as _init_err:
+    import logging as _log
+    _log.getLogger(__name__).error(f"Init error (non-fatal): {_init_err}")
 
 
 # ── Auth decorators ────────────────────────────────────────────────────────────
