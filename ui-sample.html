@@ -7743,24 +7743,61 @@ function fdDemandCardHTML(p) {
   const roSignings = ro ? (ro.signings || []).slice(0, 4) : [];
   const roMentions = ro ? (ro.mentions || []).slice(0, 2) : [];
   const hasRostr = roTeam || roSignings.length || roMentions.length;
-  const rostrRow = hasRostr ? `<div style="padding:8px 18px;border-top:1px solid rgba(255,255,255,0.04);">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-      <span style="font-size:7px;font-weight:700;letter-spacing:0.12em;color:#6b7280;background:rgba(255,255,255,0.04);padding:2px 6px;border:1px solid rgba(255,255,255,0.08);">ROSTR</span>
-      ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.25);text-decoration:none;">Profile ↗</a>` : ''}
+
+  const _pill = (label, color, bg, border) => `<span style="display:inline-block;font-size:8px;font-weight:700;letter-spacing:0.1em;color:${color};background:${bg};border:1px solid ${border};padding:2px 7px;">${label}</span>`;
+  const _teamLine = (label, pill, value, sub) => value ? `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);">
+    ${pill}
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:11px;color:#e5e7eb;font-weight:500;">${escHtml(value)}</div>
+      ${sub ? `<div style="font-size:9px;color:#6b7280;margin-top:1px;">${escHtml(sub)}</div>` : ''}
     </div>
-    ${roTeam ? `<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:${roSignings.length ? '6px' : '0'};">
-      ${ro.management ? `<span style="font-size:9px;color:#a78bfa;"><b>Mgmt:</b> ${escHtml(ro.management)}</span>` : ''}
-      ${ro.agency ? `<span style="font-size:9px;color:#67e8f9;"><b>Agency:</b> ${escHtml(ro.agency)}</span>` : ''}
-      ${ro.label ? `<span style="font-size:9px;color:#86efac;"><b>Label:</b> ${escHtml(ro.label)}</span>` : ''}
+  </div>` : '';
+  const _sigLine = (s) => {
+    const colors = { management:['#a78bfa','rgba(167,139,250,0.1)','rgba(167,139,250,0.2)'], touring:['#67e8f9','rgba(103,232,249,0.1)','rgba(103,232,249,0.2)'], records:['#86efac','rgba(134,239,172,0.1)','rgba(134,239,172,0.2)'] };
+    const [c,bg,bd] = colors[s.deal_type] || ['#94a3b8','rgba(148,163,184,0.1)','rgba(148,163,184,0.2)'];
+    const typeLabel = s.deal_type === 'management' ? 'MGMT' : s.deal_type === 'touring' ? 'TOUR' : s.deal_type === 'records' ? 'REC' : s.deal_type === 'publishing' ? 'PUB' : (s.deal_type||'').toUpperCase().slice(0,4);
+    return `<a href="${s.source_url || '#'}" target="_blank" style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);text-decoration:none;" title="Source: Rostr">
+      ${_pill(typeLabel, c, bg, bd)}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:11px;color:#e5e7eb;font-weight:500;">${escHtml(s.company)}</div>
+        ${s.contact_person ? `<div style="font-size:9px;color:#6b7280;margin-top:1px;">via ${escHtml(s.contact_person.split(',')[0].trim())}</div>` : ''}
+      </div>
+      ${s.date ? `<span style="font-size:9px;color:#4b5563;white-space:nowrap;flex-shrink:0;">${escHtml(s.date)}</span>` : ''}
+    </a>`;
+  };
+
+  const hasBothCols = roTeam && roSignings.length;
+  const rostrRow = hasRostr ? `<div style="border-top:1px solid rgba(255,255,255,0.04);padding:12px 18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:7px;font-weight:700;letter-spacing:0.14em;color:#6b7280;background:rgba(255,255,255,0.03);padding:3px 8px;border:1px solid rgba(255,255,255,0.06);">ROSTR</span>
+        <span style="font-size:9px;color:rgba(255,255,255,0.15);">Industry Intelligence</span>
+      </div>
+      ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.2);text-decoration:none;transition:color 0.15s;" onmouseover="this.style.color='#cc6437'" onmouseout="this.style.color='rgba(255,255,255,0.2)'">View Profile ↗</a>` : ''}
+    </div>
+    <div style="display:grid;grid-template-columns:${hasBothCols ? '1fr 1px 1fr' : '1fr'};gap:${hasBothCols ? '0' : '0'};">
+      ${roTeam ? `<div style="${hasBothCols ? 'padding-right:16px;' : ''}">
+        <div style="font-size:8px;font-weight:600;letter-spacing:0.12em;color:rgba(255,255,255,0.2);text-transform:uppercase;margin-bottom:6px;">Current Team</div>
+        ${_teamLine('MGMT', _pill('MGMT','#a78bfa','rgba(167,139,250,0.1)','rgba(167,139,250,0.2)'), ro.management)}
+        ${_teamLine('AGY', _pill('AGY','#67e8f9','rgba(103,232,249,0.1)','rgba(103,232,249,0.2)'), ro.agency)}
+        ${_teamLine('LBL', _pill('LBL','#86efac','rgba(134,239,172,0.1)','rgba(134,239,172,0.2)'), ro.label)}
+      </div>` : ''}
+      ${hasBothCols ? '<div style="background:rgba(255,255,255,0.04);"></div>' : ''}
+      ${roSignings.length ? `<div style="${hasBothCols ? 'padding-left:16px;' : ''}">
+        <div style="font-size:8px;font-weight:600;letter-spacing:0.12em;color:rgba(255,255,255,0.2);text-transform:uppercase;margin-bottom:6px;">Deal History</div>
+        ${roSignings.map(_sigLine).join('')}
+      </div>` : ''}
+    </div>
+    ${roMentions.length && !roTeam && !roSignings.length ? `<div style="margin-top:6px;">
+      <div style="font-size:8px;font-weight:600;letter-spacing:0.12em;color:rgba(255,255,255,0.2);text-transform:uppercase;margin-bottom:6px;">Report Mentions</div>
+      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);text-decoration:none;">
+        <span style="font-size:9px;color:rgba(255,255,255,0.35);">📄</span>
+        <span style="font-size:10px;color:#9ca3af;">${escHtml((m.page_headings||[])[0] || 'Management Report')}</span>
+        <span style="font-size:8px;color:rgba(255,255,255,0.15);margin-left:auto;">referenced</span>
+      </a>`).join('')}
     </div>` : ''}
-    ${roSignings.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;${roMentions.length ? 'margin-bottom:6px;' : ''}">
-      ${roSignings.map(s => {
-        const tc = s.deal_type === 'management' ? 'color:#a78bfa' : s.deal_type === 'touring' ? 'color:#67e8f9' : s.deal_type === 'records' ? 'color:#86efac' : 'color:#94a3b8';
-        return `<a href="${s.source_url || '#'}" target="_blank" style="font-size:8px;${tc};text-decoration:none;" title="Source: Rostr">${escHtml(s.deal_type).toUpperCase()} → ${escHtml(s.company)}${s.contact_person ? ` (${escHtml(s.contact_person.split(',')[0].trim())})` : ''}${s.date ? ` · ${escHtml(s.date.replace(/,\\s*\\d{4}/, ''))}` : ''}</a>`;
-      }).join('')}
-    </div>` : ''}
-    ${roMentions.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;">
-      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.3);text-decoration:none;" title="Mentioned in Rostr report">📄 ${escHtml((m.page_headings||[])[0] || 'Report')} — mentioned</a>`).join('')}
+    ${roMentions.length && (roTeam || roSignings.length) ? `<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.03);">
+      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.2);text-decoration:none;" title="Referenced in Rostr report">📄 ${escHtml((m.page_headings||[])[0] || 'Report')}</a>`).join('')}
     </div>` : ''}
   </div>` : '';
 
