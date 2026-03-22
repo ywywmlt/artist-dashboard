@@ -9264,12 +9264,19 @@ function fdFestivalLineupHTML(p) {
   '</div>';
 }
 
-function fdArtistSearch(val) {
+async function fdArtistSearch(val) {
   fdPatch('artist', val);
   const dropdown = document.getElementById('fd-artist-dropdown');
   if (!dropdown) return;
   const q = (val || '').trim().toLowerCase();
   if (q.length < 2) { dropdown.classList.add('hidden'); return; }
+  // If artists haven't loaded yet, try loading them
+  if (!artists.length) {
+    try {
+      const res = await fetch('data/raw/kworb_seed.json');
+      if (res.ok) artists = await res.json();
+    } catch(e) {}
+  }
   const matches = artists.filter(a => a.name.toLowerCase().includes(q)).slice(0, 10);
   if (!matches.length) { dropdown.classList.add('hidden'); return; }
   dropdown.innerHTML = matches.map(a =>
@@ -11159,8 +11166,8 @@ function _refreshDone(label) {
 }
 
 // ─── Init ───
-function initDashboardData() {
-  loadData();
+async function initDashboardData() {
+  await loadData();
 }
 
 document.addEventListener('DOMContentLoaded', () => { gkInitCanvas(); initAuth(); });
