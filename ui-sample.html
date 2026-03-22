@@ -2373,7 +2373,16 @@ function artistSearch(val) {
   const clr = document.getElementById('search-clear');
   _searchIdx = -1;
   if (clr) clr.classList.toggle('hidden', !val.trim());
-  if (!val.trim() || !artists.length) { dd.classList.add('hidden'); return; }
+  if (!val.trim()) { dd.classList.add('hidden'); return; }
+  if (!artists.length) {
+    dd.innerHTML = '<div class="px-4 py-3 text-sm text-slate-500">Loading artists...</div>';
+    dd.classList.remove('hidden');
+    fetch('data/raw/kworb_seed.json').then(r => r.ok ? r.json() : []).then(data => {
+      if (data.length) { artists = data; artistSearch(val); }
+      else { dd.innerHTML = '<div class="px-4 py-3 text-sm text-slate-500">No artist data available</div>'; }
+    }).catch(() => { dd.innerHTML = '<div class="px-4 py-3 text-sm text-red-400">Failed to load artists</div>'; });
+    return;
+  }
   const q = val.toLowerCase();
   const matches = artists.filter(a => a.name.toLowerCase().includes(q)).slice(0, 8);
   if (!matches.length) {
