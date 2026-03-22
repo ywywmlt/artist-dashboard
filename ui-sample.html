@@ -7677,31 +7677,52 @@ function fdDemandCardHTML(p) {
   const showEvents = eventsMap[a.spotify_id] || [];
   const d = computeArtistDemand(a.monthly_listeners, a.peak_listeners, t ? t.is_touring : false, a.daily_change || 0, t ? t.recent_event_count : 0, showEvents);
   const scoreColor = d.demandScore >= 75 ? 'text-emerald-400' : d.demandScore >= 50 ? 'text-cyan-400' : d.demandScore >= 30 ? 'text-amber-400' : 'text-red-400';
-  return `<div style="display:grid;grid-template-columns:auto 1px 1fr 1px 1fr 1px 1fr;border:1px solid rgba(255,255,255,0.07);background:#070707;cursor:pointer;" onclick="document.getElementById('fd-artist-profile')?.scrollIntoView({behavior:'smooth',block:'nearest'})" title="Jump to full demand analysis">
-    <div style="padding:14px 18px;display:flex;align-items:center;gap:10px;border-right:1px solid rgba(255,255,255,0.07);">
-      <span style="font-size:8px;font-weight:700;color:#10b981;letter-spacing:0.12em;">✓ LINKED</span>
-      <span style="font-size:9px;color:rgba(255,255,255,0.25);">${escHtml(a.name)}</span>
-    </div>
-    <div style="background:rgba(255,255,255,0.05);"></div>
-    <div style="padding:14px 20px;">
-      <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Demand Score</div>
-      <div style="display:flex;align-items:baseline;gap:4px;">
-        <span style="font-size:1.75rem;font-weight:300;letter-spacing:-0.04em;${scoreColor.includes('emerald')?'color:#10b981':scoreColor.includes('cyan')?'color:#22d3ee':scoreColor.includes('amber')?'color:#fbbf24':'color:#cc6437'};">${d.demandScore}</span>
-        <span style="font-size:10px;color:rgba(255,255,255,0.25);">/100</span>
-        <span style="font-size:9px;padding:2px 7px;border:1px solid;margin-left:6px;${d.tierColor}">${d.tierLabel}</span>
+
+  // Rostr intel
+  const ro = window.rostrIntel && window.rostrIntel[a.name.toLowerCase()];
+  const rostrRow = ro ? `<div style="display:flex;gap:12px;padding:8px 18px;border-top:1px solid rgba(255,255,255,0.04);flex-wrap:wrap;">
+    ${ro.management ? `<span style="font-size:9px;color:#a78bfa;"><b>Mgmt:</b> ${escHtml(ro.management)}</span>` : ''}
+    ${ro.agency ? `<span style="font-size:9px;color:#67e8f9;"><b>Agency:</b> ${escHtml(ro.agency)}</span>` : ''}
+    ${ro.label ? `<span style="font-size:9px;color:#86efac;"><b>Label:</b> ${escHtml(ro.label)}</span>` : ''}
+    ${ro.rostr_profile_url ? `<a href="${ro.rostr_profile_url}" target="_blank" style="font-size:9px;color:rgba(255,255,255,0.3);text-decoration:none;">Rostr ↗</a>` : ''}
+  </div>` : '';
+
+  // Ticketmaster upcoming events
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = (eventsMap[a.spotify_id] || []).filter(e => (e.date || '') >= todayStr).slice(0, 3);
+  const tmRow = upcoming.length > 0 ? `<div style="padding:6px 18px;border-top:1px solid rgba(255,255,255,0.04);display:flex;gap:12px;flex-wrap:wrap;">
+    <span style="font-size:8px;font-weight:700;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase;align-self:center;">UPCOMING</span>
+    ${upcoming.map(e => `<span style="font-size:9px;color:rgba(255,255,255,0.45);">${e.date ? new Date(e.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '?'} · ${escHtml(e.venueName||e.city||'TBD')}</span>`).join('')}
+  </div>` : '';
+
+  return `<div style="border:1px solid rgba(255,255,255,0.07);background:#070707;cursor:pointer;" onclick="document.getElementById('fd-artist-profile')?.scrollIntoView({behavior:'smooth',block:'nearest'})" title="Jump to full demand analysis">
+    <div style="display:grid;grid-template-columns:auto 1px 1fr 1px 1fr 1px 1fr;">
+      <div style="padding:14px 18px;display:flex;align-items:center;gap:10px;border-right:1px solid rgba(255,255,255,0.07);">
+        <span style="font-size:8px;font-weight:700;color:#10b981;letter-spacing:0.12em;">✓ LINKED</span>
+        <span style="font-size:9px;color:rgba(255,255,255,0.25);">${escHtml(a.name)}</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.05);"></div>
+      <div style="padding:14px 20px;">
+        <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Demand Score</div>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span style="font-size:1.75rem;font-weight:300;letter-spacing:-0.04em;${scoreColor.includes('emerald')?'color:#10b981':scoreColor.includes('cyan')?'color:#22d3ee':scoreColor.includes('amber')?'color:#fbbf24':'color:#cc6437'};">${d.demandScore}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,0.25);">/100</span>
+          <span style="font-size:9px;padding:2px 7px;border:1px solid;margin-left:6px;${d.tierColor}">${d.tierLabel}</span>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.05);"></div>
+      <div style="padding:14px 20px;">
+        <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Suggested MG / Show</div>
+        <div style="font-size:1.35rem;font-weight:300;letter-spacing:-0.04em;color:#f5f5f5;font-variant-numeric:tabular-nums;">${d.mgDisplay}</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.05);"></div>
+      <div style="padding:14px 20px;">
+        <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Momentum</div>
+        <div style="font-size:1rem;font-weight:400;letter-spacing:-0.01em;${d.momentumColor.includes('emerald')?'color:#10b981':d.momentumColor.includes('red')?'color:#cc6437':'color:#94a3b8'};">${d.momentum}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.18);margin-top:3px;">${fmtNum(a.monthly_listeners)} monthly</div>
       </div>
     </div>
-    <div style="background:rgba(255,255,255,0.05);"></div>
-    <div style="padding:14px 20px;">
-      <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Suggested MG / Show</div>
-      <div style="font-size:1.35rem;font-weight:300;letter-spacing:-0.04em;color:#f5f5f5;font-variant-numeric:tabular-nums;">${d.mgDisplay}</div>
-    </div>
-    <div style="background:rgba(255,255,255,0.05);"></div>
-    <div style="padding:14px 20px;">
-      <div style="font-size:9px;color:rgba(255,255,255,0.28);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Momentum</div>
-      <div style="font-size:1rem;font-weight:400;letter-spacing:-0.01em;${d.momentumColor.includes('emerald')?'color:#10b981':d.momentumColor.includes('red')?'color:#cc6437':'color:#94a3b8'};">${d.momentum}</div>
-      <div style="font-size:9px;color:rgba(255,255,255,0.18);margin-top:3px;">${fmtNum(a.monthly_listeners)} monthly</div>
-    </div>
+    ${rostrRow}${tmRow}
   </div>`;
 }
 
@@ -9328,13 +9349,25 @@ function fdArtistSearch(val) {
     return;
   }
   const matches = artists.filter(a => a.name.toLowerCase().includes(q)).slice(0, 10);
-  if (!matches.length) { dropdown.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">No matches</div>'; dropdown.classList.remove('hidden'); return; }
+  const manualEntry = '<div class="border-t border-white/5 px-3 py-2">' +
+    '<button onmousedown="fdUseManualName()" class="w-full text-left text-[10px] text-cyan-400 hover:text-cyan-300 py-1">Use &quot;' + escHtml(val) + '&quot; as artist name (manual entry)</button>' +
+    '<div class="flex items-center gap-2 mt-1">' +
+      '<input id="fd-spotify-url-input" type="text" class="flex-1 bg-black border border-white/10 px-2 py-1 text-[10px] text-white placeholder-slate-600 outline-none" placeholder="Or paste Spotify URL to add to database..." onkeydown="if(event.key===\'Enter\')fdAddSpotifyArtist()">' +
+      '<button onmousedown="fdAddSpotifyArtist()" class="text-[9px] bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 px-2 py-1 hover:bg-emerald-500/25">Add</button>' +
+    '</div>' +
+    '<div id="fd-spotify-status" class="text-[9px] mt-1 hidden"></div>' +
+  '</div>';
+  if (!matches.length) {
+    dropdown.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">No matches in database</div>' + manualEntry;
+    dropdown.classList.remove('hidden');
+    return;
+  }
   dropdown.innerHTML = matches.map(a =>
     '<button class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors" onmousedown="fdArtistPick(\'' + a.spotify_id + '\')">' +
-      '<span class="text-xs text-white">' + a.name + '</span>' +
+      '<span class="text-xs text-white">' + escHtml(a.name) + '</span>' +
       '<span class="text-[10px] text-slate-500">' + fmt(a.monthly_listeners) + ' listeners</span>' +
     '</button>'
-  ).join('');
+  ).join('') + manualEntry;
   dropdown.classList.remove('hidden');
   const input = document.getElementById('fd-artist-input');
   if (input) {
@@ -9343,6 +9376,46 @@ function fdArtistSearch(val) {
     dropdown.style.top   = (r.bottom + 2) + 'px';
     dropdown.style.width = r.width + 'px';
   }
+}
+
+function fdUseManualName() {
+  const input = document.getElementById('fd-artist-input');
+  const dropdown = document.getElementById('fd-artist-dropdown');
+  if (dropdown) dropdown.classList.add('hidden');
+  // Name is already set via fdPatch from oninput — just close the dropdown
+}
+
+function fdAddSpotifyArtist() {
+  const urlInput = document.getElementById('fd-spotify-url-input');
+  const status = document.getElementById('fd-spotify-status');
+  if (!urlInput || !status) return;
+  const raw = urlInput.value.trim();
+  if (!raw) return;
+  status.className = 'text-[9px] mt-1 text-slate-400';
+  status.textContent = 'Adding artist...';
+  status.classList.remove('hidden');
+  fetch('/api/custom-artists', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ spotify_url: raw }),
+  }).then(r => r.json().then(d => ({ ok: r.ok, data: d }))).then(({ ok, data }) => {
+    if (ok) {
+      status.className = 'text-[9px] mt-1 text-emerald-400';
+      status.textContent = 'Added ' + (data.name || 'artist') + '. Setting as profile artist...';
+      // Set the artist name on the current profile
+      const nameInput = document.getElementById('fd-artist-input');
+      if (nameInput) nameInput.value = data.name || '';
+      fdPatch('artist', data.name || '');
+      const dropdown = document.getElementById('fd-artist-dropdown');
+      if (dropdown) setTimeout(() => dropdown.classList.add('hidden'), 1000);
+    } else {
+      status.className = 'text-[9px] mt-1 text-red-400';
+      status.textContent = data.error || 'Failed to add artist';
+    }
+  }).catch(() => {
+    status.className = 'text-[9px] mt-1 text-red-400';
+    status.textContent = 'Network error';
+  });
 }
 
 function fdArtistPick(sid) {
