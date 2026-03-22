@@ -9264,21 +9264,23 @@ function fdFestivalLineupHTML(p) {
   '</div>';
 }
 
-async function fdArtistSearch(val) {
+function fdArtistSearch(val) {
   fdPatch('artist', val);
   const dropdown = document.getElementById('fd-artist-dropdown');
   if (!dropdown) return;
   const q = (val || '').trim().toLowerCase();
   if (q.length < 2) { dropdown.classList.add('hidden'); return; }
-  // If artists haven't loaded yet, try loading them
+  // If artists haven't loaded yet, fetch them
   if (!artists.length) {
-    try {
-      const res = await fetch('data/raw/kworb_seed.json');
-      if (res.ok) artists = await res.json();
-    } catch(e) {}
+    fetch('data/raw/kworb_seed.json').then(r => r.ok ? r.json() : []).then(data => {
+      if (data.length) { artists = data; fdArtistSearch(val); }
+    }).catch(() => {});
+    dropdown.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">Loading artists...</div>';
+    dropdown.classList.remove('hidden');
+    return;
   }
   const matches = artists.filter(a => a.name.toLowerCase().includes(q)).slice(0, 10);
-  if (!matches.length) { dropdown.classList.add('hidden'); return; }
+  if (!matches.length) { dropdown.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500">No matches</div>'; dropdown.classList.remove('hidden'); return; }
   dropdown.innerHTML = matches.map(a =>
     '<button class="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-white/5 transition-colors" onmousedown="fdArtistPick(\'' + a.spotify_id + '\')">' +
       '<span class="text-xs text-white">' + a.name + '</span>' +
