@@ -9023,6 +9023,10 @@ function fdRenderLive(p) {
                 '<div class="flex items-center justify-between mb-1.5">' +
                   '<span class="text-[9px] text-slate-500 uppercase tracking-wider">Seat Categories</span>' +
                   '<div class="flex items-center gap-2">' +
+                    '<div class="relative" id="fd-copy-wrap-' + tc.id + '">' +
+                      '<button onclick="fdShowCopyFrom(\'' + tc.id + '\')" class="text-[10px] text-cyan-400 hover:text-cyan-300 transition-colors">Copy From</button>' +
+                      '<div id="fd-copy-dd-' + tc.id + '" class="hidden absolute right-0 top-full mt-1 z-50 bg-slate-900 border border-white/10 shadow-2xl max-h-52 overflow-y-auto" style="min-width:240px;"></div>' +
+                    '</div>' +
                     '<button onclick="fdSuggestCityPrices(\'' + tc.id + '\')" class="text-[10px] text-amber-400 hover:text-amber-300 transition-colors">\uD83D\uDCA1 Suggest</button>' +
                     '<button onclick="fdAddCityCategory(\'' + tc.id + '\')" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">+ Category</button>' +
                   '</div>' +
@@ -9468,6 +9472,76 @@ function fdPatchCity(tcId, field, value) {
   if (!fdState.draftProfile) return;
   const tc = (fdState.draftProfile.tour_cities||[]).find(c => c.id === tcId);
   if (tc) tc[field] = value;
+}
+
+function fdShowCopyFrom(tcId) {
+  const dd = document.getElementById('fd-copy-dd-' + tcId);
+  if (!dd) return;
+  if (!dd.classList.contains('hidden')) { dd.classList.add('hidden'); return; }
+  // Build list of all cities from all saved profiles + current draft
+  const sources = [];
+  for (const prof of (fdState.profiles || [])) {
+    for (const tc of (prof.tour_cities || [])) {
+      if (tc.id === tcId) continue; // skip self
+      const cats = tc.seat_categories || [];
+      if (cats.length === 0) continue;
+      const label = (prof.artist || 'Untitled') + ' — ' + (tc.city_name || tc.venue_name || 'City');
+      const seats = cats.reduce((s, c) => s + (Number(c.count)||0), 0);
+      sources.push({ profileId: prof.id, cityId: tc.id, label, seats, cats: cats.length });
+    }
+  }
+  // Also include other cities from current draft
+  if (fdState.draftProfile) {
+    for (const tc of (fdState.draftProfile.tour_cities || [])) {
+      if (tc.id === tcId) continue;
+      const cats = tc.seat_categories || [];
+      if (cats.length === 0) continue;
+      const label = '(Current) — ' + (tc.city_name || tc.venue_name || 'City');
+      const seats = cats.reduce((s, c) => s + (Number(c.count)||0), 0);
+      sources.push({ profileId: '__draft__', cityId: tc.id, label, seats, cats: cats.length });
+    }
+  }
+  if (!sources.length) {
+    dd.innerHTML = '<div class="px-3 py-2 text-[10px] text-slate-500">No other city configs to copy from</div>';
+  } else {
+    dd.innerHTML = sources.map(s =>
+      `<button onmousedown="fdCopyCity('${tcId}','${s.profileId}','${s.cityId}')" class="w-full text-left px-3 py-2 hover:bg-white/5 transition-colors border-b border-white/5">
+        <div class="text-[11px] text-white">${escHtml(s.label)}</div>
+        <div class="text-[9px] text-slate-500">${s.cats} categories · ${s.seats.toLocaleString()} seats</div>
+      </button>`
+    ).join('');
+  }
+  dd.classList.remove('hidden');
+  setTimeout(() => { document.addEventListener('click', function _h(e) { if (!dd.contains(e.target)) { dd.classList.add('hidden'); document.removeEventListener('click', _h); } }, { once: false }); }, 50);
+}
+
+function fdCopyCity(targetTcId, sourceProfileId, sourceCityId) {
+  if (!fdState.draftProfile) return;
+  // Find source city
+  let sourceCity = null;
+  if (sourceProfileId === '__draft__') {
+    sourceCity = (fdState.draftProfile.tour_cities || []).find(tc => tc.id === sourceCityId);
+  } else {
+    const prof = (fdState.profiles || []).find(p => p.id === sourceProfileId);
+    if (prof) sourceCity = (prof.tour_cities || []).find(tc => tc.id === sourceCityId);
+  }
+  if (!sourceCity) return;
+  // Find target city
+  const target = (fdState.draftProfile.tour_cities || []).find(tc => tc.id === targetTcId);
+  if (!target) return;
+  // Copy everything except id, city_name, venue_name, concert_date (keep the target's identity)
+  target.capacity = sourceCity.capacity;
+  target.fill_rate = sourceCity.fill_rate;
+  target.seat_categories = (sourceCity.seat_categories || []).map(c => ({...c}));
+  target.venue_fee = sourceCity.venue_fee || 0;
+  target.production = sourceCity.production || 0;
+  target.hospitality = sourceCity.hospitality || 0;
+  target.insurance = sourceCity.insurance || 0;
+  target.num_shows = target.num_shows || sourceCity.num_shows || 1;
+  // Hide dropdown and re-render
+  const dd = document.getElementById('fd-copy-dd-' + targetTcId);
+  if (dd) dd.classList.add('hidden');
+  fdSetMain(fdState.draftProfile);
 }
 
 function fdAddCity() {
