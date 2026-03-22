@@ -7283,7 +7283,7 @@ function fdKPIStripHTML(c, p) {
   const absColor = absReturn >= 0 ? 'text-emerald-400' : 'text-red-400';
   const showOptimizer = adjRoi < fdROIThreshold;
   const optimizerBtn = showOptimizer ? `<button onclick="fdShowROIOptimizer()" style="display:flex;align-items:center;gap:4px;margin-top:7px;background:rgba(204,100,55,0.12);border:1px solid rgba(204,100,55,0.35);color:#cc6437;font-size:8px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;padding:4px 8px;border-radius:3px;cursor:pointer;width:100%;justify-content:center;transition:background 0.12s;" onmouseover="this.style.background='rgba(204,100,55,0.22)'" onmouseout="this.style.background='rgba(204,100,55,0.12)'"><span style="font-size:10px;">⚡</span> Optimize ROI</button>` : '';
-  return `<div class="fd-kpi-band" style="grid-template-columns:repeat(7,1fr);">
+  return `<div class="fd-kpi-band" style="grid-template-columns:repeat(7,minmax(0,1fr));overflow:hidden;">
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Gross Revenue</span><div class="fd-kpi-num text-emerald-400">${fmtMoney(c.total_gross_rev)}</div><div class="fd-kpi-sub">${fmtNum(c.total_attendance)} att · ${c.n} show${c.n>1?'s':''} · ${numCities} cit${numCities>1?'ies':'y'}</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Total Costs</span><div class="fd-kpi-num" style="color:rgba(204,100,55,0.85);">${fmtMoney(c.total_costs)}</div><div class="fd-kpi-sub">MG + ticketing + ops</div></div>
     <div class="fd-kpi-cell"><span class="fd-kpi-label">Net Profit</span><div class="fd-kpi-num ${rc}">${fmtMoney(c.net_profit)}</div></div>
@@ -7705,9 +7705,13 @@ function fdPostRenderArtistProfile(p) {
 function fdDemandCardHTML(p) {
   const name = (p.artist || '').trim();
   if (!name) return `<div class="text-center py-2 text-[10px] text-slate-600">Type an artist name above to see market demand analysis</div>`;
+  // Auto-fetch Rostr intel if we don't have it yet
+  if (!p._rostrIntel && !p._rostrFetching && name.length >= 2) {
+    p._rostrFetching = true;
+    fdFetchArtistIntel(name);
+  }
   const a = artists.find(x => x.name.toLowerCase() === name.toLowerCase());
   if (!a) {
-    // Even without kworb data, check live Rostr lookup + pre-scraped
     const roManual = p._rostrIntel || (window.rostrIntel && window.rostrIntel[name.toLowerCase()]);
     const roManualSignings = roManual ? (roManual.signings || []).slice(0, 3) : [];
     const hasRostrData = roManual && (roManual.management || roManual.agency || roManual.label || roManualSignings.length);
@@ -9549,14 +9553,15 @@ function fdFetchArtistIntel(name) {
   fetch('/api/artist-intel?name=' + encodeURIComponent(name))
     .then(r => r.ok ? r.json() : null)
     .then(data => {
+      if (!fdState.draftProfile) return;
+      fdState.draftProfile._rostrFetching = false;
       if (!data || !data.found) return;
-      // Store on the draft profile for display
-      if (fdState.draftProfile) {
-        fdState.draftProfile._rostrIntel = data;
-        fdUpdateLive();
-      }
+      fdState.draftProfile._rostrIntel = data;
+      fdUpdateLive();
     })
-    .catch(() => {});
+    .catch(() => {
+      if (fdState.draftProfile) fdState.draftProfile._rostrFetching = false;
+    });
 }
 
 function fdFestivalSearch() {
