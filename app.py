@@ -857,22 +857,48 @@ def api_ai_chat():
     if not api_messages:
         return jsonify({"error": "No valid messages"}), 400
 
-    import anthropic
-
     def generate():
         try:
-            client = anthropic.Anthropic(api_key=_ANTHROPIC_API_KEY)
-            with client.messages.stream(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=1500,
-                system=system_prompt,
-                messages=api_messages,
-            ) as stream:
-                for text in stream.text_stream:
-                    yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
+            resp = http_requests.post(
+                "https://api.anthropic.com/v1/messages",
+                headers={
+                    "x-api-key": _ANTHROPIC_API_KEY,
+                    "anthropic-version": "2023-06-01",
+                    "content-type": "application/json",
+                },
+                json={
+                    "model": "claude-haiku-4-5-20251001",
+                    "max_tokens": 1500,
+                    "system": system_prompt,
+                    "messages": api_messages,
+                    "stream": True,
+                },
+                stream=True,
+                timeout=60,
+            )
+            if resp.status_code != 200:
+                yield f"data: {json.dumps({'type': 'error', 'content': f'API error {resp.status_code}: {resp.text[:200]}'})}\n\n"
+                return
+            for line in resp.iter_lines():
+                if not line:
+                    continue
+                line = line.decode("utf-8")
+                if not line.startswith("data: "):
+                    continue
+                payload = line[6:]
+                if payload == "[DONE]":
+                    break
+                try:
+                    event = json.loads(payload)
+                    if event.get("type") == "content_block_delta":
+                        text = event.get("delta", {}).get("text", "")
+                        if text:
+                            yield f"data: {json.dumps({'type': 'text', 'content': text})}\n\n"
+                    elif event.get("type") == "message_stop":
+                        break
+                except json.JSONDecodeError:
+                    pass
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
-        except anthropic.APIError as e:
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
