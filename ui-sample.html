@@ -5815,29 +5815,42 @@ async function fdExportExcel() {
     ws.getRow(r).height=18; r++; r++;
   }
 
-  // Operating costs
+  // Operating costs — full breakdown
   lhdr(ws, r, 'Operating Costs by City / Stop'); r++;
-  colHdrs(ws, r, ['City / Venue','Shows','Cost/Show','Total']); r++;
+  colHdrs(ws, r, ['City / Venue','Venue Fee','Production','Hospitality','Insurance','Cost/Show','Shows','Total']); r++;
 
   const _cities = (p.tour_cities && p.tour_cities.length > 0)
     ? p.tour_cities
     : [{ city_name: p.city||'', num_shows: n, venue_fee: co.venue_fee_per_show||0, production: co.production_per_show||0, hospitality: co.hospitality_per_show||0, insurance: co.insurance_per_show||0 }];
+  // Widen columns for breakdown
+  ws.getColumn(2).width = 14; ws.getColumn(3).width = 14; ws.getColumn(4).width = 14; ws.getColumn(5).width = 14;
+  ws.getColumn(6).width = 14; ws.getColumn(7).width = 10; ws.getColumn(8).width = 16;
   const opRowNums=[];
   for (const tc of _cities) {
-    const cpp = (Number(tc.venue_fee)||0)+(Number(tc.production)||0)+(Number(tc.hospitality)||0)+(Number(tc.insurance)||0);
+    const vf = Number(tc.venue_fee)||0;
+    const pr = Number(tc.production)||0;
+    const ho = Number(tc.hospitality)||0;
+    const ins = Number(tc.insurance)||0;
+    const cpp = vf + pr + ho + ins;
     const shows = Number(tc.num_shows)||1;
     const cityLabel = (tc.city_name||(tc.venue_name?tc.venue_name:'—')) + (tc.venue_name&&tc.city_name?' ('+tc.venue_name+')':'');
     sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value=cityLabel||'City Stop';
-    inp(ws.getCell(r,2),shows,{numFmt:'#,##0'});
-    inp(ws.getCell(r,3),cpp,{numFmt:'$#,##0'});
-    fml(ws.getCell(r,4),'B'+r+'*C'+r,cpp*shows,{numFmt:'$#,##0'});
+    inp(ws.getCell(r,2),vf,{numFmt:'$#,##0'});
+    inp(ws.getCell(r,3),pr,{numFmt:'$#,##0'});
+    inp(ws.getCell(r,4),ho,{numFmt:'$#,##0'});
+    inp(ws.getCell(r,5),ins,{numFmt:'$#,##0'});
+    fml(ws.getCell(r,6),'B'+r+'+C'+r+'+D'+r+'+E'+r,cpp,{numFmt:'$#,##0',font:{bold:true}});
+    inp(ws.getCell(r,7),shows,{numFmt:'#,##0'});
+    fml(ws.getCell(r,8),'F'+r+'*G'+r,cpp*shows,{numFmt:'$#,##0',font:{bold:true,color:{argb:C.red}}});
     opRowNums.push(r); ws.getRow(r).height=17; r++;
   }
   const opAll = c.total_op_costs;
   sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='TOTAL OPERATING COSTS';
-  fml(ws.getCell(r,4),'SUM(D'+opRowNums[0]+':D'+opRowNums[opRowNums.length-1]+')',opAll,{fill:C.totR,font:{bold:true,color:{argb:C.red}},numFmt:'$#,##0',border:bTop(C.redLight)});
-  const OP_ALL='D'+r;
+  fml(ws.getCell(r,8),'SUM(H'+opRowNums[0]+':H'+opRowNums[opRowNums.length-1]+')',opAll,{fill:C.totR,font:{bold:true,color:{argb:C.red}},numFmt:'$#,##0',border:bTop(C.redLight)});
+  const OP_ALL='H'+r;
   ws.getRow(r).height=18; r++; r++;
+  // Restore column widths for subsequent sections
+  ws.getColumn(2).width = 16; ws.getColumn(3).width = 16; ws.getColumn(4).width = 16;
 
   // One-time costs
   lhdr(ws, r, 'One-Time / Fixed Costs'); r++;
@@ -6963,6 +6976,12 @@ ${catSummary ? `<section>
     <tr><td>Artist MG</td><td class="num">(${currency(p.costs?.artist_mg || 0)})</td></tr>
     <tr><td>Ticketing Fees</td><td class="num">(${currency(c.ticketing_fees)})</td></tr>
     <tr><td>Operating Costs</td><td class="num">(${currency(c.total_op_costs)})</td></tr>
+    ${(c.cityCalcs||[]).map(cc => {
+      const vf=Number(cc.tc.venue_fee)||0, pr=Number(cc.tc.production)||0, ho=Number(cc.tc.hospitality)||0, ins=Number(cc.tc.insurance)||0;
+      const cityName = cc.tc.city_name || 'City';
+      return (vf+pr+ho+ins) > 0 ? `
+    <tr style="font-size:10px;color:#6b7280"><td style="padding-left:16px">↳ ${cityName}: Venue ${currency(vf*cc.shows)} · Prod ${currency(pr*cc.shows)} · Hosp ${currency(ho*cc.shows)} · Ins ${currency(ins*cc.shows)}</td><td class="num">${currency((vf+pr+ho+ins)*cc.shows)}</td></tr>` : '';
+    }).join('')}
     <tr><td>Agency &amp; Other Fees</td><td class="num">(${currency((p.costs?.agency_fees || 0) + (p.costs?.blufin_fees || 0))})</td></tr>
     <tr><td><strong>Net Profit</strong></td><td class="num"><strong>${currency(c.net_profit)}</strong></td></tr>
     ${c.invested_capital > 0 ? `<tr style="font-size:10px;color:#6b7280"><td style="padding-left:16px">↳ Invested capital (${Math.round(c.mg_advance_pct*100)}% MG advance + pre-show ops)</td><td class="num">${currency(c.invested_capital)}</td></tr>` : ''}
