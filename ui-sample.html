@@ -9836,25 +9836,56 @@ function fdScaleCapacity(cityId, newCap) {
 
 const _fdVenueCache = {};  // tcId → array of suggestion objects (avoids escaping issues)
 
+let _fdVenueFetchTimer = null;
 function fdCitySuggest(tcId, query) {
   const box = document.getElementById('fd-cs-' + tcId);
   if (!box) return;
-  const results = fdGetVenueSuggestions(query);
-  _fdVenueCache[tcId] = results;
-  if (!results.length || !query.trim()) { box.classList.add('hidden'); return; }
-  const typeColor = { stadium:'text-red-300', arena:'text-cyan-300', theater:'text-amber-300', club:'text-slate-300' };
-  box.innerHTML = results.map((r, idx) =>
+  if (!query.trim() || query.trim().length < 2) { box.classList.add('hidden'); return; }
+  // Immediately show static results
+  const staticResults = fdGetVenueSuggestions(query);
+  _fdVenueCache[tcId] = staticResults;
+  fdRenderVenueSuggestions(tcId, staticResults, false);
+  // Debounce Ticketmaster API search
+  clearTimeout(_fdVenueFetchTimer);
+  _fdVenueFetchTimer = setTimeout(() => {
+    fetch('/api/venues/search?q=' + encodeURIComponent(query.trim()))
+      .then(r => r.ok ? r.json() : {venues:[]})
+      .then(data => {
+        const tmVenues = (data.venues || []);
+        if (!tmVenues.length) return;
+        // Merge: static first, then TM results not already in static list
+        const seen = new Set(staticResults.map(r => r.venue_name.toLowerCase()));
+        const merged = [...staticResults];
+        for (const v of tmVenues) {
+          if (!seen.has(v.venue_name.toLowerCase())) {
+            merged.push(v);
+            seen.add(v.venue_name.toLowerCase());
+          }
+        }
+        _fdVenueCache[tcId] = merged;
+        fdRenderVenueSuggestions(tcId, merged, true);
+      }).catch(() => {});
+  }, 300);
+}
+function fdRenderVenueSuggestions(tcId, results, hasTM) {
+  const box = document.getElementById('fd-cs-' + tcId);
+  if (!box) return;
+  if (!results.length) { box.classList.add('hidden'); return; }
+  const typeColor = { stadium:'text-red-300', arena:'text-cyan-300', theater:'text-amber-300', club:'text-slate-300', outdoor:'text-green-300' };
+  box.innerHTML = results.slice(0, 12).map((r, idx) =>
     '<button type="button" onmousedown="fdSelectCityVenue(\'' + tcId + '\',' + idx + ')" class="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0">' +
-      '<div class="text-[11px] font-medium text-white truncate">' + r.venue_name + '</div>' +
+      '<div class="flex items-center gap-2">' +
+        '<span class="text-[11px] font-medium text-white truncate flex-1">' + escHtml(r.venue_name) + '</span>' +
+        (r.source === 'ticketmaster' ? '<span style="font-size:7px;color:#4b5563;border:1px solid rgba(255,255,255,0.06);padding:1px 4px;">TM</span>' : '') +
+      '</div>' +
       '<div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">' +
-        '<span>' + r.city_name + '</span>' +
+        '<span>' + escHtml(r.city_name) + '</span>' +
         '<span class="text-slate-600">·</span>' +
         '<span class="' + (typeColor[r.venue_type]||'text-slate-400') + '">' + (r.venue_type||'venue') + '</span>' +
-        '<span class="text-slate-600">·</span>' +
-        '<span>' + (r.capacity ? fmtNum(r.capacity) + ' cap' : '') + '</span>' +
+        (r.capacity ? '<span class="text-slate-600">·</span><span>' + fmtNum(r.capacity) + ' cap</span>' : '') +
       '</div>' +
     '</button>'
-  ).join('');
+  ).join('') + (hasTM ? '<div class="px-3 py-1.5 text-[8px] text-slate-600 border-t border-white/5">Live results via Ticketmaster</div>' : '');
   box.classList.remove('hidden');
 }
 

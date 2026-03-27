@@ -692,6 +692,68 @@ def api_artists_summary():
     })
 
 
+# ── Venue search (Ticketmaster API) ───────────────────────────────────────────
+
+@app.route("/api/venues/search")
+def api_venue_search():
+    """Search Ticketmaster for venues by city/keyword."""
+    q = (request.args.get("q") or "").strip()
+    if not q or len(q) < 2:
+        return jsonify({"venues": []}), 200
+    if not TICKETMASTER_API_KEY:
+        return jsonify({"venues": [], "error": "Ticketmaster API key not configured"}), 200
+    try:
+        resp = http_requests.get(
+            "https://app.ticketmaster.com/discovery/v2/venues.json",
+            params={
+                "apikey": TICKETMASTER_API_KEY,
+                "keyword": q,
+                "size": 15,
+                "sort": "relevance,desc",
+            },
+            timeout=8,
+        )
+        if not resp.ok:
+            return jsonify({"venues": []}), 200
+        data = resp.json()
+        venues_raw = data.get("_embedded", {}).get("venues", [])
+        venues = []
+        for v in venues_raw:
+            name = v.get("name", "")
+            city = v.get("city", {}).get("name", "")
+            country = v.get("country", {}).get("name", "")
+            state = v.get("state", {}).get("name", "")
+            # Determine type from classifications or upcomingEvents count
+            cap = 0
+            general_info = v.get("generalInfo", {})
+            # Ticketmaster doesn't always expose capacity — estimate from type
+            vtype = "arena"
+            for cls in v.get("classifications", []):
+                seg = cls.get("segment", {}).get("name", "").lower()
+                if "stadium" in name.lower() or "field" in name.lower():
+                    vtype = "stadium"
+                elif "theater" in name.lower() or "theatre" in name.lower():
+                    vtype = "theater"
+                elif "club" in name.lower() or "lounge" in name.lower():
+                    vtype = "club"
+            location = city
+            if state and country == "United States Of America":
+                location = f"{city}, {state}"
+            elif country:
+                location = f"{city}, {country}"
+            venues.append({
+                "venue_name": name,
+                "city_name": location,
+                "capacity": cap,
+                "venue_type": vtype,
+                "tm_id": v.get("id"),
+                "source": "ticketmaster",
+            })
+        return jsonify({"venues": venues}), 200
+    except Exception as e:
+        return jsonify({"venues": [], "error": str(e)}), 200
+
+
 # ── Artist Intel lookup (real-time Rostr + local data) ────────────────────────
 
 _rostr_index_cache = {"data": None, "ts": 0}
