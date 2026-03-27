@@ -9978,8 +9978,25 @@ function fdSelectCityVenue(tcId, idx) {
   tc.venue_name = r.venue_name;
 
   // Use the actual venue capacity — this is the real number, not a default
-  const cap = r.capacity || tc.capacity;
+  let cap = r.capacity || tc.capacity;
   tc.capacity = cap;
+
+  // If no capacity from static/TM data, look up from Wikidata
+  if (!r.capacity && r.venue_name) {
+    fetch('/api/venues/capacity?name=' + encodeURIComponent(r.venue_name))
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.capacity && data.capacity > 0) {
+          const targetTc = (fdState.draftProfile?.tour_cities||[]).find(c => c.id === tcId);
+          if (targetTc && (!targetTc.capacity || targetTc.capacity === cap)) {
+            targetTc.capacity = data.capacity;
+            const vt = targetTc.venue_type || fdState.draftProfile?.venue_type || 'arena';
+            targetTc.seat_categories = fdGenerateCategoriesForCapacity(vt, data.capacity);
+            fdSetMain(fdState.draftProfile);
+          }
+        }
+      }).catch(() => {});
+  }
 
   // Auto-switch the global venue type to match the selected venue if it differs
   const vType = r.venue_type || p.venue_type || 'arena';

@@ -754,6 +754,60 @@ def api_venue_search():
         return jsonify({"venues": [], "error": str(e)}), 200
 
 
+# ── Venue capacity lookup (Wikidata) ──────────────────────────────────────────
+
+_venue_cap_cache: dict[str, int | None] = {}
+
+
+@app.route("/api/venues/capacity")
+def api_venue_capacity():
+    """Look up venue capacity from Wikidata."""
+    name = (request.args.get("name") or "").strip()
+    if not name or len(name) < 3:
+        return jsonify({"capacity": None}), 200
+
+    # Check cache
+    cache_key = name.lower()
+    if cache_key in _venue_cap_cache:
+        return jsonify({"capacity": _venue_cap_cache[cache_key], "source": "wikidata", "cached": True}), 200
+
+    try:
+        # Search Wikidata for the venue
+        r = http_requests.get("https://www.wikidata.org/w/api.php", params={
+            "action": "wbsearchentities", "search": name, "language": "en",
+            "format": "json", "limit": 3, "type": "item",
+        }, headers={"User-Agent": "ArtistDashboard/0.1"}, timeout=6)
+        if not r.ok:
+            return jsonify({"capacity": None}), 200
+        results = r.json().get("search", [])
+        if not results:
+            _venue_cap_cache[cache_key] = None
+            return jsonify({"capacity": None}), 200
+
+        # Try each result for capacity (P1083)
+        for result in results[:3]:
+            qid = result["id"]
+            r2 = http_requests.get("https://www.wikidata.org/w/api.php", params={
+                "action": "wbgetclaims", "entity": qid, "property": "P1083", "format": "json",
+            }, headers={"User-Agent": "ArtistDashboard/0.1"}, timeout=6)
+            if not r2.ok:
+                continue
+            claims = r2.json().get("claims", {}).get("P1083", [])
+            for c in claims:
+                try:
+                    cap = int(float(c["mainsnak"]["datavalue"]["value"]["amount"].lstrip("+")))
+                    if cap > 0:
+                        _venue_cap_cache[cache_key] = cap
+                        return jsonify({"capacity": cap, "source": "wikidata", "qid": qid}), 200
+                except (KeyError, ValueError, TypeError):
+                    pass
+
+        _venue_cap_cache[cache_key] = None
+        return jsonify({"capacity": None}), 200
+    except Exception:
+        return jsonify({"capacity": None}), 200
+
+
 # ── Comparable artist pricing ─────────────────────────────────────────────────
 
 @app.route("/api/artist-comps")
