@@ -9722,18 +9722,31 @@ function fdEstimateVenueCosts(venueType, cityTier) {
 function fdGetVenueSuggestions(query) {
   if (!venueData || !venueData.cities || !query.trim()) return [];
   const q = query.toLowerCase().trim();
-  const matches = venueData.cities.filter(c =>
-    c.city.toLowerCase().includes(q) || (c.country||'').toLowerCase().includes(q)
-  ).slice(0, 3);
   const results = [];
-  for (const city of matches) {
+  const seen = new Set();
+  for (const city of venueData.cities) {
+    const cityMatch = city.city.toLowerCase().includes(q) || (city.country||'').toLowerCase().includes(q);
     for (const v of (city.venues || [])) {
-      results.push({ city_name: city.city + ', ' + city.country, venue_name: v.name,
-        capacity: v.capacity || 0, venue_type: v.type, venue_tier: v.venue_tier,
-        city_tier: city.city_tier });
+      const venueMatch = v.name.toLowerCase().includes(q);
+      if (cityMatch || venueMatch) {
+        const key = v.name.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push({ city_name: city.city + ', ' + city.country, venue_name: v.name,
+            capacity: v.capacity || 0, venue_type: v.type, venue_tier: v.venue_tier,
+            city_tier: city.city_tier });
+        }
+      }
     }
   }
-  return results.sort((a,b) => (a.venue_tier||'Z').localeCompare(b.venue_tier||'Z')).slice(0, 8);
+  // Sort: venue name matches first, then by tier
+  results.sort((a, b) => {
+    const aVenue = a.venue_name.toLowerCase().includes(q) ? 0 : 1;
+    const bVenue = b.venue_name.toLowerCase().includes(q) ? 0 : 1;
+    if (aVenue !== bVenue) return aVenue - bVenue;
+    return (a.venue_tier||'Z').localeCompare(b.venue_tier||'Z');
+  });
+  return results.slice(0, 15);
 }
 
 function fdPatchCity(tcId, field, value) {
@@ -9931,7 +9944,7 @@ function fdRenderVenueSuggestions(tcId, results, hasTM) {
   if (!box) return;
   if (!results.length) { box.classList.add('hidden'); return; }
   const typeColor = { stadium:'text-red-300', arena:'text-cyan-300', theater:'text-amber-300', club:'text-slate-300', outdoor:'text-green-300' };
-  box.innerHTML = results.slice(0, 12).map((r, idx) =>
+  box.innerHTML = results.slice(0, 20).map((r, idx) =>
     '<button type="button" onmousedown="fdSelectCityVenue(\'' + tcId + '\',' + idx + ')" class="w-full text-left px-3 py-2 hover:bg-white/10 transition-colors border-b border-white/5 last:border-0">' +
       '<div class="flex items-center gap-2">' +
         '<span class="text-[11px] font-medium text-white truncate flex-1">' + escHtml(r.venue_name) + '</span>' +
