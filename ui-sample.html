@@ -7130,6 +7130,7 @@ function fdUpdateLive() {
   const upd = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   upd('fd-stage-dial',   fdStageDialHTML(p));
   upd('fd-demand-preview', fdDemandCardHTML(p));
+  upd('fd-comps-preview', fdCompsCardHTML(p));
   upd('fd-kpi-strip',    fdKPIStripHTML(c, p));
   upd('fd-addl-derived', fdAddlDerivedHTML(p, c));
   upd('fd-costs-summary',fdCostSummaryHTML(c));
@@ -8973,6 +8974,7 @@ function fdRenderLive(p) {
 
     <!-- Demand Preview -->
     <div id="fd-demand-preview">${fdDemandCardHTML(p)}</div>
+    <div id="fd-comps-preview">${fdCompsCardHTML(p)}</div>
 
     <!-- KPI Strip -->
     <div id="fd-kpi-strip">${fdKPIStripHTML(c, p)}</div>
@@ -9550,6 +9552,7 @@ function fdArtistPick(sid) {
 
 function fdFetchArtistIntel(name) {
   if (!name || name.length < 2) return;
+  // Fetch Rostr intel
   fetch('/api/artist-intel?name=' + encodeURIComponent(name))
     .then(r => r.ok ? r.json() : null)
     .then(data => {
@@ -9559,9 +9562,65 @@ function fdFetchArtistIntel(name) {
       fdState.draftProfile._rostrIntel = data;
       fdUpdateLive();
     })
-    .catch(() => {
-      if (fdState.draftProfile) fdState.draftProfile._rostrFetching = false;
-    });
+    .catch(() => { if (fdState.draftProfile) fdState.draftProfile._rostrFetching = false; });
+  // Fetch comparable artist pricing
+  fetch('/api/artist-comps?name=' + encodeURIComponent(name))
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!fdState.draftProfile || !data) return;
+      fdState.draftProfile._comps = data;
+      fdUpdateLive();
+    })
+    .catch(() => {});
+}
+
+function fdCompsCardHTML(p) {
+  const cd = p._comps;
+  if (!cd || !cd.comps || !cd.comps.length) return '';
+  const pr = cd.pricing || {};
+  const comps = cd.comps;
+  const pillColor = { stadium:'#ef4444', arena:'#22d3ee', theater:'#fbbf24', club:'#94a3b8' };
+  return `<div style="border:1px solid rgba(255,255,255,0.07);background:#070707;margin-top:4px;">
+    <div style="padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:7px;font-weight:700;letter-spacing:0.14em;color:#6b7280;background:rgba(255,255,255,0.03);padding:3px 8px;border:1px solid rgba(255,255,255,0.06);">MARKET COMPS</span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.15);">Comparable Artist Pricing</span>
+        </div>
+        <span style="font-size:8px;color:rgba(255,255,255,0.15);">${comps.length} comps · ${pr.target_listeners ? fmtNum(pr.target_listeners) + ' tier' : ''}</span>
+      </div>
+      ${pr.avg_floor ? `<div style="display:flex;gap:20px;margin-top:10px;">
+        <div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Avg Floor</div>
+          <div style="font-size:1.1rem;font-weight:300;color:#10b981;">$${Math.round(pr.avg_floor).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Avg Ceiling</div>
+          <div style="font-size:1.1rem;font-weight:300;color:#60a5fa;">$${Math.round(pr.avg_ceiling).toLocaleString()}</div>
+        </div>
+        <div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">Range</div>
+          <div style="font-size:1.1rem;font-weight:300;color:#e5e7eb;">$${Math.round(pr.min_floor).toLocaleString()} – $${Math.round(pr.max_ceiling).toLocaleString()}</div>
+        </div>
+        ${pr.self_avg_min ? `<div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.25);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:3px;">This Artist</div>
+          <div style="font-size:1.1rem;font-weight:300;color:#cc6437;">$${Math.round(pr.self_avg_min).toLocaleString()} – $${Math.round(pr.self_avg_max).toLocaleString()}</div>
+        </div>` : ''}
+      </div>` : ''}
+    </div>
+    <div style="padding:8px 18px 12px;">
+      <div style="display:grid;grid-template-columns:repeat(${Math.min(comps.length, 4)},1fr);gap:8px;">
+        ${comps.slice(0, 4).map(c => `<div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;">
+          <div style="font-size:10px;color:#e5e7eb;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.name)}</div>
+          <div style="font-size:8px;color:#6b7280;margin-top:2px;">${fmtNum(c.monthly_listeners)} listeners · ${c.events_count} events</div>
+          <div style="font-size:12px;font-weight:500;color:#10b981;margin-top:4px;">$${Math.round(c.avg_price_min).toLocaleString()} – $${Math.round(c.avg_price_max).toLocaleString()}</div>
+        </div>`).join('')}
+      </div>
+      ${comps.length > 4 ? `<div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+        ${comps.slice(4).map(c => `<span style="font-size:8px;color:#6b7280;">${escHtml(c.name)} $${Math.round(c.avg_price_min)}-$${Math.round(c.avg_price_max)}</span>`).join('')}
+      </div>` : ''}
+    </div>
+  </div>`;
 }
 
 function fdFestivalSearch() {

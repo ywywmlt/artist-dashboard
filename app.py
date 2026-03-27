@@ -754,6 +754,128 @@ def api_venue_search():
         return jsonify({"venues": [], "error": str(e)}), 200
 
 
+# ── Comparable artist pricing ─────────────────────────────────────────────────
+
+@app.route("/api/artist-comps")
+def api_artist_comps():
+    """Find comparable artists by listener tier and return their pricing data."""
+    name = (request.args.get("name") or "").strip()
+    if not name or len(name) < 2:
+        return jsonify({"error": "Name required"}), 400
+
+    seed = _load_cached_json("kworb_seed.json")
+    events = _load_cached_json("ticketmaster_events.json")
+    if not seed:
+        return jsonify({"comps": [], "pricing": {}}), 200
+
+    # Find the target artist
+    seed_map = {a["name"].lower(): a for a in seed if isinstance(a, dict)}
+    target = seed_map.get(name.lower())
+    if not target:
+        return jsonify({"comps": [], "pricing": {}, "note": "Artist not in database"}), 200
+
+    target_ml = target.get("monthly_listeners", 0)
+    if not target_ml:
+        return jsonify({"comps": [], "pricing": {}}), 200
+
+    # Build event pricing by spotify_id
+    artist_events = {}
+    for e in events:
+        if not isinstance(e, dict):
+            continue
+        sid = e.get("spotifyId") or e.get("spotify_id")
+        price_min = e.get("priceMin")
+        price_max = e.get("priceMax")
+        if sid and price_min and price_min > 0:
+            if sid not in artist_events:
+                artist_events[sid] = []
+            artist_events[sid].append({
+                "min": price_min,
+                "max": price_max or price_min,
+                "venue": e.get("venueName", ""),
+                "city": e.get("city", ""),
+                "date": e.get("date", ""),
+            })
+
+    # Find comparable artists: same tier (±40% listener count), with pricing data
+    lower = target_ml * 0.6
+    upper = target_ml * 1.4
+    comps = []
+    for a in seed:
+        if not isinstance(a, dict):
+            continue
+        sid = a.get("spotify_id")
+        ml = a.get("monthly_listeners", 0)
+        if sid == target.get("spotify_id"):
+            continue
+        if lower <= ml <= upper and sid in artist_events:
+            prices = artist_events[sid]
+            avg_min = sum(p["min"] for p in prices) / len(prices)
+            avg_max = sum(p["max"] for p in prices) / len(prices)
+            comps.append({
+                "name": a.get("name"),
+                "spotify_id": sid,
+                "monthly_listeners": ml,
+                "avg_price_min": round(avg_min, 2),
+                "avg_price_max": round(avg_max, 2),
+                "events_count": len(prices),
+                "sample_events": prices[:3],
+            })
+
+    # If not enough comps in tight range, widen to ±60%
+    if len(comps) < 3:
+        lower = target_ml * 0.4
+        upper = target_ml * 1.6
+        seen = {c["spotify_id"] for c in comps}
+        for a in seed:
+            if not isinstance(a, dict):
+                continue
+            sid = a.get("spotify_id")
+            ml = a.get("monthly_listeners", 0)
+            if sid == target.get("spotify_id") or sid in seen:
+                continue
+            if lower <= ml <= upper and sid in artist_events:
+                prices = artist_events[sid]
+                avg_min = sum(p["min"] for p in prices) / len(prices)
+                avg_max = sum(p["max"] for p in prices) / len(prices)
+                comps.append({
+                    "name": a.get("name"),
+                    "spotify_id": sid,
+                    "monthly_listeners": ml,
+                    "avg_price_min": round(avg_min, 2),
+                    "avg_price_max": round(avg_max, 2),
+                    "events_count": len(prices),
+                    "sample_events": prices[:3],
+                })
+
+    # Sort by closest listener count
+    comps.sort(key=lambda c: abs(c["monthly_listeners"] - target_ml))
+    comps = comps[:8]
+
+    # Aggregate pricing summary
+    all_mins = [c["avg_price_min"] for c in comps if c["avg_price_min"] > 0]
+    all_maxs = [c["avg_price_max"] for c in comps if c["avg_price_max"] > 0]
+    pricing = {}
+    if all_mins:
+        pricing = {
+            "avg_floor": round(sum(all_mins) / len(all_mins), 2),
+            "avg_ceiling": round(sum(all_maxs) / len(all_maxs), 2),
+            "min_floor": round(min(all_mins), 2),
+            "max_ceiling": round(max(all_maxs), 2),
+            "comp_count": len(comps),
+            "target_listeners": target_ml,
+        }
+
+    # Include target's own pricing if available
+    target_prices = artist_events.get(target.get("spotify_id"), [])
+    if target_prices:
+        pricing["self_avg_min"] = round(sum(p["min"] for p in target_prices) / len(target_prices), 2)
+        pricing["self_avg_max"] = round(sum(p["max"] for p in target_prices) / len(target_prices), 2)
+        pricing["self_events"] = len(target_prices)
+
+    return jsonify({"comps": comps, "pricing": pricing, "artist": target.get("name")}), 200
+
+
 # ── Artist Intel lookup (real-time Rostr + local data) ────────────────────────
 
 _rostr_index_cache = {"data": None, "ts": 0}
