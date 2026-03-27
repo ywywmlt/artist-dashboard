@@ -1079,6 +1079,17 @@ def _search_rostr_for_artist(name):
                     seen_signings.add(key)
                     result["signings"].append(s)
 
+    # Sanitize: strip junk values (emojis, stray quotes, very short strings)
+    for field in ("management", "agency", "label"):
+        val = result.get(field)
+        if val:
+            # Remove if it's just punctuation, emojis, or under 2 real chars
+            cleaned = val.strip().strip("\"'\u201c\u201d\u2018\u2019.,;:")
+            if len(cleaned) < 2 or all(ord(c) > 0x1F600 for c in cleaned if ord(c) > 127):
+                result[field] = None
+            else:
+                result[field] = cleaned
+
     has_data = result["management"] or result["agency"] or result["label"] or result["signings"] or result["mentions"]
     return result if has_data else None
 
