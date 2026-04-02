@@ -4903,21 +4903,34 @@ function computeScenario(c, scen) {
   const equity      = Number(scen.equity) || 0;
   const hurdle_rate = Number(scen.hurdle_rate) || 0.20;
   const inv_split   = Number(scen.above_hurdle_investor_pct) || 0.50;
-  const hurdle_amount = equity * hurdle_rate;
-  let investor_dist = 0, blufin_dist = 0;
+  const mode        = scen.return_mode || 'waterfall'; // 'waterfall' or 'fixed_return'
+  const fixed_pct   = Number(scen.fixed_return_pct) || 0.12;
+
+  let investor_dist = 0, blufin_dist = 0, hurdle_amount = 0;
+
   if (equity > 0) {
-    if (baseProfit <= hurdle_amount) {
-      investor_dist = baseProfit; blufin_dist = 0;
+    if (mode === 'fixed_return') {
+      // Fixed return: investor gets flat % of equity, BluFin keeps the rest
+      const obligation = equity * fixed_pct;
+      investor_dist = Math.min(Math.max(0, baseProfit), obligation);
+      blufin_dist = Math.max(0, baseProfit - investor_dist);
+      hurdle_amount = obligation;
     } else {
-      const above  = baseProfit - hurdle_amount;
-      investor_dist = hurdle_amount + above * inv_split;
-      blufin_dist   = above * (1 - inv_split);
+      // Waterfall: hurdle → above-hurdle split
+      hurdle_amount = equity * hurdle_rate;
+      if (baseProfit <= hurdle_amount) {
+        investor_dist = baseProfit; blufin_dist = 0;
+      } else {
+        const above  = baseProfit - hurdle_amount;
+        investor_dist = hurdle_amount + above * inv_split;
+        blufin_dist   = above * (1 - inv_split);
+      }
     }
   }
   const total_inv_return = equity + investor_dist;
   const moic       = equity > 0 ? total_inv_return / equity : 0;
   const abs_return = equity > 0 ? investor_dist / equity : 0;
-  return { equity, hurdle_amount, investor_dist, blufin_dist, total_inv_return, moic, abs_return, hurdle_rate, inv_split };
+  return { equity, hurdle_amount, investor_dist, blufin_dist, total_inv_return, moic, abs_return, hurdle_rate, inv_split, mode, fixed_pct };
 }
 
 function computeCashFlow(p, c) {
@@ -5094,6 +5107,8 @@ function fdMigrateProfile(p) {
   for (const scen of (p.investor_scenarios || [])) {
     if (!scen.investors) scen.investors = [];
     if (scen.use_for_roi === undefined) scen.use_for_roi = false;
+    if (!scen.return_mode) scen.return_mode = 'waterfall';
+    if (scen.fixed_return_pct === undefined) scen.fixed_return_pct = 0.12;
     for (const inv of scen.investors) {
       if (inv.expected_return_pct === undefined) inv.expected_return_pct = 20;
     }
@@ -7403,12 +7418,30 @@ function fdScenResultHTML(c, scen) {
   const s = computeScenario(c, scen);
   if (!s.equity) return `<div class="text-[10px] text-slate-600 text-center py-4">Enter equity to see returns</div>`;
   const mc = s.moic >= 1 ? 'text-emerald-400' : 'text-red-400';
-  const wfNote = c.net_profit <= s.hurdle_amount ? '(all profit ≤ hurdle, 100% to investor)' : '';
-  let html = `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">
+  const isFixed = s.mode === 'fixed_return';
+  const baseProfit = (c.blufin_net_profit_after_tax !== undefined) ? c.blufin_net_profit_after_tax
+                   : (c.blufin_net_profit !== undefined) ? c.blufin_net_profit : c.net_profit;
+  const shortfall = isFixed && baseProfit < s.hurdle_amount;
+
+  let html = `<div class="space-y-1 mt-3 pt-3 border-t border-white/5">`;
+
+  if (isFixed) {
+    html += `
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor obligation (${(s.fixed_pct*100).toFixed(1)}% × equity)</span><span class="text-[10px] text-white">${fmtMoney(s.hurdle_amount)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Available profit (post-tax)</span><span class="text-[10px] ${baseProfit >= 0 ? 'text-white' : 'text-red-400'}">${fmtMoney(baseProfit)}</span></div>
+    ${shortfall ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-red-400 font-semibold">⚠ Shortfall (profit < obligation)</span><span class="text-[10px] text-red-400">${fmtMoney(baseProfit - s.hurdle_amount)}</span></div>` : ''}
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor receives</span><span class="text-[10px] text-emerald-400 font-semibold">${fmtMoney(s.investor_dist)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin keeps</span><span class="text-[10px] text-white">${fmtMoney(s.blufin_dist)}</span></div>`;
+  } else {
+    const wfNote = baseProfit <= s.hurdle_amount ? '(all profit ≤ hurdle, 100% to investor)' : '';
+    html += `
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Hurdle amount (${(s.hurdle_rate*100).toFixed(0)}%)</span><span class="text-[10px] text-white">${fmtMoney(s.hurdle_amount)}</span></div>
-    ${s.investor_dist !== s.hurdle_amount ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Above-hurdle (investor ${(s.inv_split*100).toFixed(0)}%)</span><span class="text-[10px] text-emerald-400">${fmtMoney(s.investor_dist - s.hurdle_amount < 0 ? 0 : s.investor_dist - s.hurdle_amount)}</span></div>` : ''}
+    ${s.investor_dist !== s.hurdle_amount ? `<div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Above-hurdle (investor ${(s.inv_split*100).toFixed(0)}%)</span><span class="text-[10px] text-emerald-400">${fmtMoney(Math.max(0, s.investor_dist - s.hurdle_amount))}</span></div>` : ''}
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Investor distribution ${wfNote}</span><span class="text-[10px] text-emerald-400 font-semibold">${fmtMoney(s.investor_dist)}</span></div>
-    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin distribution</span><span class="text-[10px] text-white">${fmtMoney(s.blufin_dist)}</span></div>
+    <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">BluFin distribution</span><span class="text-[10px] text-white">${fmtMoney(s.blufin_dist)}</span></div>`;
+  }
+
+  html += `
     <div class="flex justify-between py-1 border-b border-white/5"><span class="text-[10px] text-slate-500">Total investor return (equity + dist.)</span><span class="text-[10px] font-bold text-emerald-400">${fmtMoney(s.total_inv_return)}</span></div>
     <div class="flex justify-between py-1.5 bg-white/5 rounded px-2 mt-1"><span class="text-xs font-bold text-white">MOIC</span><span class="text-xs font-bold ${mc}">${s.moic.toFixed(2)}x</span></div>
     <div class="flex justify-between py-1.5 bg-white/5 rounded px-2"><span class="text-xs font-bold text-white">Absolute Return</span><span class="text-xs font-bold ${mc}">${(s.abs_return*100).toFixed(1)}%</span></div>`;
@@ -8935,10 +8968,18 @@ function fdRenderLive(p) {
       </div>
       <div class="space-y-2">
         <div><label class="${FD_LABEL}">Equity Invested ($)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${scen.equity||0}" oninput="fdPatchScen('${scen.id}','equity',Number(this.value))"></div>
-        <div class="grid grid-cols-2 gap-2">
+        <div style="display:flex;gap:0;margin:6px 0 4px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+          <button onclick="fdPatchScen('${scen.id}','return_mode','waterfall')" style="flex:1;padding:5px 0;font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border:none;cursor:pointer;transition:all 0.15s;${(scen.return_mode||'waterfall')==='waterfall' ? 'background:rgba(204,100,55,0.18);color:#f5f5f5;' : 'background:transparent;color:rgba(255,255,255,0.3);'}">Waterfall</button>
+          <button onclick="fdPatchScen('${scen.id}','return_mode','fixed_return')" style="flex:1;padding:5px 0;font-size:9px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;border:none;border-left:1px solid rgba(255,255,255,0.08);cursor:pointer;transition:all 0.15s;${scen.return_mode==='fixed_return' ? 'background:rgba(59,130,246,0.18);color:#93c5fd;' : 'background:transparent;color:rgba(255,255,255,0.3);'}">Fixed Return</button>
+        </div>
+        ${(scen.return_mode||'waterfall') === 'waterfall' ? `<div class="grid grid-cols-2 gap-2">
           <div><label class="${FD_LABEL}">Hurdle Rate (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.hurdle_rate??0.20)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','hurdle_rate',Number(this.value)/100)"></div>
           <div><label class="${FD_LABEL}">Inv. Split Above Hurdle (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.above_hurdle_investor_pct??0.50)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','above_hurdle_investor_pct',Number(this.value)/100)"></div>
-        </div>
+        </div>` : `<div>
+          <label class="${FD_LABEL}">Expected Return (%)</label>
+          <input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" step="0.5" value="${((scen.fixed_return_pct??0.12)*100).toFixed(1)}" oninput="fdPatchScen('${scen.id}','fixed_return_pct',Number(this.value)/100)">
+          <div class="text-[9px] text-slate-600 mt-1">Investor receives flat ${((scen.fixed_return_pct??0.12)*100).toFixed(1)}% on equity · BluFin keeps the rest</div>
+        </div>`}
       </div>
       <div class="mt-3 pt-3 border-t border-white/5">
         <div class="flex items-center justify-between mb-2">
@@ -9360,7 +9401,7 @@ function fdRenderLive(p) {
         <h3 class="text-xs font-semibold text-white uppercase tracking-wider">6 — Investor Scenarios</h3>
         <button onclick="fdAddScenario()" class="text-xs text-red-400 hover:text-red-300 transition-colors">+ Add Scenario</button>
       </div>
-      <div class="text-[9px] text-slate-500 mb-3 leading-relaxed">Waterfall: ① Return of capital → ② Preferred return (100% investor up to hurdle) → ③ Above hurdle: investor % / (100% − investor %) BluFin</div>
+      <div class="text-[9px] text-slate-500 mb-3 leading-relaxed">Toggle per scenario: <strong class="text-slate-400">Waterfall</strong> (hurdle → above-hurdle split) or <strong class="text-slate-400">Fixed Return</strong> (flat % on equity, BluFin keeps the rest)</div>
       <div class="flex gap-3 flex-wrap">${scenCards}</div>
     </div>
 
