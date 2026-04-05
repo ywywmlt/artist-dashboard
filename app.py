@@ -1162,6 +1162,7 @@ def api_artist_intel():
             # Fall through to public-index path (best-effort stale data)
         except rostr_api.RostrAuthMissing:
             app.logger.info("ROSTR_SESSION_COOKIE not set — using public index only")
+            response["auth_missing"] = True
         except rostr_api.RostrAuthInvalid as exc:
             app.logger.error("Rostr session cookie invalid: %s", exc)
             response["auth_expired"] = True
