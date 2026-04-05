@@ -7159,6 +7159,7 @@ function fdUpdateLive() {
   const upd = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
   upd('fd-stage-dial',   fdStageDialHTML(p));
   upd('fd-demand-preview', fdDemandCardHTML(p));
+  upd('fd-rostr-live-preview', fdRostrLiveCardHTML(p));
   upd('fd-comps-preview', fdCompsCardHTML(p));
   upd('fd-kpi-strip',    fdKPIStripHTML(c, p));
   upd('fd-addl-derived', fdAddlDerivedHTML(p, c));
@@ -9031,6 +9032,7 @@ function fdRenderLive(p) {
 
     <!-- Demand Preview -->
     <div id="fd-demand-preview">${fdDemandCardHTML(p)}</div>
+    <div id="fd-rostr-live-preview">${fdRostrLiveCardHTML(p)}</div>
     <div id="fd-comps-preview">${fdCompsCardHTML(p)}</div>
 
     <!-- KPI Strip -->
@@ -9607,16 +9609,42 @@ function fdArtistPick(sid) {
   fdFetchArtistIntel(a.name);
 }
 
-function fdFetchArtistIntel(name) {
+function fdFetchArtistIntel(name, opts) {
   if (!name || name.length < 2) return;
-  // Fetch Rostr intel
-  fetch('/api/artist-intel?name=' + encodeURIComponent(name))
+  opts = opts || {};
+  const qs = '?name=' + encodeURIComponent(name) + (opts.refresh ? '&refresh=1' : '');
+  // Fetch Rostr intel (new endpoint returns {found, source, rostr?, rostr_public?, quota_exhausted?})
+  fetch('/api/artist-intel' + qs)
     .then(r => r.ok ? r.json() : null)
     .then(data => {
       if (!fdState.draftProfile) return;
       fdState.draftProfile._rostrFetching = false;
-      if (!data || !data.found) return;
-      fdState.draftProfile._rostrIntel = data;
+      if (!data) return;
+      // Live private-API data (full team rosters + tour events)
+      if (data.rostr) {
+        fdState.draftProfile._rostrLive = {
+          ...data.rostr,
+          _source: data.source,        // 'cache' | 'rostr_live'
+          _fetchedAt: data.fetched_at,
+        };
+        // Compatibility adapter: fill the old-shape fields so the existing
+        // demand-card rendering keeps working without branching.
+        fdState.draftProfile._rostrIntel = {
+          found: true,
+          management: (data.rostr.management[0] || {}).company || null,
+          agency:     (data.rostr.agency[0] || {}).company || null,
+          label:      (data.rostr.recordLabel[0] || {}).company || null,
+          publisher:  (data.rostr.publisher[0] || {}).company || null,
+          rostr_profile_url: data.rostr.profileUrl || null,
+          signings: [], mentions: [],
+        };
+      } else if (data.rostr_public) {
+        // Fallback path: public-index data only (legacy shape)
+        fdState.draftProfile._rostrIntel = { ...data.rostr_public, found: true };
+        fdState.draftProfile._rostrLive = null;
+      }
+      fdState.draftProfile._rostrQuotaExhausted = !!data.quota_exhausted;
+      fdState.draftProfile._rostrAuthExpired   = !!data.auth_expired;
       fdUpdateLive();
     })
     .catch(() => { if (fdState.draftProfile) fdState.draftProfile._rostrFetching = false; });
@@ -9629,6 +9657,121 @@ function fdFetchArtistIntel(name) {
       fdUpdateLive();
     })
     .catch(() => {});
+}
+
+function fdRostrLiveCardHTML(p) {
+  // Rich card rendering live Rostr private-API data (team + tour events).
+  // Only renders when p._rostrLive is populated (via fdFetchArtistIntel).
+  const r = p && p._rostrLive;
+  const quotaExhausted = p && p._rostrQuotaExhausted;
+  const authExpired    = p && p._rostrAuthExpired;
+
+  // Banner-only states (no live data, but user should know why)
+  if (!r) {
+    if (quotaExhausted) {
+      return `<div style="border:1px solid rgba(251,191,36,0.25);background:rgba(251,191,36,0.04);margin-top:4px;padding:10px 18px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:14px;">⏳</span>
+        <div style="flex:1;">
+          <div style="font-size:10px;color:#fbbf24;font-weight:600;letter-spacing:0.06em;">ROSTR QUOTA REACHED</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-top:2px;">Daily artist-lookup limit hit. Showing best-effort fallback data. Try again later for full team + tour intel.</div>
+        </div>
+      </div>`;
+    }
+    if (authExpired) {
+      return `<div style="border:1px solid rgba(248,113,113,0.25);background:rgba(248,113,113,0.04);margin-top:4px;padding:10px 18px;">
+        <div style="font-size:10px;color:#f87171;font-weight:600;letter-spacing:0.06em;">ROSTR SESSION EXPIRED</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-top:2px;">Admin: rotate the ROSTR_SESSION_COOKIE env var on Railway.</div>
+      </div>`;
+    }
+    return '';
+  }
+
+  // Cross-reference Rostr events with existing ticketmaster events for this artist
+  const tmEvents = (window.tmEventsByArtist && r.name && window.tmEventsByArtist[r.name.toLowerCase()]) || [];
+  const tmKeys = new Set(tmEvents.map(e => `${(e.date||'').slice(0,10)}|${(e.venueName||e.city||'').toLowerCase()}`));
+
+  // Team section renderer
+  const teamPill = (label, color) => `<span style="display:inline-block;font-size:7px;font-weight:700;letter-spacing:0.14em;color:${color};background:${color}20;border:1px solid ${color}40;padding:2px 6px;">${label}</span>`;
+  const renderTeam = (arr, label, color) => {
+    if (!arr || !arr.length) return '';
+    return `<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        ${teamPill(label, color)}
+      </div>
+      ${arr.slice(0,3).map(t => `<div style="padding:4px 0;">
+        <div style="font-size:11px;color:#e5e7eb;font-weight:500;">${escHtml(t.company || '—')}</div>
+        ${(t.people && t.people.length) ? `<div style="font-size:9px;color:#6b7280;margin-top:1px;">${t.people.slice(0,4).map(p => escHtml(p.name) + (p.role ? ` · <span style="color:rgba(255,255,255,0.3);">${escHtml(p.role)}</span>` : '')).join(' · ')}</div>` : ''}
+        ${(t.hqLocations && t.hqLocations.length) ? `<div style="font-size:8px;color:rgba(255,255,255,0.2);margin-top:1px;">📍 ${escHtml(t.hqLocations.join(', '))}</div>` : ''}
+      </div>`).join('')}
+    </div>`;
+  };
+
+  const teamHTML = [
+    renderTeam(r.management, 'MGMT', '#a78bfa'),
+    renderTeam(r.agency,     'AGENCY', '#67e8f9'),
+    renderTeam(r.recordLabel,'LABEL', '#86efac'),
+    renderTeam(r.publisher,  'PUB', '#fcd34d'),
+  ].filter(Boolean).join('');
+
+  const hasAnyTeam = teamHTML.length > 0;
+
+  // Events section — show first 6 upcoming, count the rest
+  const events = (r.events || []).slice(0, 6);
+  const totalEvents = (r.events || []).length;
+  const fmtDate = iso => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  const eventsHTML = events.length ? `<div style="padding:10px 0;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:7px;font-weight:700;letter-spacing:0.14em;color:#6b7280;background:rgba(255,255,255,0.03);padding:3px 8px;border:1px solid rgba(255,255,255,0.06);">TOUR · ${totalEvents} SHOWS</span>
+      ${r.bitOnTour ? `<span style="font-size:8px;color:#10b981;">● ON TOUR</span>` : ''}
+    </div>
+    ${events.map(e => {
+      const dateKey = (e.date || '').slice(0,10);
+      const venueKey = (e.venue || e.city || '').toLowerCase();
+      const cross = tmKeys.has(`${dateKey}|${venueKey}`);
+      return `<a href="${e.url || '#'}" target="_blank" style="display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);text-decoration:none;">
+        <div style="font-size:10px;color:#e5e7eb;font-weight:500;min-width:70px;">${escHtml(fmtDate(e.date))}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:10px;color:#e5e7eb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(e.venue || '—')}</div>
+          <div style="font-size:8px;color:rgba(255,255,255,0.3);">${escHtml(e.city || '')}${e.country ? `, ${escHtml(e.country)}` : ''}</div>
+        </div>
+        ${cross ? `<span title="Confirmed in Ticketmaster" style="font-size:8px;color:#10b981;">✓ TM</span>` : ''}
+        ${e.ticketsAvailable ? `<span style="font-size:8px;color:#fbbf24;">● TIX</span>` : ''}
+      </a>`;
+    }).join('')}
+    ${totalEvents > 6 ? `<div style="font-size:8px;color:rgba(255,255,255,0.3);margin-top:6px;text-align:center;">+ ${totalEvents - 6} more shows</div>` : ''}
+  </div>` : '';
+
+  if (!hasAnyTeam && !eventsHTML && !quotaExhausted) return '';
+
+  const cacheBadge = r._source === 'cache'
+    ? `<span title="Served from local cache (fetched ${r._fetchedAt || 'earlier'})" style="font-size:7px;color:rgba(255,255,255,0.3);padding:2px 6px;border:1px solid rgba(255,255,255,0.1);">CACHED</span>`
+    : `<span title="Fresh from Rostr API" style="font-size:7px;color:#10b981;padding:2px 6px;border:1px solid rgba(16,185,129,0.3);">LIVE</span>`;
+
+  const refreshBtn = `<button onclick="fdFetchArtistIntel(fdState.draftProfile && fdState.draftProfile.artist, { refresh: true })" style="font-size:7px;color:rgba(255,255,255,0.4);background:transparent;border:1px solid rgba(255,255,255,0.1);padding:2px 6px;cursor:pointer;letter-spacing:0.06em;">↻ REFRESH</button>`;
+
+  return `<div style="border:1px solid rgba(255,255,255,0.07);background:#070707;margin-top:4px;">
+    <div style="padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.04);">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:7px;font-weight:700;letter-spacing:0.14em;color:#cc6437;background:rgba(204,100,55,0.08);padding:3px 8px;border:1px solid rgba(204,100,55,0.25);">ROSTR INTEL</span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.15);">Full team + tour</span>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          ${cacheBadge}
+          ${refreshBtn}
+        </div>
+      </div>
+      ${r.profileUrl ? `<a href="${escHtml(r.profileUrl)}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.3);text-decoration:none;margin-top:4px;display:inline-block;">View full profile on Rostr ↗</a>` : ''}
+    </div>
+    <div style="padding:0 18px;">
+      ${teamHTML}
+      ${eventsHTML}
+    </div>
+  </div>`;
 }
 
 function fdCompsCardHTML(p) {

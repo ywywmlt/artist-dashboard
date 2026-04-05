@@ -1114,15 +1114,73 @@ def _search_rostr_for_artist(name):
 
 @app.route("/api/artist-intel")
 def api_artist_intel():
-    """Real-time Rostr lookup for a single artist."""
+    """Real-time Rostr lookup for a single artist.
+
+    Order of operations:
+      1. Check SQLite cache (rostr_cache table) — instant, free, no quota.
+      2. If miss, call authenticated Rostr API (pipeline.rostr_api.fetch_artist)
+         — pulls management, agency, label, publisher, and tour events.
+      3. On quota exhaustion or auth failure, fall back to the public-index
+         search path (_search_rostr_for_artist) so the user still gets
+         whatever's in the free data.
+      4. Pass ?refresh=1 to force a re-fetch (skips cache step).
+    """
+    from pipeline import rostr_api
+    import db
+
     name = (request.args.get("name") or "").strip()
     if not name or len(name) < 2:
         return jsonify({"error": "Name required"}), 400
-    result = _search_rostr_for_artist(name)
-    if not result:
-        return jsonify({"found": False, "artist": name}), 200
-    result["found"] = True
-    return jsonify(result), 200
+    force_refresh = request.args.get("refresh") in ("1", "true", "yes")
+
+    slug = rostr_api.slugify(name)
+    response: dict = {"artist": name, "slug": slug}
+
+    # Step 1: cache hit
+    if slug and not force_refresh:
+        cached = db.rostr_cache_get(slug)
+        if cached:
+            response["found"] = True
+            response["source"] = "cache"
+            response["fetched_at"] = cached["fetched_at"]
+            response["rostr"] = cached["data"]
+            return jsonify(response), 200
+
+    # Step 2: live Rostr API call
+    if slug:
+        try:
+            live = rostr_api.fetch_artist(slug)
+            db.rostr_cache_put(slug, live.get("name") or name, live)
+            response["found"] = True
+            response["source"] = "rostr_live"
+            response["fetched_at"] = None  # just now
+            response["rostr"] = live
+            return jsonify(response), 200
+        except rostr_api.RostrQuotaExceeded as exc:
+            app.logger.warning("Rostr quota exhausted for %s: %s", slug, exc)
+            response["quota_exhausted"] = True
+            # Fall through to public-index path (best-effort stale data)
+        except rostr_api.RostrAuthMissing:
+            app.logger.info("ROSTR_SESSION_COOKIE not set — using public index only")
+        except rostr_api.RostrAuthInvalid as exc:
+            app.logger.error("Rostr session cookie invalid: %s", exc)
+            response["auth_expired"] = True
+        except rostr_api.RostrNotFound:
+            app.logger.info("Rostr slug not found: %s", slug)
+            response["rostr_not_found"] = True
+        except rostr_api.RostrError as exc:
+            app.logger.warning("Rostr API error for %s: %s", slug, exc)
+
+    # Step 3: public-index fallback (the existing path — works even without auth)
+    fallback = _search_rostr_for_artist(name)
+    if fallback:
+        response["found"] = True
+        response["source"] = "public_index"
+        response["rostr_public"] = fallback
+        return jsonify(response), 200
+
+    response["found"] = False
+    return jsonify(response), 200
 
 
 # ── AI Consultant chat ────────────────────────────────────────────────────────

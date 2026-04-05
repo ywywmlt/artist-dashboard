@@ -71,6 +71,13 @@ CREATE TABLE IF NOT EXISTS custom_artists (
     added_at TEXT NOT NULL DEFAULT (datetime('now')),
     PRIMARY KEY (spotify_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS rostr_cache (
+    slug TEXT PRIMARY KEY,
+    artist_name TEXT,
+    data JSON NOT NULL,
+    fetched_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 # ── Connection management ────────────────────────────────────────────────────
@@ -635,6 +642,67 @@ def delete_custom_artist(username: str, spotify_id: str) -> bool:
                 "DELETE FROM custom_artists WHERE spotify_id = ? AND user_id = ?",
                 (spotify_id, uid),
             )
+        return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+# ── Rostr private-API cache ──────────────────────────────────────────────────
+
+
+def rostr_cache_get(slug: str) -> dict | None:
+    """Return cached Rostr data for a slug, or None if not cached.
+
+    Returns {"data": dict, "fetched_at": str, "artist_name": str}.
+    """
+    if not slug:
+        return None
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT artist_name, data, fetched_at FROM rostr_cache WHERE slug = ?",
+            (slug,),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "artist_name": row["artist_name"],
+            "data": json.loads(row["data"]),
+            "fetched_at": row["fetched_at"],
+        }
+    finally:
+        conn.close()
+
+
+def rostr_cache_put(slug: str, artist_name: str | None, data: dict) -> None:
+    """Insert or replace a Rostr cache entry. fetched_at set to now."""
+    if not slug:
+        return
+    conn = get_db()
+    try:
+        with conn:
+            conn.execute(
+                """INSERT INTO rostr_cache (slug, artist_name, data, fetched_at)
+                   VALUES (?, ?, ?, datetime('now'))
+                   ON CONFLICT(slug) DO UPDATE SET
+                       artist_name = excluded.artist_name,
+                       data        = excluded.data,
+                       fetched_at  = excluded.fetched_at""",
+                (slug, artist_name, json.dumps(data)),
+            )
+        log.info("rostr_cache: stored %s", slug)
+    finally:
+        conn.close()
+
+
+def rostr_cache_delete(slug: str) -> bool:
+    """Delete a cache entry (forces next lookup to refetch). Returns True if found."""
+    if not slug:
+        return False
+    conn = get_db()
+    try:
+        with conn:
+            cur = conn.execute("DELETE FROM rostr_cache WHERE slug = ?", (slug,))
         return cur.rowcount > 0
     finally:
         conn.close()
