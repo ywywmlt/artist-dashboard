@@ -979,6 +979,7 @@ def _search_rostr_for_artist(name):
         "label": None, "signings": [], "mentions": [], "source": "rostr",
     }
     seen_signings = set()
+    seen_reports = set()
 
     for url, page in pages.items():
         page_text = " ".join(
@@ -1029,13 +1030,30 @@ def _search_rostr_for_artist(name):
 
             # Check management reports — "Founded by X... biggest artists: Y, Z"
             elif name_lower in para.lower() and "/reports/" in url:
-                # This page's h2/h3 usually has the company name
-                company_names = page.get("h2", []) + page.get("h3", [])
-                snippet = para[:200]
+                if url in seen_reports:
+                    continue
+                seen_reports.add(url)
+                # Use the page's actual <title> as the report name; strip
+                # Rostr suffix variants. Fall back to the URL slug if missing.
+                raw_title = (page.get("title") or "").strip()
+                # Strip "ROSTR - " prefix and " - Rostr..." / " | ..." suffix variants
+                report_title = _re.sub(
+                    r"^\s*(Rostr|ROSTR)\s*[-–|:]\s*", "", raw_title, flags=_re.I
+                )
+                report_title = _re.sub(
+                    r"\s*[-–|]\s*(Rostr|Explore The Data|Insider).*$",
+                    "", report_title, flags=_re.I
+                ).strip() or url.rstrip("/").rsplit("/", 1)[-1].replace("-", " ").title()
+                # Prefer the exact sentence mentioning the artist, capped at 240 chars
+                sentences = _re.split(r"(?<=[.!?])\s+", para)
+                snippet = next(
+                    (s for s in sentences if name_lower in s.lower()),
+                    para
+                ).strip()[:240]
                 result["mentions"].append({
+                    "report_title": report_title,
                     "context": snippet,
                     "source_url": f"https://hq.rostr.cc{url}",
-                    "page_headings": company_names[:3],
                 })
 
         # Check featured profiles

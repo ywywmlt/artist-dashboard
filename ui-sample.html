@@ -7842,14 +7842,16 @@ function fdDemandCardHTML(p) {
     </div>
     ${roMentions.length && !roTeam && !roSignings.length ? `<div style="margin-top:6px;">
       <div style="font-size:8px;font-weight:600;letter-spacing:0.12em;color:rgba(255,255,255,0.2);text-transform:uppercase;margin-bottom:6px;">Report Mentions</div>
-      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.03);text-decoration:none;">
-        <span style="font-size:9px;color:rgba(255,255,255,0.35);">📄</span>
-        <span style="font-size:10px;color:#9ca3af;">${escHtml((m.page_headings||[])[0] || 'Management Report')}</span>
-        <span style="font-size:8px;color:rgba(255,255,255,0.15);margin-left:auto;">referenced</span>
+      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="display:block;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.03);text-decoration:none;">
+        <div style="font-size:10px;color:#cc6437;font-weight:500;margin-bottom:2px;">📄 ${escHtml(m.report_title || 'Rostr Report')}</div>
+        ${m.context ? `<div style="font-size:9px;color:#9ca3af;line-height:1.4;">"${escHtml(m.context)}"</div>` : ''}
       </a>`).join('')}
     </div>` : ''}
-    ${roMentions.length && (roTeam || roSignings.length) ? `<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.03);">
-      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="font-size:8px;color:rgba(255,255,255,0.2);text-decoration:none;" title="Referenced in Rostr report">📄 ${escHtml((m.page_headings||[])[0] || 'Report')}</a>`).join('')}
+    ${roMentions.length && (roTeam || roSignings.length) ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.03);">
+      ${roMentions.map(m => `<a href="${m.source_url || '#'}" target="_blank" style="display:block;padding:4px 0;text-decoration:none;" title="Referenced in Rostr report">
+        <div style="font-size:9px;color:#cc6437;font-weight:500;">📄 ${escHtml(m.report_title || 'Rostr Report')}</div>
+        ${m.context ? `<div style="font-size:8px;color:rgba(255,255,255,0.35);line-height:1.4;margin-top:1px;">"${escHtml(m.context)}"</div>` : ''}
+      </a>`).join('')}
     </div>` : ''}
   </div>` : '';
 
