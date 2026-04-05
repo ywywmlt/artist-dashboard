@@ -90,7 +90,9 @@ def slugify(name: str) -> str:
 
 
 def _get_session_cookie() -> str:
-    cookie = os.getenv("ROSTR_SESSION_COOKIE", "").strip()
+    # Strip all whitespace/newlines — Railway's variable editor can introduce
+    # line breaks when pasting long cookie values.
+    cookie = re.sub(r"\s+", "", os.getenv("ROSTR_SESSION_COOKIE", ""))
     if not cookie:
         raise RostrAuthMissing(
             "ROSTR_SESSION_COOKIE env var not set — cannot call Rostr API"
