@@ -771,6 +771,23 @@ for mi, m in enumerate(months):
     c = ws.cell(row=r, column=mi+3, value=formula)
     c.fill = SECTION_FILL; c.font = Font(bold=True, color="1D4ED8", size=10)
     c.alignment = al("right"); c.number_format = '"$"#,##0;[Red]"($"#,##0")"'; c.border = BOT
+r += 1
+
+# Peak Working Capital Need — max cash shortfall over the timeline (Scenario A)
+r_peakwc_a = r
+lbl(ws, r, 2, "Peak Working Capital Need", bold=True, bg="FFFBEB")
+ws.cell(row=r, column=2).fill = fill("FFFBEB")
+first_col = get_column_letter(3); last_col = get_column_letter(len(months)+2)
+c = ws.cell(row=r, column=3,
+           value=f"=MAX(0,-MIN({first_col}{r_tcf_a}:{last_col}{r_tcf_a}))")
+c.fill = fill("FFFBEB"); c.font = Font(bold=True, color="92400E", size=10)
+c.alignment = al("right"); c.number_format = '"$"#,##0'; c.border = BOT
+ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=len(months)+2)
+note_cell = ws.cell(row=r, column=4,
+                    value="  ← Max negative balance; $0 means no shortfall")
+note_cell.fill = fill("FFFBEB")
+note_cell.font = Font(italic=True, color="94A3B8", size=9)
+note_cell.alignment = al("left"); note_cell.border = BOT
 r += 2
 
 # Scenario A Summary
@@ -833,6 +850,7 @@ for label, month_vals, clr, fmt in scen_b_lines:
     r += 1
 
 # Total Cash Flow B
+r_tcf_b = r
 lbl(ws, r, 2, "Total Cash Flow (Running Balance)", bold=True, bg="EEF2FF")
 ws.cell(row=r, column=2).fill = SECTION_FILL
 for mi, m in enumerate(months):
@@ -841,6 +859,22 @@ for mi, m in enumerate(months):
     c = ws.cell(row=r, column=mi+3, value=formula)
     c.fill = SECTION_FILL; c.font = Font(bold=True, color="4C1D95", size=10)
     c.alignment = al("right"); c.number_format = '"$"#,##0;[Red]"($"#,##0")"'; c.border = BOT
+r += 1
+
+# Peak Working Capital Need — Scenario B
+r_peakwc_b = r
+lbl(ws, r, 2, "Peak Working Capital Need", bold=True, bg="FFFBEB")
+ws.cell(row=r, column=2).fill = fill("FFFBEB")
+c = ws.cell(row=r, column=3,
+           value=f"=MAX(0,-MIN({first_col}{r_tcf_b}:{last_col}{r_tcf_b}))")
+c.fill = fill("FFFBEB"); c.font = Font(bold=True, color="92400E", size=10)
+c.alignment = al("right"); c.number_format = '"$"#,##0'; c.border = BOT
+ws.merge_cells(start_row=r, start_column=4, end_row=r, end_column=len(months)+2)
+note_cell = ws.cell(row=r, column=4,
+                    value="  ← Max negative balance; $0 means no shortfall")
+note_cell.fill = fill("FFFBEB")
+note_cell.font = Font(italic=True, color="94A3B8", size=9)
+note_cell.alignment = al("left"); note_cell.border = BOT
 r += 2
 
 # Scenario B Summary
@@ -1168,7 +1202,97 @@ iv_row(ws, r, "Implied Attendance", [
     f"={I['capacity']}*{I['shows']}*D5",
     f"={I['capacity']}*{I['shows']}*E5",
 ], fmt="#,##0")
-r += 2   # r = 17
+r += 2
+
+# ── WATERFALL RECONCILIATION ─────────────────────────────────────────────────
+# The rows above show "uncapped" investor returns (if investor got all project profit).
+# Actual contractual waterfall: investor gets equity + hurdle preferred + capped dist.
+ws.merge_cells(f"B{r}:E{r}")
+c = ws.cell(row=r, column=2, value="WATERFALL RECONCILIATION  ·  Scenario A ($12M Equity)")
+c.fill = fill("1E293B"); c.font = Font(bold=True, color="FFFFFF", size=11)
+c.alignment = al("left", "center"); rh(ws, r, 24); r += 1
+
+ws.merge_cells(f"B{r}:E{r}")
+c = ws.cell(row=r, column=2,
+    value="Where does project profit actually go? Uncapped view above vs. contractual waterfall below.")
+c.fill = fill("EFF6FF"); c.font = Font(italic=True, color="1E40AF", size=9)
+c.alignment = al("left", "center"); rh(ws, r, 18); r += 1
+
+# Row anchors we'll reference: Net Profit is at r=9 (C9/D9/E9)
+r_np_iv = 9
+
+# Project Net Profit (echo for clarity)
+iv_row(ws, r, "  Project Net Profit (from above)",
+       [f"=C{r_np_iv}", f"=D{r_np_iv}", f"=E{r_np_iv}"],
+       fmt='"$"#,##0')
+r += 1
+
+# Hurdle Preferred = hr_a × eq_a (paid to investor before carry)
+iv_row(ws, r, "  Less: Hurdle Preferred (20% × $12M → Investor)",
+       [f"={I['hr_a']}*{I['eq_a']}",
+        f"={I['hr_a']}*{I['eq_a']}",
+        f"={I['hr_a']}*{I['eq_a']}"],
+       fmt='"$"#,##0')
+r += 1
+
+# Investor post-hurdle distribution (capped by model input)
+iv_row(ws, r, "  Less: Investor Post-Hurdle Distribution",
+       [f"={I['di_a']}", f"={I['di_a']}", f"={I['di_a']}"],
+       fmt='"$"#,##0')
+r += 1
+
+# BluFin post-hurdle distribution
+iv_row(ws, r, "  Less: BluFin Post-Hurdle Distribution",
+       [f"={I['db_a']}", f"={I['db_a']}", f"={I['db_a']}"],
+       fmt='"$"#,##0')
+r += 1
+
+# Operator residual (plug) — can be negative if project profit < waterfall obligations
+r_plug = r
+iv_row(ws, r, "  = Operator Residual / Variable Costs (plug)",
+       [f"=C{r_np_iv}-{I['hr_a']}*{I['eq_a']}-{I['di_a']}-{I['db_a']}",
+        f"=D{r_np_iv}-{I['hr_a']}*{I['eq_a']}-{I['di_a']}-{I['db_a']}",
+        f"=E{r_np_iv}-{I['hr_a']}*{I['eq_a']}-{I['di_a']}-{I['db_a']}"],
+       fmt='"$"#,##0;[Red]"($"#,##0")"', is_bold=True)
+r += 2
+
+# ── WATERFALL-ADJUSTED INVESTOR RETURNS ──────────────────────────────────────
+ws.merge_cells(f"B{r}:E{r}")
+c = ws.cell(row=r, column=2, value="WATERFALL-ADJUSTED INVESTOR RETURNS (what the LP actually gets)")
+c.fill = fill("065F46"); c.font = Font(bold=True, color="FFFFFF", size=11)
+c.alignment = al("left", "center"); rh(ws, r, 24); r += 1
+
+# Investor Take = equity + hurdle preferred + post-hurdle distribution
+iv_row(ws, r, "Total Investor Distribution (Equity + Hurdle + Dist.)",
+       [f"={I['eq_a']}+{I['hr_a']}*{I['eq_a']}+{I['di_a']}",
+        f"={I['eq_a']}+{I['hr_a']}*{I['eq_a']}+{I['di_a']}",
+        f"={I['eq_a']}+{I['hr_a']}*{I['eq_a']}+{I['di_a']}"],
+       fmt='"$"#,##0', is_bold=True)
+r += 1
+
+iv_row(ws, r, "Investor MOIC — Waterfall",
+       [f"=({I['eq_a']}+{I['hr_a']}*{I['eq_a']}+{I['di_a']})/{I['eq_a']}",
+        f"=({I['eq_a']}+{I['hr_a']}*{I['eq_a']}+{I['di_a']})/{I['eq_a']}",
+        f"=({I['eq_a']}+{I['hr_a']}*{I['eq_a']}+{I['di_a']})/{I['eq_a']}"],
+       fmt='0.00"x"', font_override=IV_MOIC_FT)
+r += 1
+
+iv_row(ws, r, "Investor ROI — Waterfall",
+       [f"=({I['hr_a']}*{I['eq_a']}+{I['di_a']})/{I['eq_a']}",
+        f"=({I['hr_a']}*{I['eq_a']}+{I['di_a']})/{I['eq_a']}",
+        f"=({I['hr_a']}*{I['eq_a']}+{I['di_a']})/{I['eq_a']}"],
+       fmt="0.0%", font_override=IV_PCT_FT)
+r += 2
+
+# Explanatory note
+ws.merge_cells(f"B{r}:E{r}")
+c = ws.cell(row=r, column=2,
+    value=("The top block shows uncapped project economics (MOIC = (Equity + Project Profit) / Equity). "
+           "The waterfall-adjusted row below reflects actual contractual distributions to the investor: "
+           "capital returned + 20% hurdle preferred + fixed post-hurdle cut. The operator/promoter "
+           "captures the residual. Both views are useful: uncapped = total value created, waterfall = LP's take."))
+c.fill = fill("FEF3C7"); c.font = Font(italic=True, color="92400E", size=9)
+c.alignment = al("left", "center", wrap=True); rh(ws, r, 48); r += 2   # r continues
 
 # ── Footer note ──────────────────────────────────────────────────────────────
 ws.merge_cells(f"B{r}:E{r}")
@@ -1192,14 +1316,175 @@ note2.alignment = al("left", "center")
 ws.print_area = f"B1:E{r}"
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB — SENSITIVITY  (2D grid: fill rate × ticket price multiplier → NP & ROI)
+# ═══════════════════════════════════════════════════════════════════════════════
+ws = wb.create_sheet("Sensitivity")
+ws.sheet_view.showGridLines = False
+ws.freeze_panes = "C6"
+for c, w in [(1,3),(2,34),(3,18),(4,18),(5,18),(6,18),(7,18)]:
+    cw(ws, c, w)
+
+r = 1
+title(ws, r, 2, "SENSITIVITY MATRIX — Net Profit & ROI on Investment", end_col=7); r += 1
+title(ws, r, 2,
+      "Rows = ticket fill rate  ·  Cols = ticket price multiplier  ·  "
+      "Costs fixed (MG + Agency + BluFin, Scenario A)  ·  ◄ = base case",
+      end_col=7, bg="EFF6FF", fg="1D4ED8", sz=9)
+r += 2
+
+# ── ASSUMPTION ANCHORS (referenced by every grid cell) ───────────────────────
+section(ws, r, 2, "BASIS — all formulas below reference these cells", end_col=7); r += 1
+
+# Ticket base revenue (all shows at 100% fill, 100% price)
+r_tkt_base = r
+lbl(ws, r, 2, "Ticket Revenue — Base (all shows @ 100%)", bold=True)
+tkt_formula = (
+    f"=({I['ga_pr']}*{I['ga_ct']}"
+    f"+{I['sa_pr']}*{I['sa_ct']}"
+    f"+{I['sb_pr']}*{I['sb_ct']}"
+    f"+{I['vip_pr']}*{I['vip_ct']}"
+    f"+{I['vvip_pr']}*{I['vvip_ct']})*{I['shows']}"
+)
+c = ws.cell(row=r, column=3, value=tkt_formula)
+c.fill = CALC_FILL; c.font = Font(bold=True, color="059669", size=10)
+c.alignment = al("right"); c.number_format = '"$"#,##0'; c.border = BOT
+lbl(ws, r, 4, "SUMPRODUCT of prices × counts × shows", color="94A3B8"); r += 1
+
+# Non-ticket revenue (fixed: merch promoter share + sponsorship)
+r_non_tkt = r
+lbl(ws, r, 2, "Non-Ticket Revenue (Merch + Sponsorship)", bold=True)
+non_tkt_formula = f"={I['merch_ps']}*{I['merch_pct']}*{I['shows']}+{I['sponsor_ps']}*{I['shows']}"
+c = ws.cell(row=r, column=3, value=non_tkt_formula)
+c.fill = CALC_FILL; c.font = Font(bold=True, color="059669", size=10)
+c.alignment = al("right"); c.number_format = '"$"#,##0'; c.border = BOT
+lbl(ws, r, 4, "Merch promoter share + sponsorship (not fill-sensitive)", color="94A3B8"); r += 1
+
+# Known costs (Scenario A)
+r_costs = r
+lbl(ws, r, 2, "Known Costs — Scen A (MG + Agency + BluFin)", bold=True)
+costs_formula = f"={I['mg']}+{I['ag_a']}+{I['bf_a']}"
+c = ws.cell(row=r, column=3, value=costs_formula)
+c.fill = CALC_FILL; c.font = Font(bold=True, color="DC2626", size=10)
+c.alignment = al("right"); c.number_format = '"$"#,##0'; c.border = BOT
+lbl(ws, r, 4, "Excludes variable operational costs (production, venue, etc.)", color="DC2626"); r += 1
+
+# Equity (Scenario A)
+r_eq = r
+lbl(ws, r, 2, "Equity — Scen A", bold=True)
+c = ws.cell(row=r, column=3, value=f"={I['eq_a']}")
+c.fill = CALC_FILL; c.font = Font(bold=True, color="1D4ED8", size=10)
+c.alignment = al("right"); c.number_format = '"$"#,##0'; c.border = BOT
+lbl(ws, r, 4, "ROI denominator", color="94A3B8"); r += 1
+
+# Break-even fill rate at 100% price
+r_be = r
+lbl(ws, r, 2, "Break-even Fill Rate @ 100% Price", bold=True)
+be_formula = f"=(C{r_costs}-C{r_non_tkt})/C{r_tkt_base}"
+c = ws.cell(row=r, column=3, value=be_formula)
+c.fill = fill("FFFBEB"); c.font = Font(bold=True, color="92400E", size=11)
+c.alignment = al("right"); c.number_format = "0.0%"; c.border = BOT
+lbl(ws, r, 4, "Fill % required to cover known costs at base price", color="92400E"); r += 2
+
+# ── GRID 1: NET PROFIT ───────────────────────────────────────────────────────
+section(ws, r, 2, "NET PROFIT (USD) = Ticket × Fill × Price Mult + Non-Ticket − Known Costs",
+        end_col=7); r += 1
+
+# Price multiplier header row (row r)
+r_price_hdr = r
+hdr(ws, r, 2, "Fill \\ Price")
+price_mults = [(0.80,"×80%"),(0.90,"×90%"),(1.00,"×100% ◄"),(1.10,"×110%"),(1.20,"×120%")]
+for ci, (mult, lab) in enumerate(price_mults):
+    # write label, but the numeric multiplier lives one row below as a reference?
+    # Simpler: store numeric in header, format as "×N%"
+    c = ws.cell(row=r, column=ci+3, value=mult)
+    bg_h = fill("1E40AF") if mult == 1.00 else fill("334155")
+    c.fill = bg_h; c.font = Font(bold=True, color="FFFFFF", size=10)
+    c.alignment = al("center"); c.number_format = '"×"0%'; c.border = ALL
+r += 1
+
+fill_rates = [0.75, 0.80, 0.85, 0.90, 0.95, 1.00]
+r_np_first = r
+for fi, fr in enumerate(fill_rates):
+    is_base_row = (fr == 1.00)
+    # Fill rate in col B (as numeric with % format)
+    c = ws.cell(row=r, column=2, value=fr)
+    c.fill = fill("1E40AF") if is_base_row else fill("F1F5F9")
+    c.font = Font(bold=True, color="FFFFFF" if is_base_row else "334155", size=10)
+    c.alignment = al("right"); c.number_format = '0%" Fill"' + (' " ◄"' if is_base_row else "")
+    c.border = ALL
+    # Grid cells
+    for ci, (mult, lab) in enumerate(price_mults):
+        col_letter = get_column_letter(ci+3)
+        price_cell = f"{col_letter}${r_price_hdr}"
+        fill_cell = f"$B{r}"
+        formula = f"=C${r_tkt_base}*{fill_cell}*{price_cell}+C${r_non_tkt}-C${r_costs}"
+        c = ws.cell(row=r, column=ci+3, value=formula)
+        is_base_cell = is_base_row and mult == 1.00
+        if is_base_cell:
+            c.fill = fill("DBEAFE"); c.font = Font(bold=True, color="1E40AF", size=11)
+        else:
+            # color positive green / negative red via conditional formatting? keep it simple: bold on base, neutral elsewhere
+            c.fill = CALC_FILL; c.font = Font(size=10, color="111827")
+        c.alignment = al("right")
+        c.number_format = '"$"#,##0;[Red]"($"#,##0")"'
+        c.border = BOT
+    r += 1
+
+r += 1
+
+# ── GRID 2: ROI ──────────────────────────────────────────────────────────────
+section(ws, r, 2, "ROI ON INVESTMENT = Net Profit ÷ Equity (Scen A)", end_col=7); r += 1
+
+r_roi_hdr = r
+hdr(ws, r, 2, "Fill \\ Price")
+for ci, (mult, lab) in enumerate(price_mults):
+    c = ws.cell(row=r, column=ci+3, value=mult)
+    bg_h = fill("1E40AF") if mult == 1.00 else fill("334155")
+    c.fill = bg_h; c.font = Font(bold=True, color="FFFFFF", size=10)
+    c.alignment = al("center"); c.number_format = '"×"0%'; c.border = ALL
+r += 1
+
+for fi, fr in enumerate(fill_rates):
+    is_base_row = (fr == 1.00)
+    c = ws.cell(row=r, column=2, value=fr)
+    c.fill = fill("1E40AF") if is_base_row else fill("F1F5F9")
+    c.font = Font(bold=True, color="FFFFFF" if is_base_row else "334155", size=10)
+    c.alignment = al("right"); c.number_format = '0%" Fill"' + (' " ◄"' if is_base_row else "")
+    c.border = ALL
+    for ci, (mult, lab) in enumerate(price_mults):
+        col_letter = get_column_letter(ci+3)
+        price_cell = f"{col_letter}${r_roi_hdr}"
+        fill_cell = f"$B{r}"
+        formula = (
+            f"=(C${r_tkt_base}*{fill_cell}*{price_cell}"
+            f"+C${r_non_tkt}-C${r_costs})/C${r_eq}"
+        )
+        c = ws.cell(row=r, column=ci+3, value=formula)
+        is_base_cell = is_base_row and mult == 1.00
+        if is_base_cell:
+            c.fill = fill("DBEAFE"); c.font = Font(bold=True, color="1E40AF", size=11)
+        else:
+            c.fill = CALC_FILL; c.font = Font(size=10, color="111827")
+        c.alignment = al("right"); c.number_format = "0.0%;[Red]-0.0%"; c.border = BOT
+    r += 1
+
+r += 1
+title(ws, r, 2,
+      "Note: uses Scenario A cost basis (MG + Agency + BluFin) and $12M equity. "
+      "Merch & sponsorship held constant across scenarios (not fill-sensitive in current inputs). "
+      "For variable operational costs (production, venue, marketing), adjust in Inputs tab.",
+      end_col=7, bg="FEF3C7", fg="92400E", sz=9)
+
+
 # ── Save ──────────────────────────────────────────────────────────────────────
 out = "data/Project_Justin_Korea_Investor_Model.xlsx"
 wb.save(out)
 
 # Tab order: Investor View prominent
 tab_order = ["Inputs","Summary","Investor View","Revenue","Artist Fee",
-             "Cost Assumptions","Investor Scenarios","Cash Flow"]
-tab_colors = ["FEF3C7","E0E7FF","DBEAFE","DCFCE7","FEE2E2","FEE2E2","EDE9FE","DBEAFE"]
+             "Cost Assumptions","Investor Scenarios","Cash Flow","Sensitivity"]
+tab_colors = ["FEF3C7","E0E7FF","DBEAFE","DCFCE7","FEE2E2","FEE2E2","EDE9FE","DBEAFE","FEF3C7"]
 for i, name in enumerate(tab_order):
     wb[name].sheet_properties.tabColor = tab_colors[i]
 wb.save(out)
@@ -1212,3 +1497,36 @@ print()
 print("🟡  Yellow cells = inputs (edit these)")
 print("🔵  Blue cells   = formulas (auto-calculate)")
 print("✅  Edit anything in the Inputs tab → Summary, Revenue, Cash Flow all update")
+
+
+# ── Investor-only export ─────────────────────────────────────────────────────
+# Same workbook; hide operator-only tabs. Formulas still recalc because Inputs
+# remains (as very_hidden) — Excel cannot unhide "veryHidden" from the UI.
+INVESTOR_HIDE = {
+    "Inputs":            "veryHidden",   # raw data — locked from UI unhide
+    "Cost Assumptions":  "hidden",       # has TBD markers
+    "Summary":           "hidden",       # marked "INTERNAL — NOT FOR DISTRIBUTION"
+    "Artist Fee":        "hidden",       # contractual payment schedule
+}
+INVESTOR_ORDER = ["Investor View","Sensitivity","Revenue",
+                  "Investor Scenarios","Cash Flow",
+                  # hidden tabs follow but aren't shown in UI
+                  "Inputs","Artist Fee","Cost Assumptions","Summary"]
+
+# Apply hidden state
+for name, state in INVESTOR_HIDE.items():
+    if name in wb.sheetnames:
+        wb[name].sheet_state = state
+
+# Reorder so Investor View is first tab visible on open
+wb._sheets = [wb[n] for n in INVESTOR_ORDER if n in wb.sheetnames]
+wb.active = wb.sheetnames.index("Investor View")
+
+out_inv = "data/Project_Justin_Korea_Investor_Model_INVESTOR.xlsx"
+wb.save(out_inv)
+inv_size = os.path.getsize(out_inv)
+visible_tabs = [s.title for s in wb.worksheets if s.sheet_state == "visible"]
+print()
+print(f"📎  Investor export: {out_inv}  ({inv_size/1024:.0f} KB)")
+print(f"👁   Visible tabs:   {visible_tabs}")
+print(f"🔒  Hidden operator tabs: {list(INVESTOR_HIDE.keys())}")
