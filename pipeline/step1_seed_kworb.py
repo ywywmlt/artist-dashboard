@@ -21,6 +21,9 @@ def fetch_kworb_page(session) -> str:
     """Fetch the kworb.net listeners page."""
     resp = session.get(KWORB_URL, timeout=30)
     resp.raise_for_status()
+    # kworb serves UTF-8 but without a charset header — requests would otherwise
+    # guess Latin-1 and mangle accented names (Tiësto → TiÃ«sto, Beyoncé → BeyoncÃ©).
+    resp.encoding = "utf-8"
     return resp.text
 
 
