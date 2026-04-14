@@ -7136,7 +7136,9 @@ function fdPatchScen(id, field, value) {
   // Only recompute the scenario-specific elements; equity/hurdle/split don't affect
   // net_profit or total_costs, so a full fdUpdateLive() is unnecessary and would
   // replace fd-scen-id-inv-table (killing focus on any investor inputs).
-  fdRefreshScen(id);
+  // Only swap the mode panel when the toggle itself flips — otherwise typing in
+  // Hurdle Rate / Inv. Split / Expected Return loses focus mid-keystroke.
+  fdRefreshScen(id, /*includeModePanel=*/ field === 'return_mode');
 }
 
 function fdPatchScenLabel(id, value) {
@@ -7146,7 +7148,7 @@ function fdPatchScenLabel(id, value) {
 }
 
 // Targeted refresh for a single scenario — preserves focus in investor input rows.
-function fdRefreshScen(scenId) {
+function fdRefreshScen(scenId, includeModePanel) {
   const p = fdState.draftProfile;
   if (!p) return;
   const scen = p.investor_scenarios?.find(s => s.id === scenId);
@@ -7157,8 +7159,10 @@ function fdRefreshScen(scenId) {
   const aeId = ae?.id;
   const ss = ae?.selectionStart;
   const se = ae?.selectionEnd;
-  const mode = document.getElementById('fd-scen-' + scenId + '-mode');
-  if (mode) mode.innerHTML = fdScenModePanelHTML(scen);
+  if (includeModePanel) {
+    const mode = document.getElementById('fd-scen-' + scenId + '-mode');
+    if (mode) mode.innerHTML = fdScenModePanelHTML(scen);
+  }
   const tbl = document.getElementById('fd-scen-' + scenId + '-inv-table');
   if (tbl) tbl.innerHTML = fdScenInvTableHTML(scen);
   const res = document.getElementById('fd-scen-' + scenId + '-result');
