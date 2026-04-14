@@ -1208,7 +1208,7 @@
             Duplicate
           </button>
           <!-- Sidebar toggle (hides artist names list) -->
-          <button id="fd-sidebar-toggle-btn" onclick="fdToggleSidebar()" title="Toggle artist sidebar" style="display:flex;align-items:center;gap:5px;height:30px;padding:0 9px;font-size:11px;font-weight:500;letter-spacing:0.03em;border-radius:0;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0;" onmouseover="this.style.background='rgba(255,255,255,0.05)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.55)'">
+          <button id="fd-sidebar-toggle-btn" onclick="fdToggleSidebar()" title="Hide artist sidebar" style="display:flex;align-items:center;gap:5px;height:30px;padding:0 9px;font-size:11px;font-weight:500;letter-spacing:0.03em;border-radius:0;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0;" onmouseover="if(!this.dataset.sbHidden){this.style.background='rgba(255,255,255,0.05)';this.style.color='#fff'}" onmouseout="if(!this.dataset.sbHidden){this.style.background='transparent';this.style.color='rgba(255,255,255,0.55)'}">
             <svg style="width:14px;height:14px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm6 0v14"/></svg>
           </button>
           <!-- Divider -->
@@ -5073,15 +5073,37 @@ function fdToggleSidebar() {
   const willHide = sb.style.display !== 'none';
   sb.style.display = willHide ? 'none' : '';
   try { localStorage.setItem('fd_sidebar_hidden', willHide ? '1' : '0'); } catch(_) {}
+  fdUpdateSidebarToggleVisual(willHide);
 }
 
 function fdApplySidebarState() {
   try {
-    if (localStorage.getItem('fd_sidebar_hidden') === '1') {
+    const hidden = localStorage.getItem('fd_sidebar_hidden') === '1';
+    if (hidden) {
       const sb = document.getElementById('fd-sidebar');
       if (sb) sb.style.display = 'none';
     }
+    fdUpdateSidebarToggleVisual(hidden);
   } catch(_) {}
+}
+
+function fdUpdateSidebarToggleVisual(hidden) {
+  const btn = document.getElementById('fd-sidebar-toggle-btn');
+  if (!btn) return;
+  if (hidden) {
+    // Active state — orange accent so the user knows the sidebar is hidden
+    btn.style.background = 'rgba(204,100,55,0.15)';
+    btn.style.borderColor = 'rgba(204,100,55,0.4)';
+    btn.style.color = '#cc6437';
+    btn.title = 'Show artist sidebar';
+    btn.dataset.sbHidden = '1';
+  } else {
+    btn.style.background = 'transparent';
+    btn.style.borderColor = 'rgba(255,255,255,0.1)';
+    btn.style.color = 'rgba(255,255,255,0.55)';
+    btn.title = 'Hide artist sidebar';
+    delete btn.dataset.sbHidden;
+  }
 }
 
 const FD_INPUT = 'fd-input w-full';
