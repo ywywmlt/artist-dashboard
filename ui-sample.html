@@ -1207,6 +1207,10 @@
             <svg style="width:12px;height:12px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
             Duplicate
           </button>
+          <!-- Sidebar toggle (hides artist names list) -->
+          <button id="fd-sidebar-toggle-btn" onclick="fdToggleSidebar()" title="Toggle artist sidebar" style="display:flex;align-items:center;gap:5px;height:30px;padding:0 9px;font-size:11px;font-weight:500;letter-spacing:0.03em;border-radius:0;border:1px solid rgba(255,255,255,0.1);background:transparent;color:rgba(255,255,255,0.55);cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0;" onmouseover="this.style.background='rgba(255,255,255,0.05)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='rgba(255,255,255,0.55)'">
+            <svg style="width:14px;height:14px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm6 0v14"/></svg>
+          </button>
           <!-- Divider -->
           <div style="width:1px;height:18px;background:rgba(255,255,255,0.08);margin:0 2px;flex-shrink:0;"></div>
           <!-- Primary CTA -->
@@ -5057,9 +5061,27 @@ function initFinBuilder() {
   finBuilderLoaded = true;
   fdLoad();
   fdRender();
+  fdApplySidebarState();
   // Restore saved currency selection
   const sel = document.getElementById('fd-currency-sel');
   if (sel) sel.value = activeCurrency;
+}
+
+function fdToggleSidebar() {
+  const sb = document.getElementById('fd-sidebar');
+  if (!sb) return;
+  const willHide = sb.style.display !== 'none';
+  sb.style.display = willHide ? 'none' : '';
+  try { localStorage.setItem('fd_sidebar_hidden', willHide ? '1' : '0'); } catch(_) {}
+}
+
+function fdApplySidebarState() {
+  try {
+    if (localStorage.getItem('fd_sidebar_hidden') === '1') {
+      const sb = document.getElementById('fd-sidebar');
+      if (sb) sb.style.display = 'none';
+    }
+  } catch(_) {}
 }
 
 const FD_INPUT = 'fd-input w-full';
