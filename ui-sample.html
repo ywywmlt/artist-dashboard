@@ -5888,6 +5888,8 @@ async function fdExportExcel() {
     } catch(e) { alert('Could not load Excel library. Check internet connection.'); return; }
   }
 
+  // QC: surface any runtime error as an alert instead of silently swallowing
+  try {
   const c   = computeProfile(p);
   const n   = c.n;
   const co  = p.costs || {};
@@ -7950,6 +7952,11 @@ async function fdExportExcel() {
   a.href=url; a.download=(p.artist||'Artist').replace(/[\/\\:*?"<>|]/g,'-')+' — Financial Model.xlsx';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('[fdExportExcel] error:', err);
+    alert('Export failed: ' + (err && err.message ? err.message : String(err)) + '\n\nOpen DevTools console for full stack trace.');
+    throw err;
+  }
 }
 
 async function fdBatchExport() {
