@@ -10673,6 +10673,9 @@ function fdRenderLive(p) {
       <div id="fd-costs-summary">${fdCostSummaryHTML(c)}</div>
     </div>
 
+    <!-- 5B. JISOO-Style Cash Flow Settings -->
+    ${fdJisooSettingsHTML(p, c)}
+
     <!-- Co-Promoter Territory Split -->
     <div class="glass rounded-xl p-4">
       <h3 class="text-xs font-semibold text-white uppercase tracking-wider mb-2">Co-Promoter Territory Split</h3>
@@ -11588,6 +11591,318 @@ function fdRemoveMGSchedule(i) {
   if (!fdState.draftProfile) return;
   fdState.draftProfile.costs.mg_schedule.splice(i, 1);
   fdSetMain(fdState.draftProfile);
+}
+
+// ── JISOO-style cash flow settings: UI + handlers ────────────────────────
+function fdJisooSettingsHTML(p, c) {
+  p = p || {};
+  const timeline = p.timeline || { start_month: '', end_month: '' };
+  const curve = p.ticket_curve || [];
+  const prodSched = (p.costs && p.costs.production_schedule) || [];
+  const agSched = (p.costs && p.costs.agency_schedule) || [];
+  const bfSched = (p.costs && p.costs.blufin_schedule) || [];
+  const distros = p.distributions || [];
+  const minCash = Number(p.min_cash_balance) || 0;
+  const caseVal = p.case || 'base';
+  const costLines = (p.costs && p.costs.cost_lines) || [];
+  const taxLines = (p.costs && p.costs.tax_lines) || [];
+  const cities = (p.tour_cities || []);
+
+  const curveRows = curve.map((r,i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-20" min="0" value="${r.months_before||0}" oninput="fdJUpdateCurveRung(${i},'months_before',Number(this.value))"></td>
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-20" min="0" max="100" step="0.1" value="${((r.pct||0)*100).toFixed(1)}" oninput="fdJUpdateCurveRung(${i},'pct',Number(this.value)/100)"></td>
+      <td class="py-1 pr-1"><button onclick="fdJRemoveCurveRung(${i})" class="text-slate-600 hover:text-red-400 p-1">✕</button></td>
+    </tr>`).join('');
+  const curveSum = curve.reduce((s,r)=>s+(Number(r.pct)||0),0);
+
+  const prodRows = prodSched.map((r,i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-1 pl-1"><input type="text" class="${FD_INPUT} text-xs py-1" value="${(r.label||'').replace(/"/g,'&quot;')}" placeholder="Label" oninput="fdJUpdateProdSched(${i},'label',this.value)"></td>
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-16" min="0" value="${r.months_before||0}" oninput="fdJUpdateProdSched(${i},'months_before',Number(this.value))"></td>
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-16" min="0" max="100" step="0.1" value="${((r.pct||0)*100).toFixed(1)}" oninput="fdJUpdateProdSched(${i},'pct',Number(this.value)/100)"></td>
+      <td class="py-1 pr-1"><button onclick="fdJRemoveProdSched(${i})" class="text-slate-600 hover:text-red-400 p-1">✕</button></td>
+    </tr>`).join('');
+  const prodSum = prodSched.reduce((s,r)=>s+(Number(r.pct)||0),0);
+
+  const datedRows = (sched, kind) => sched.map((r,i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-1 pl-1"><input type="date" class="${FD_INPUT} text-xs py-1" value="${r.date||''}" oninput="fdJUpdateDatedSched('${kind}',${i},'date',this.value)"></td>
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-28" min="0" value="${r.amount||0}" oninput="fdJUpdateDatedSched('${kind}',${i},'amount',Number(this.value))"></td>
+      <td class="py-1 pr-1"><button onclick="fdJRemoveDatedSched('${kind}',${i})" class="text-slate-600 hover:text-red-400 p-1">✕</button></td>
+    </tr>`).join('');
+
+  const distroRows = distros.map((d,i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-1 pl-1"><input type="text" class="${FD_INPUT} text-xs py-1" value="${(d.label||'').replace(/"/g,'&quot;')}" placeholder="Label" oninput="fdJUpdateDistro(${i},'label',this.value)"></td>
+      <td class="py-1 px-1"><input type="date" class="${FD_INPUT} text-xs py-1" value="${d.date||''}" oninput="fdJUpdateDistro(${i},'date',this.value)"></td>
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-16" min="0" max="100" step="0.1" value="${((d.pct||0)*100).toFixed(1)}" oninput="fdJUpdateDistro(${i},'pct',Number(this.value)/100)"></td>
+      <td class="py-1 pr-1"><button onclick="fdJRemoveDistro(${i})" class="text-slate-600 hover:text-red-400 p-1">✕</button></td>
+    </tr>`).join('');
+
+  const sumBadge = (sum, target) => {
+    const pct = (sum*100).toFixed(1);
+    const ok = Math.abs(sum - target) < 0.005;
+    return `<span class="text-[10px] ${ok?'text-emerald-400':'text-red-400'}">${pct}% ${ok?'✓':'✗'}</span>`;
+  };
+
+  // Cost lines matrix (rows × cities)
+  const costLinesRows = costLines.map((line, li) => {
+    const perCityCells = cities.map(tc => {
+      const v = (line.per_city && line.per_city[tc.id]) || 0;
+      return `<td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-[10px] py-1 w-20" min="0" value="${v}" oninput="fdJUpdateCostLinePerCity(${li},'${tc.id}',Number(this.value))"></td>`;
+    }).join('');
+    return `<tr class="border-b border-white/5">
+      <td class="py-1 pl-1"><input type="text" class="${FD_INPUT} text-[10px] py-1" value="${(line.name||'').replace(/"/g,'&quot;')}" placeholder="Line name" oninput="fdJUpdateCostLine(${li},'name',this.value)"></td>
+      ${perCityCells}
+      <td class="py-1 pr-1"><button onclick="fdJRemoveCostLine(${li})" class="text-slate-600 hover:text-red-400 p-1">✕</button></td>
+    </tr>`;
+  }).join('');
+  const costLineHeaderCells = cities.map(tc =>
+    `<th class="py-1 px-1 text-[9px] text-slate-500 font-normal text-left">${(tc.city_name||'').slice(0,10)}</th>`
+  ).join('');
+
+  const taxLinesRows = taxLines.map((t, i) => `
+    <tr class="border-b border-white/5">
+      <td class="py-1 pl-1"><input type="text" class="${FD_INPUT} text-xs py-1" value="${(t.name||'').replace(/"/g,'&quot;')}" oninput="fdJUpdateTaxLine(${i},'name',this.value)"></td>
+      <td class="py-1 px-1"><input type="number" class="${FD_INPUT} text-xs py-1 w-20" min="0" max="100" step="0.1" value="${((t.pct||0)*100).toFixed(1)}" oninput="fdJUpdateTaxLine(${i},'pct',Number(this.value)/100)"></td>
+    </tr>`).join('');
+
+  return `
+<div class="glass rounded-xl p-4">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-xs font-semibold text-white uppercase tracking-wider">5B — Cash Flow Settings <span class="text-[9px] text-slate-500 normal-case tracking-normal">(JISOO-style · drives Excel Assumptions/Cash Flow/Revenue Cash Flow tabs)</span></h3>
+    <div class="inline-flex rounded overflow-hidden text-[10px]">
+      <button onclick="fdJSetCase('base')" class="${caseVal==='base'?'bg-red-600 text-white':'bg-slate-800 text-slate-400'} px-3 py-1">BASE</button>
+      <button onclick="fdJSetCase('best')" class="${caseVal==='best'?'bg-red-600 text-white':'bg-slate-800 text-slate-400'} px-3 py-1">BEST</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-3 gap-4">
+    <!-- Timeline + Min Cash -->
+    <div>
+      <label class="${FD_LABEL}">Timeline — Start Month</label>
+      <input type="month" class="${FD_INPUT} text-xs py-1.5" value="${timeline.start_month||''}" oninput="fdJUpdateTimeline('start_month',this.value)">
+    </div>
+    <div>
+      <label class="${FD_LABEL}">Timeline — End Month</label>
+      <input type="month" class="${FD_INPUT} text-xs py-1.5" value="${timeline.end_month||''}" oninput="fdJUpdateTimeline('end_month',this.value)">
+    </div>
+    <div>
+      <label class="${FD_LABEL}">Min Cash Balance ($)</label>
+      <input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" value="${minCash}" oninput="fdJSetMinCash(Number(this.value))">
+    </div>
+  </div>
+
+  <!-- Ticket sale curve -->
+  <div class="mt-4 border-t border-white/5 pt-3">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] text-slate-400 uppercase tracking-wider">Ticket Sale Curve <span class="text-slate-600 normal-case tracking-normal">· when customers pay</span></span>
+      <div class="flex items-center gap-2">
+        ${sumBadge(curveSum, 1)}
+        <button onclick="fdJAddCurveRung()" class="text-[10px] text-red-400 hover:text-red-300">+ Rung</button>
+      </div>
+    </div>
+    <table class="w-full text-xs">
+      <thead><tr class="text-[9px] text-slate-500"><th class="text-left pl-1 font-normal">Months before concert</th><th class="text-left px-1 font-normal">% of revenue</th><th></th></tr></thead>
+      <tbody>${curveRows || '<tr><td colspan="3" class="py-2 text-[10px] text-slate-600">No rungs — defaults to 100% at show date</td></tr>'}</tbody>
+    </table>
+  </div>
+
+  <!-- Production payment schedule -->
+  <div class="mt-4 border-t border-white/5 pt-3">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] text-slate-400 uppercase tracking-wider">Production Payment Schedule <span class="text-slate-600 normal-case tracking-normal">· anchored to first show date</span></span>
+      <div class="flex items-center gap-2">
+        ${sumBadge(prodSum, 1)}
+        <button onclick="fdJAddProdSched()" class="text-[10px] text-red-400 hover:text-red-300">+ Payment</button>
+      </div>
+    </div>
+    <table class="w-full text-xs">
+      <thead><tr class="text-[9px] text-slate-500"><th class="text-left pl-1 font-normal">Label</th><th class="text-left px-1 font-normal">T-mo</th><th class="text-left px-1 font-normal">%</th><th></th></tr></thead>
+      <tbody>${prodRows || '<tr><td colspan="4" class="py-2 text-[10px] text-slate-600">No payments — add rows</td></tr>'}</tbody>
+    </table>
+  </div>
+
+  <!-- Dated schedules: Agency + BluFin -->
+  <div class="mt-4 grid grid-cols-2 gap-4 border-t border-white/5 pt-3">
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] text-slate-400 uppercase tracking-wider">Agency Payment Schedule</span>
+        <button onclick="fdJAddDatedSched('agency_schedule')" class="text-[10px] text-red-400 hover:text-red-300">+ Date</button>
+      </div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-[9px] text-slate-500"><th class="text-left pl-1 font-normal">Date</th><th class="text-left px-1 font-normal">Amount</th><th></th></tr></thead>
+        <tbody>${datedRows(agSched,'agency_schedule') || '<tr><td colspan="3" class="py-2 text-[10px] text-slate-600">No dated payments</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div>
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-[10px] text-slate-400 uppercase tracking-wider">BluFin Payment Schedule</span>
+        <button onclick="fdJAddDatedSched('blufin_schedule')" class="text-[10px] text-red-400 hover:text-red-300">+ Date</button>
+      </div>
+      <table class="w-full text-xs">
+        <thead><tr class="text-[9px] text-slate-500"><th class="text-left pl-1 font-normal">Date</th><th class="text-left px-1 font-normal">Amount</th><th></th></tr></thead>
+        <tbody>${datedRows(bfSched,'blufin_schedule') || '<tr><td colspan="3" class="py-2 text-[10px] text-slate-600">No dated payments</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Distributions -->
+  <div class="mt-4 border-t border-white/5 pt-3">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] text-slate-400 uppercase tracking-wider">Investor Distributions</span>
+      <button onclick="fdJAddDistro()" class="text-[10px] text-red-400 hover:text-red-300">+ Distribution</button>
+    </div>
+    <table class="w-full text-xs">
+      <thead><tr class="text-[9px] text-slate-500"><th class="text-left pl-1 font-normal">Label</th><th class="text-left px-1 font-normal">Date</th><th class="text-left px-1 font-normal">% of total</th><th></th></tr></thead>
+      <tbody>${distroRows || '<tr><td colspan="4" class="py-2 text-[10px] text-slate-600">No distributions scheduled</td></tr>'}</tbody>
+    </table>
+  </div>
+
+  <!-- Cost lines matrix -->
+  ${cities.length ? `
+  <div class="mt-4 border-t border-white/5 pt-3">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] text-slate-400 uppercase tracking-wider">Cost Lines <span class="text-slate-600 normal-case tracking-normal">· per-city breakdown (absolute $)</span></span>
+      <button onclick="fdJAddCostLine()" class="text-[10px] text-red-400 hover:text-red-300">+ Line</button>
+    </div>
+    <div class="overflow-x-auto">
+    <table class="w-full text-xs">
+      <thead><tr><th class="text-left pl-1 text-[9px] text-slate-500 font-normal">Line</th>${costLineHeaderCells}<th></th></tr></thead>
+      <tbody>${costLinesRows || '<tr><td colspan="'+(cities.length+2)+'" class="py-2 text-[10px] text-slate-600">No cost lines — add rows</td></tr>'}</tbody>
+    </table>
+    </div>
+  </div>` : ''}
+
+  <!-- Tax lines -->
+  <div class="mt-4 border-t border-white/5 pt-3">
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-[10px] text-slate-400 uppercase tracking-wider">Tax Lines <span class="text-slate-600 normal-case tracking-normal">· % of gross revenue</span></span>
+    </div>
+    <table class="w-full text-xs">
+      <thead><tr class="text-[9px] text-slate-500"><th class="text-left pl-1 font-normal">Name</th><th class="text-left px-1 font-normal">%</th></tr></thead>
+      <tbody>${taxLinesRows}</tbody>
+    </table>
+  </div>
+</div>`;
+}
+
+function fdJSetCase(c) {
+  if (!fdState.draftProfile) return;
+  fdState.draftProfile.case = c;
+  fdSetMain(fdState.draftProfile);
+}
+function fdJUpdateTimeline(field, value) {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.timeline) fdState.draftProfile.timeline = {};
+  if (value) fdState.draftProfile.timeline[field] = value;
+  else       delete fdState.draftProfile.timeline[field];
+  if (!fdState.draftProfile.timeline.start_month && !fdState.draftProfile.timeline.end_month) {
+    delete fdState.draftProfile.timeline;
+  }
+  fdUpdateLive();
+}
+function fdJSetMinCash(v) {
+  if (!fdState.draftProfile) return;
+  fdState.draftProfile.min_cash_balance = v;
+  fdUpdateLive();
+}
+function fdJAddCurveRung() {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.ticket_curve) fdState.draftProfile.ticket_curve = [];
+  fdState.draftProfile.ticket_curve.push({ months_before: 0, pct: 0 });
+  fdSetMain(fdState.draftProfile);
+}
+function fdJRemoveCurveRung(i) {
+  if (!fdState.draftProfile || !fdState.draftProfile.ticket_curve) return;
+  fdState.draftProfile.ticket_curve.splice(i, 1);
+  fdSetMain(fdState.draftProfile);
+}
+function fdJUpdateCurveRung(i, field, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.ticket_curve) return;
+  fdState.draftProfile.ticket_curve[i][field] = value;
+  fdUpdateLive();
+}
+function fdJAddProdSched() {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.costs) fdState.draftProfile.costs = {};
+  if (!fdState.draftProfile.costs.production_schedule) fdState.draftProfile.costs.production_schedule = [];
+  fdState.draftProfile.costs.production_schedule.push({ label: '', months_before: 0, pct: 0 });
+  fdSetMain(fdState.draftProfile);
+}
+function fdJRemoveProdSched(i) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs.production_schedule) return;
+  fdState.draftProfile.costs.production_schedule.splice(i, 1);
+  fdSetMain(fdState.draftProfile);
+}
+function fdJUpdateProdSched(i, field, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs.production_schedule) return;
+  fdState.draftProfile.costs.production_schedule[i][field] = value;
+  fdUpdateLive();
+}
+function fdJAddDatedSched(kind) {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.costs) fdState.draftProfile.costs = {};
+  if (!fdState.draftProfile.costs[kind]) fdState.draftProfile.costs[kind] = [];
+  fdState.draftProfile.costs[kind].push({ date: '', amount: 0 });
+  fdSetMain(fdState.draftProfile);
+}
+function fdJRemoveDatedSched(kind, i) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs[kind]) return;
+  fdState.draftProfile.costs[kind].splice(i, 1);
+  fdSetMain(fdState.draftProfile);
+}
+function fdJUpdateDatedSched(kind, i, field, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs[kind]) return;
+  fdState.draftProfile.costs[kind][i][field] = value;
+  fdUpdateLive();
+}
+function fdJAddDistro() {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.distributions) fdState.draftProfile.distributions = [];
+  fdState.draftProfile.distributions.push({ label: '', date: '', pct: 0 });
+  fdSetMain(fdState.draftProfile);
+}
+function fdJRemoveDistro(i) {
+  if (!fdState.draftProfile || !fdState.draftProfile.distributions) return;
+  fdState.draftProfile.distributions.splice(i, 1);
+  fdSetMain(fdState.draftProfile);
+}
+function fdJUpdateDistro(i, field, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.distributions) return;
+  fdState.draftProfile.distributions[i][field] = value;
+  fdUpdateLive();
+}
+function fdJAddCostLine() {
+  if (!fdState.draftProfile) return;
+  if (!fdState.draftProfile.costs) fdState.draftProfile.costs = {};
+  if (!fdState.draftProfile.costs.cost_lines) fdState.draftProfile.costs.cost_lines = [];
+  const id = 'cl_' + Math.random().toString(36).slice(2,8);
+  fdState.draftProfile.costs.cost_lines.push({ id, name: '', kind: 'per_city_absolute', per_city: {} });
+  fdSetMain(fdState.draftProfile);
+}
+function fdJRemoveCostLine(i) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs.cost_lines) return;
+  fdState.draftProfile.costs.cost_lines.splice(i, 1);
+  fdSetMain(fdState.draftProfile);
+}
+function fdJUpdateCostLine(i, field, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs.cost_lines) return;
+  fdState.draftProfile.costs.cost_lines[i][field] = value;
+  fdUpdateLive();
+}
+function fdJUpdateCostLinePerCity(lineIdx, cityId, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs.cost_lines) return;
+  const line = fdState.draftProfile.costs.cost_lines[lineIdx];
+  if (!line.per_city) line.per_city = {};
+  line.per_city[cityId] = value;
+  fdUpdateLive();
+}
+function fdJUpdateTaxLine(i, field, value) {
+  if (!fdState.draftProfile || !fdState.draftProfile.costs || !fdState.draftProfile.costs.tax_lines) return;
+  fdState.draftProfile.costs.tax_lines[i][field] = value;
+  fdUpdateLive();
 }
 function fdAddInvestorToScen(scenId) {
   const scen = fdState.draftProfile?.investor_scenarios?.find(s => s.id === scenId);
