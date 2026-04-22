@@ -6645,21 +6645,17 @@ async function fdExportExcel() {
     jFml(wsCF.getCell(col+'46'), `=-${col}30`, 0, FMT_USD);
     jFml(wsCF.getCell(col+'47'), `=-${col}34`, 0, FMT_USD);
     jFml(wsCF.getCell(col+'48'), `=-${col}35`, 0, FMT_USD);
-    // Return of Capital: simplified — = 0 unless this month matches a distribution
+    // Return of Capital: pay back investor up to equity amount, spread across
+    // the 1st + 2nd distribution months ($M$5 and $M$6). Formula guards against
+    // over-paying by capping at remaining equity (C5 minus already-returned).
+    const prevCol = i === 0 ? 'B' : monthCols[i-1];
     jFml(wsCF.getCell(col+'49'),
-      `=IF(OR(${col}$11=$M$5, ${col}$11=$M$6), -MIN($C$5, SUM($C$45:${col}$45)-SUM($B$49:${prevIfExists(monthCols, i)}49)), 0)`.replace('prevIfExists(monthCols, i)', i===0?'B':monthCols[i-1]),
+      `=IF(OR(${col}$11=$M$5, ${col}$11=$M$6), -MIN($C$5, SUM($C$45:${col}$45)-(-SUM($B$49:${prevCol}49))), 0)`,
       0, FMT_USD);
     jFml(wsCF.getCell(col+'50'),
       `=-IF(${col}$11=$M$7, MIN($C$5*$F$6, SUM(${col}$44:${col}$49)), 0)`,
       0, FMT_USD);
     jFml(wsCF.getCell(col+'51'), `=SUM(${col}44:${col}50)`, 0, FMT_USD, {bold:true});
-  });
-  // Fix the broken placeholder above: rewrite Return of Capital more simply.
-  monthCols.forEach((col, i) => {
-    const prevCol = i === 0 ? 'B' : monthCols[i-1];
-    jFml(wsCF.getCell(col+'49'),
-      `=IF(OR(${col}$11=$M$5, ${col}$11=$M$6), -MIN($C$5, SUM($C$45:${col}$45)-(-SUM($B$49:${prevCol}49))), 0)`,
-      0, FMT_USD);
   });
 
   // Waterfall rows 53-64
