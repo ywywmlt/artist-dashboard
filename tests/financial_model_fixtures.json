@@ -1,0 +1,226 @@
+{
+  "legacy_no_timeline": {
+    "artist": "Legacy Test Artist",
+    "venue_capacity": 40000,
+    "num_shows": 3,
+    "seat_categories": [
+      { "name": "GA",   "price": 170,  "count": 19175 },
+      { "name": "A",    "price": 250,  "count": 9588  },
+      { "name": "B",    "price": 300,  "count": 9588  },
+      { "name": "VIP",  "price": 500,  "count": 1500  },
+      { "name": "VVIP", "price": 1000, "count": 150   }
+    ],
+    "costs": {
+      "artist_mg": 19500000, "agency_fees": 250000, "blufin_fees": 250000,
+      "venue_fee_per_show": 300000, "production_per_show": 750000,
+      "hospitality_per_show": 100000, "insurance_per_show": 50000,
+      "ticketing_fee_pct": 0.06
+    },
+    "additional_revenue": {
+      "merch_per_show": 800000, "merch_split_pct": 0.2, "sponsorship_per_show": 150000
+    }
+  },
+
+  "jisoo_exact_replica": {
+    "artist": "JISOO Solo Tour",
+    "timeline": { "start_month": "2026-03", "end_month": "2027-03" },
+    "case": "best",
+    "case_overrides": { "base": { "fill_rate": 0.9 }, "best": { "fill_rate": 1.0 } },
+    "ticket_curve": [
+      { "months_before": 3, "pct": 0.8 },
+      { "months_before": 0, "pct": 0.2 }
+    ],
+    "min_cash_balance": 0,
+    "tour_cities": [
+      { "id": "tc_bkk", "city_name": "Bangkok",   "concert_date": "2026-08-22", "capacity": 20000,
+        "seat_categories": [
+          { "name": "P5", "price": 78.57,  "count": 2000 },
+          { "name": "P4", "price": 114.29, "count": 4000 },
+          { "name": "P3", "price": 142.86, "count": 5000 },
+          { "name": "P2", "price": 171.43, "count": 4000 },
+          { "name": "P1", "price": 214.29, "count": 3000 },
+          { "name": "VIP Premium",  "price": 285.71, "count": 1400 },
+          { "name": "VIP Ultimate", "price": 371.43, "count": 600  }
+        ],
+        "venue_fee": 186666.66, "production": 333333.33,
+        "hospitality": 80000, "insurance": 0 },
+      { "id": "tc_sgp", "city_name": "Singapore", "concert_date": "2026-08-29", "capacity": 20000,
+        "seat_categories": [
+          { "name": "P5", "price": 92.86,  "count": 2000 },
+          { "name": "P4", "price": 135.71, "count": 4000 },
+          { "name": "P3", "price": 171.43, "count": 5000 },
+          { "name": "P2", "price": 207.14, "count": 4000 },
+          { "name": "P1", "price": 250.00, "count": 3000 },
+          { "name": "VIP Premium",  "price": 321.43, "count": 1400 },
+          { "name": "VIP Ultimate", "price": 414.29, "count": 600  }
+        ],
+        "venue_fee": 233333.33, "production": 346666.66,
+        "hospitality": 86666.66, "insurance": 0 },
+      { "id": "tc_jkt", "city_name": "Jakarta",   "concert_date": "2026-09-05", "capacity": 20000,
+        "seat_categories": [
+          { "name": "P5", "price": 71.43,  "count": 2000 },
+          { "name": "P4", "price": 100.00, "count": 4000 },
+          { "name": "P3", "price": 128.57, "count": 5000 },
+          { "name": "P2", "price": 157.14, "count": 4000 },
+          { "name": "P1", "price": 200.00, "count": 3000 },
+          { "name": "VIP Premium",  "price": 257.14, "count": 1400 },
+          { "name": "VIP Ultimate", "price": 342.86, "count": 600  }
+        ],
+        "venue_fee": 166666.66, "production": 320000,
+        "hospitality": 86666.66, "insurance": 0 },
+      { "id": "tc_lon", "city_name": "London",    "concert_date": "2026-09-12", "capacity": 20000,
+        "seat_categories": [
+          { "name": "P5", "price": 107.14, "count": 2000 },
+          { "name": "P4", "price": 150.00, "count": 4000 },
+          { "name": "P3", "price": 192.86, "count": 5000 },
+          { "name": "P2", "price": 228.57, "count": 4000 },
+          { "name": "P1", "price": 278.57, "count": 3000 },
+          { "name": "VIP Premium",  "price": 357.14, "count": 1400 },
+          { "name": "VIP Ultimate", "price": 464.29, "count": 600  }
+        ],
+        "venue_fee": 280000, "production": 386666.66,
+        "hospitality": 100000, "insurance": 0 },
+      { "id": "tc_par", "city_name": "Paris",     "concert_date": "2026-09-19", "capacity": 20000,
+        "seat_categories": [
+          { "name": "P5", "price": 92.86,  "count": 2000 },
+          { "name": "P4", "price": 135.71, "count": 4000 },
+          { "name": "P3", "price": 171.43, "count": 5000 },
+          { "name": "P2", "price": 207.14, "count": 4000 },
+          { "name": "P1", "price": 250.00, "count": 3000 },
+          { "name": "VIP Premium",  "price": 321.43, "count": 1400 },
+          { "name": "VIP Ultimate", "price": 414.29, "count": 600  }
+        ],
+        "venue_fee": 260000, "production": 380000,
+        "hospitality": 93333.33, "insurance": 0 },
+      { "id": "tc_col", "city_name": "Cologne",   "concert_date": "2026-09-26", "capacity": 20000,
+        "seat_categories": [
+          { "name": "P5", "price": 85.71,  "count": 2000 },
+          { "name": "P4", "price": 121.43, "count": 4000 },
+          { "name": "P3", "price": 150.00, "count": 5000 },
+          { "name": "P2", "price": 185.71, "count": 4000 },
+          { "name": "P1", "price": 221.43, "count": 3000 },
+          { "name": "VIP Premium",  "price": 292.86, "count": 1400 },
+          { "name": "VIP Ultimate", "price": 385.71, "count": 600  }
+        ],
+        "venue_fee": 240000, "production": 366666.66,
+        "hospitality": 86666.66, "insurance": 0 },
+      { "id": "tc_ams", "city_name": "Amsterdam", "concert_date": "2026-10-03", "capacity": 17000,
+        "seat_categories": [
+          { "name": "P5", "price": 100.00, "count": 1700 },
+          { "name": "P4", "price": 142.86, "count": 3400 },
+          { "name": "P3", "price": 178.57, "count": 4250 },
+          { "name": "P2", "price": 214.29, "count": 3400 },
+          { "name": "P1", "price": 257.14, "count": 2550 },
+          { "name": "VIP Premium",  "price": 335.71, "count": 1190 },
+          { "name": "VIP Ultimate", "price": 428.57, "count": 510  }
+        ],
+        "venue_fee": 213333.33, "production": 333333.33,
+        "hospitality": 86666.66, "insurance": 0 },
+      { "id": "tc_ber", "city_name": "Berlin",    "concert_date": "2026-10-10", "capacity": 17000,
+        "seat_categories": [
+          { "name": "P5", "price": 100.00, "count": 1700 },
+          { "name": "P4", "price": 142.86, "count": 3400 },
+          { "name": "P3", "price": 178.57, "count": 4250 },
+          { "name": "P2", "price": 214.29, "count": 3400 },
+          { "name": "P1", "price": 257.14, "count": 2550 },
+          { "name": "VIP Premium",  "price": 335.71, "count": 1190 },
+          { "name": "VIP Ultimate", "price": 428.57, "count": 510  }
+        ],
+        "venue_fee": 206666.66, "production": 333333.33,
+        "hospitality": 86666.66, "insurance": 0 }
+    ],
+    "costs": {
+      "artist_mg": 8533333.28,
+      "agency_fees": 853333.28,
+      "blufin_fees": 0,
+      "ticketing_fee_pct": 0.06,
+      "ticketing_fee_date": "2026-08-01",
+      "mg_schedule": [
+        { "months_before": 4, "pct": 0.1, "label": "1st Payment" },
+        { "months_before": 3, "pct": 0.2, "label": "2nd Payment" },
+        { "months_before": 2, "pct": 0.3, "label": "3rd Payment" },
+        { "months_before": 1, "pct": 0.3, "label": "4th Payment" },
+        { "months_before": 0, "pct": 0.1, "label": "5th Payment" }
+      ],
+      "production_schedule": [
+        { "months_before": 4, "pct": 0.2, "label": "1st Payment" },
+        { "months_before": 3, "pct": 0.3, "label": "2nd Payment" },
+        { "months_before": 2, "pct": 0.2, "label": "3rd Payment" },
+        { "months_before": 1, "pct": 0.2, "label": "4th Payment" },
+        { "months_before": 0, "pct": 0.1, "label": "Final Payment" }
+      ],
+      "agency_schedule": [
+        { "date": "2026-03-01", "amount": 85333.33 },
+        { "date": "2026-06-01", "amount": 767999.95 }
+      ],
+      "blufin_schedule": [],
+      "artist_sponsorship_royalty_pct": 0,
+      "cost_lines": [
+        { "id": "venue",        "name": "Venue Fees",                             "kind": "per_city_absolute",
+          "per_city": { "tc_bkk": 186666.66, "tc_sgp": 233333.33, "tc_jkt": 166666.66, "tc_lon": 280000.00, "tc_par": 260000.00, "tc_col": 240000.00, "tc_ams": 213333.33, "tc_ber": 206666.66 } },
+        { "id": "stage",        "name": "Stage System",                           "kind": "per_city_absolute",
+          "per_city": { "tc_bkk": 333333.33, "tc_sgp": 346666.66, "tc_jkt": 320000.00, "tc_lon": 386666.66, "tc_par": 380000.00, "tc_col": 366666.66, "tc_ams": 333333.33, "tc_ber": 333333.33 } },
+        { "id": "hospitality",  "name": "Hospitality & Public Liability Insurance","kind": "per_city_absolute",
+          "per_city": { "tc_bkk":  80000.00, "tc_sgp":  86666.66, "tc_jkt":  86666.66, "tc_lon": 100000.00, "tc_par":  93333.33, "tc_col":  86666.66, "tc_ams":  86666.66, "tc_ber":  86666.66 } },
+        { "id": "advertising",  "name": "Advertising & Promotion",                "kind": "per_city_absolute",
+          "per_city": { "tc_bkk": 146666.66, "tc_sgp": 133333.33, "tc_jkt": 133333.33, "tc_lon": 166666.66, "tc_par": 160000.00, "tc_col": 140000.00, "tc_ams": 133333.33, "tc_ber": 133333.33 } },
+        { "id": "partstaff",    "name": "Part Time Staffing",                     "kind": "per_city_absolute",
+          "per_city": { "tc_bkk": 120000.00, "tc_sgp": 133333.33, "tc_jkt": 113333.33, "tc_lon": 153333.33, "tc_par": 146666.66, "tc_col": 140000.00, "tc_ams": 133333.33, "tc_ber": 133333.33 } },
+        { "id": "licenses",     "name": "Licenses & Permits",                     "kind": "per_city_absolute",
+          "per_city": { "tc_bkk": 140000.00, "tc_sgp":  93333.33, "tc_jkt": 173333.33, "tc_lon": 106666.66, "tc_par":  93333.33, "tc_col": 120000.00, "tc_ams":  80000.00, "tc_ber":  86666.66 } },
+        { "id": "logistics",    "name": "Logistics & Transportation & Business & Accommodation", "kind": "per_city_absolute",
+          "per_city": { "tc_bkk": 160000.00, "tc_sgp": 140000.00, "tc_jkt": 173333.33, "tc_lon": 173333.33, "tc_par": 166666.66, "tc_col": 173333.33, "tc_ams": 153333.33, "tc_ber": 153333.33 } }
+      ],
+      "tax_lines": [
+        { "id": "music_copyright", "name": "Music Copyright Fee",  "pct": 0 },
+        { "id": "gst",             "name": "Goods & Services tax", "pct": 0 }
+      ]
+    },
+    "additional_revenue": {
+      "merch_per_show": 0,
+      "merch_split_pct": 0.2,
+      "sponsorship_per_show": 0
+    },
+    "investor_scenarios": [
+      { "id": "scen_a", "label": "Scenario A",
+        "equity": 0,
+        "hurdle_rate": 0.2,
+        "above_hurdle_investor_pct": 0.5,
+        "return_mode": "waterfall" }
+    ],
+    "distributions": [
+      { "date": "2026-06-01", "pct": 0.5, "label": "1st Distribution" },
+      { "date": "2026-09-01", "pct": 0.5, "label": "2nd Distribution" }
+    ]
+  },
+
+  "single_city": {
+    "artist": "Solo Show Test",
+    "timeline": { "start_month": "2026-04", "end_month": "2026-11" },
+    "case": "base",
+    "ticket_curve": [
+      { "months_before": 2, "pct": 0.7 },
+      { "months_before": 0, "pct": 0.3 }
+    ],
+    "tour_cities": [
+      { "id": "tc_only", "city_name": "Seoul", "concert_date": "2026-09-05", "capacity": 40000,
+        "seat_categories": [
+          { "name": "GA",   "price": 200, "count": 30000 },
+          { "name": "VIP",  "price": 500, "count": 10000 }
+        ],
+        "venue_fee": 300000, "production": 750000, "hospitality": 100000, "insurance": 50000 }
+    ],
+    "costs": {
+      "artist_mg": 5000000,
+      "ticketing_fee_pct": 0.06,
+      "mg_schedule": [
+        { "months_before": 2, "pct": 0.5 },
+        { "months_before": 0, "pct": 0.5 }
+      ],
+      "production_schedule": [
+        { "months_before": 2, "pct": 0.5 },
+        { "months_before": 0, "pct": 0.5 }
+      ]
+    }
+  }
+}

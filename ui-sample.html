@@ -4759,7 +4759,34 @@ function fdToast(msg, ms) {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms || 2000);
 }
 
-function computeProfile(p) {
+// ── BEGIN COMPUTE ──
+// JISOO-style financial model compute block.
+// Extracted between markers so tests/eval_fn.js (Node) can eval it.
+// Precedence: when p.timeline is set, ticket_curve governs monthly matrix exports;
+// p.ticketing_settlement still drives the day-event UI Cash Flow list.
+
+function fdMonthKey(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+function fdMonthAdd(monthStr, n) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const d = new Date(y, m - 1 + n, 1);
+  return fdMonthKey(d);
+}
+function fdMonthsBetween(startStr, endStr) {
+  const out = []; let cur = startStr;
+  while (cur <= endStr) { out.push(cur); cur = fdMonthAdd(cur, 1); }
+  return out;
+}
+function fdMonthFromDateStr(dateStr) { return (dateStr||'').slice(0,7); }
+function fdMmyyFromMonth(monthStr) {
+  const [y, m] = monthStr.split('-');
+  return m + y.slice(-2);
+}
+
+function computeProfile(p, opts) {
+  opts = opts || {};
+  const activeCase = opts.case || p.case || "base";
+  const caseOverride = (p.case_overrides && p.case_overrides[activeCase]) || {};
+  const caseFillRate = caseOverride.fill_rate;
   // Fallback global cats for legacy profiles before per-city migration
   const globalCats = p.seat_categories || [];
 
@@ -4777,7 +4804,9 @@ function computeProfile(p) {
       ? tc.seat_categories : globalCats;
     const shows    = Number(tc.num_shows) || 1;
     const capacity = Number(tc.capacity)  || 0;
-    const fill_rate       = Math.min(1, Math.max(0, tc.fill_rate !== undefined ? Number(tc.fill_rate) : 1));
+    const fill_rate       = Math.min(1, Math.max(0,
+      caseFillRate !== undefined ? Number(caseFillRate)
+      : (tc.fill_rate !== undefined ? Number(tc.fill_rate) : 1)));
     const rev_per_show    = cats.reduce((s, c) => s + (Number(c.price)||0)*(Number(c.count)||0)*fill_rate, 0);
     const seats_per_show  = cats.reduce((s, c) => s + (Number(c.count)||0)*fill_rate, 0);
     const occ             = capacity > 0 ? seats_per_show / capacity : 0;
@@ -4937,7 +4966,9 @@ function computeScenario(c, scen) {
   return { equity, hurdle_amount, investor_dist, blufin_dist, total_inv_return, moic, abs_return, hurdle_rate, inv_split, mode, fixed_pct };
 }
 
-function computeCashFlow(p, c) {
+// Legacy event-based cash-flow list (day-granular, used by existing UI Cash Flow tab).
+// Returns an array of { display, items, net, balance } sorted by month key.
+function fdComputeCashFlowEvents(p, c) {
   // Find earliest concert date (used as MG payment anchor)
   const firstDate = p.concert_date
     || (p.tour_cities||[]).find(tc => tc.concert_date)?.concert_date || null;
@@ -5021,6 +5052,165 @@ function computeCashFlow(p, c) {
   let balance = 0;
   return sorted.map(row => { balance += row.net; return { ...row, balance }; });
 }
+
+// Pure: distributes per-city ticket revenue across months using ticket_curve + timeline.
+// Returns null if p.timeline or concert dates missing.
+function computeRevenueCashFlow(p, c, opts) {
+  opts = opts || {};
+  const activeCase = opts.case || p.case || "base";
+  if (!p || !p.timeline || !(p.tour_cities||[]).some(tc => tc.concert_date)) return null;
+  const months = fdMonthsBetween(p.timeline.start_month, p.timeline.end_month);
+  const curve = (p.ticket_curve || [{months_before:0, pct:1}]).filter(r => (r.pct||0) > 0);
+  const rows = [];
+  for (const cc of (c.cityCalcs||[])) {
+    if (!cc.tc.concert_date) continue;
+    const showMonth = fdMonthFromDateStr(cc.tc.concert_date);
+    const totals = new Array(months.length).fill(0);
+    for (const rung of curve) {
+      const targetMonth = fdMonthAdd(showMonth, -(rung.months_before||0));
+      const idx = months.indexOf(targetMonth);
+      if (idx < 0) continue;
+      totals[idx] += cc.total_ticket_rev * (rung.pct||0);
+    }
+    rows.push({
+      city_id: cc.tc.id,
+      city_name: cc.tc.city_name || 'City',
+      totalsByMonth: totals,
+      total: totals.reduce((a,b)=>a+b, 0),
+      expected: cc.total_ticket_rev
+    });
+  }
+  const colTotals = months.map((_, i) => rows.reduce((s,r) => s + r.totalsByMonth[i], 0));
+  return { months, rows, colTotals, grand: rows.reduce((s,r) => s + r.total, 0), case: activeCase };
+}
+
+// Pure: combines legacy event list AND JISOO-style monthly matrix.
+// Matrix is null when timeline is absent. Distributions reduce cumulative balance.
+function computeCashFlow(p, c, opts) {
+  opts = opts || {};
+  const events = fdComputeCashFlowEvents(p, c);
+
+  let matrix = null;
+  if (p && p.timeline) {
+    const months = fdMonthsBetween(p.timeline.start_month, p.timeline.end_month);
+    const firstShowDate = p.concert_date
+      || (p.tour_cities||[]).find(tc => tc.concert_date)?.concert_date;
+    if (firstShowDate) {
+      const firstShowMonth = fdMonthFromDateStr(firstShowDate);
+      const landOn = (monthStr, arr, amount) => {
+        const i = months.indexOf(monthStr);
+        if (i >= 0) arr[i] += amount;
+      };
+
+      // Production by month (derived from cost_lines OR legacy per-city bundles)
+      let totalProd = 0;
+      if (Array.isArray(p.costs && p.costs.cost_lines)) {
+        for (const line of p.costs.cost_lines) {
+          if (line.kind === "per_city_absolute" && line.per_city) {
+            totalProd += Object.values(line.per_city).reduce((a,b) => a + (Number(b)||0), 0);
+          }
+        }
+      } else {
+        totalProd = (c.cityCalcs||[]).reduce((s, cc) => s + cc.total_op_cost, 0);
+      }
+      const prodByMonth = new Array(months.length).fill(0);
+      for (const pmt of ((p.costs && p.costs.production_schedule)||[])) {
+        const m = fdMonthAdd(firstShowMonth, -(Number(pmt.months_before)||0));
+        landOn(m, prodByMonth, totalProd * (Number(pmt.pct)||0));
+      }
+
+      // Artist MG
+      const mgTotal = Number((p.costs && p.costs.artist_mg))||0;
+      const mgByMonth = new Array(months.length).fill(0);
+      for (const pmt of ((p.costs && p.costs.mg_schedule)||[])) {
+        const m = fdMonthAdd(firstShowMonth, -(Number(pmt.months_before)||0));
+        landOn(m, mgByMonth, mgTotal * (Number(pmt.pct)||0));
+      }
+
+      const byDateSched = (arr) => {
+        const out = new Array(months.length).fill(0);
+        for (const pmt of (arr||[])) {
+          if (!pmt.date) continue;
+          landOn(String(pmt.date).slice(0,7), out, Number(pmt.amount)||0);
+        }
+        return out;
+      };
+      const agencyByMonth = byDateSched(p.costs && p.costs.agency_schedule);
+      const blufinByMonth = byDateSched(p.costs && p.costs.blufin_schedule);
+
+      // Ticket revenue (reuse RCF)
+      const rcf = computeRevenueCashFlow(p, c, opts);
+      const ticketByMonth = rcf ? rcf.colTotals.slice() : new Array(months.length).fill(0);
+      const feePct = Number((p.costs && p.costs.ticketing_fee_pct))||0;
+      const ticketingFees = ticketByMonth.map(v => v * feePct);
+
+      const netOp = months.map((_, i) =>
+        ticketByMonth[i] - (prodByMonth[i] + mgByMonth[i] + agencyByMonth[i] + blufinByMonth[i] + ticketingFees[i])
+      );
+
+      // Distribution outflows from project entity
+      const scen = (p.investor_scenarios||[])[0] || {};
+      const equity = Number(scen.equity)||0;
+      const hurdleRate = Number(scen.hurdle_rate)||0.20;
+      const invSplit   = Number(scen.above_hurdle_investor_pct)||0.5;
+      const totalProfit = netOp.reduce((a,b) => a+b, 0);
+      const hurdleAmt = equity * hurdleRate;
+      const above = Math.max(0, totalProfit - hurdleAmt);
+      const investorTotal = Math.min(Math.max(0,totalProfit), hurdleAmt) + above * invSplit;
+      const blufinTotal   = Math.max(0, totalProfit - investorTotal);
+      const projectOutflowTotal = investorTotal + blufinTotal;
+      const distOut = new Array(months.length).fill(0);
+      for (const d of (p.distributions||[])) {
+        const m = String(d.date||'').slice(0,7);
+        landOn(m, distOut, projectOutflowTotal * (Number(d.pct)||0));
+      }
+
+      const net = months.map((_, i) => netOp[i] - distOut[i]);
+      let run = 0;
+      const cumulative = net.map(v => (run += v, run));
+      const minCash = Number(p.min_cash_balance)||0;
+      const peakDeficit = cumulative.length ? Math.min(0, ...cumulative) : 0;
+      let peakIdx = -1;
+      for (let i = 0; i < cumulative.length; i++) {
+        if (peakIdx < 0 || cumulative[i] < cumulative[peakIdx]) peakIdx = i;
+      }
+
+      matrix = {
+        months,
+        inflows:  { ticket: ticketByMonth },
+        outflows: {
+          production: prodByMonth, artist_mg: mgByMonth,
+          agency: agencyByMonth, blufin: blufinByMonth,
+          ticketing_fees: ticketingFees, distributions: distOut
+        },
+        net_operating: netOp,
+        net, cumulative,
+        totals: {
+          ticket: ticketByMonth.reduce((a,b)=>a+b,0),
+          production: prodByMonth.reduce((a,b)=>a+b,0),
+          artist_mg: mgByMonth.reduce((a,b)=>a+b,0),
+          agency: agencyByMonth.reduce((a,b)=>a+b,0),
+          blufin: blufinByMonth.reduce((a,b)=>a+b,0),
+          ticketing_fees: ticketingFees.reduce((a,b)=>a+b,0),
+          distributions: distOut.reduce((a,b)=>a+b,0),
+          net_operating: totalProfit,
+          investor: investorTotal,
+          blufin_return: blufinTotal,
+          moic: equity > 0 ? (equity + investorTotal) / equity : 0,
+          abs_return: equity > 0 ? investorTotal / equity : 0
+        },
+        case: opts.case || p.case || "base",
+        min_cash_balance: minCash,
+        peak_deficit: peakDeficit,
+        peak_exposure_month: peakIdx >= 0 ? months[peakIdx] : null,
+        breached_min_cash: peakDeficit < -minCash
+      };
+    }
+  }
+
+  return { events, matrix };
+}
+// ── END COMPUTE ──
 
 function fdComputeCompleteness(p) {
   const co = p.costs || {};
@@ -5168,6 +5358,76 @@ function fdMigrateProfile(p) {
   // Migrate old per-head merch model to flat per-show (reset to 0 — user re-enters)
   if (p.additional_revenue.merch_per_show === undefined) p.additional_revenue.merch_per_show = 0;
   if (p.additional_revenue.merch_split_pct === undefined) p.additional_revenue.merch_split_pct = 1.0;
+
+  // ── JISOO-style financial model: additive fields (QC10 stable city IDs, USD only) ──
+  // Precedence: timeline+ticket_curve drive the monthly matrix export;
+  // ticketing_settlement still drives the legacy UI Cash Flow day-event list.
+  if (Array.isArray(p.tour_cities)) {
+    for (const tc of p.tour_cities) {
+      if (!tc.id) tc.id = 'tc_' + ((typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID().slice(0,8)
+        : Math.random().toString(36).slice(2,10));
+    }
+  }
+  if (!p.timeline && (p.tour_cities||[]).some(tc => tc.concert_date)) {
+    const dates = (p.tour_cities||[]).map(tc => tc.concert_date).filter(Boolean).sort();
+    if (dates.length) {
+      const first = new Date(dates[0] + 'T12:00:00');
+      const last  = new Date(dates[dates.length-1] + 'T12:00:00');
+      const startD = new Date(first.getFullYear(), first.getMonth() - 5, 1);
+      const endD   = new Date(last.getFullYear(),  last.getMonth()  + 6, 1);
+      p.timeline = {
+        start_month: startD.toISOString().slice(0,7),
+        end_month:   endD.toISOString().slice(0,7)
+      };
+    }
+  }
+  if (!p.ticket_curve && p.timeline) {
+    p.ticket_curve = [
+      { months_before: 3, pct: 0.8 },
+      { months_before: 0, pct: 0.2 }
+    ];
+  }
+  if (!p.costs.production_schedule && p.timeline) {
+    p.costs.production_schedule = [
+      { months_before: 4, pct: 0.2, label: "1st Payment" },
+      { months_before: 3, pct: 0.3, label: "2nd Payment" },
+      { months_before: 2, pct: 0.2, label: "3rd Payment" },
+      { months_before: 1, pct: 0.2, label: "4th Payment" },
+      { months_before: 0, pct: 0.1, label: "Final Payment" }
+    ];
+  }
+  if (!p.costs.agency_schedule) p.costs.agency_schedule = [];
+  if (!p.costs.blufin_schedule) p.costs.blufin_schedule = [];
+  if (!p.costs.cost_lines && (p.tour_cities||[]).length) {
+    const perCityFor = (key) => {
+      const out = {};
+      for (const tc of p.tour_cities) out[tc.id] = Number(tc[key])||0;
+      return out;
+    };
+    p.costs.cost_lines = [
+      { id: "venue",       name: "Venue Fees",                    kind: "per_city_absolute", per_city: perCityFor("venue_fee") },
+      { id: "production",  name: "Stage System / Production",     kind: "per_city_absolute", per_city: perCityFor("production") },
+      { id: "hospitality", name: "Hospitality / Insurance",       kind: "per_city_absolute", per_city: perCityFor("hospitality") },
+      { id: "insurance",   name: "Other Insurance",               kind: "per_city_absolute", per_city: perCityFor("insurance") }
+    ];
+  }
+  if (!p.costs.tax_lines) {
+    p.costs.tax_lines = [
+      { id: "music_copyright", name: "Music Copyright Fee",  pct: 0 },
+      { id: "gst",             name: "Goods & Services tax", pct: 0 }
+    ];
+  }
+  if (p.costs.ticketing_fee_pct === undefined) p.costs.ticketing_fee_pct = 0.06;
+  if (!p.distributions && p.timeline) {
+    p.distributions = [
+      { date: p.timeline.end_month + "-01", pct: 0.5, label: "1st Distribution" },
+      { date: p.timeline.end_month + "-01", pct: 0.5, label: "2nd Distribution" }
+    ];
+  }
+  if (p.min_cash_balance === undefined) p.min_cash_balance = 0;
+  if (!p.case) p.case = "base";
+  if (!p.case_overrides) p.case_overrides = { base: { fill_rate: 0.9 }, best: { fill_rate: 1.0 } };
 }
 
 function fdSetMain(p) {
@@ -7661,7 +7921,8 @@ function fdInvestorViewHTML(p, c) {
 }
 
 function fdCashFlowHTML(p, c) {
-  const rows = computeCashFlow(p, c);
+  const cf = computeCashFlow(p, c);
+  const rows = cf && cf.events;
   if (!rows) return `<div class="text-center py-6 text-slate-600 text-xs">Enter a concert date to generate the cash flow timeline</div>`;
   if (!rows.length) return `<div class="text-center py-6 text-slate-600 text-xs">No cash flow events — add MG and costs</div>`;
   const rowsHTML = rows.map(row => {
