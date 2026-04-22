@@ -5113,6 +5113,14 @@ function computeCashFlow(p, c, opts) {
       } else {
         totalProd = (c.cityCalcs||[]).reduce((s, cc) => s + cc.total_op_cost, 0);
       }
+      // Tax lines (% of gross revenue) bundle into production cost total
+      // — matches JISOO convention where row 111 SUM includes tax rows 109-110.
+      // Base uses base ticket rev; Best uses best ticket rev.
+      const taxLines = (p.costs && p.costs.tax_lines) || [];
+      const activeTicketRev = c.total_ticket_rev || 0;
+      for (const tax of taxLines) {
+        totalProd += activeTicketRev * (Number(tax.pct) || 0);
+      }
       const prodByMonth = new Array(months.length).fill(0);
       for (const pmt of ((p.costs && p.costs.production_schedule)||[])) {
         const m = fdMonthAdd(firstShowMonth, -(Number(pmt.months_before)||0));
@@ -6962,991 +6970,6 @@ async function fdExportExcel() {
     lbl(wsD.getCell('C' + (15+i)), row[1]);
   });
 
-  // Done building sheets — SKIP the legacy single-sheet below (jump to download)
-  if (false) {
-    // legacy sheet builder remains below but is disabled
-
-  let r = 1;
-
-  // Title
-  ws.mergeCells('A'+r+':F'+r);
-  sc(ws.getCell('A'+r), { fill:C.purple, font:{bold:true,size:14,color:{argb:C.white}}, align:{horizontal:'left'} }).value
-    = '  ARTIST FINANCIAL MODEL  —  ' + (p.artist||'Unnamed').toUpperCase();
-  ws.getRow(r).height = 30; r++;
-
-  ws.mergeCells('A'+r+':F'+r);
-  sc(ws.getCell('A'+r), { fill:C.dark, font:{size:9,italic:true,color:{argb:'FF94A3B8'}}, align:{horizontal:'left'} }).value
-    = '  Generated ' + new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})
-    + '  ·  Yellow = editable input  ·  Blue = formula (auto-calculates)';
-  ws.getRow(r).height = 14; r++; r++;
-
-  // SHOW DETAILS
-  hdr(ws, r, 'SHOW DETAILS', C.dark); r++;
-  const detStart = r;
-  const _exCity = (p.tour_cities&&p.tour_cities.length>1) ? p.tour_cities.length+' cities' : ((p.tour_cities&&p.tour_cities[0]?.city_name)||p.city||'');
-  const _exDate = p.concert_date || (p.tour_cities||[]).find(tc=>tc.concert_date)?.concert_date || null;
-  const _exCap  = (p.tour_cities&&p.tour_cities[0]?.capacity) || p.venue_capacity || 0;
-  const detRows = [
-    ['Artist Name',     p.artist||'',   'Venue Type',     (p.venue_type||'stadium')[0].toUpperCase()+(p.venue_type||'stadium').slice(1), null],
-    ['City / Market',   _exCity,        'Concert Date',   _exDate ? new Date(_exDate+'T12:00:00') : '', 'yyyy-mm-dd'],
-    ['Number of Shows', n,              'Venue Capacity',  Number(_exCap)||0, '#,##0'],
-  ];
-  for (const [l1,v1,l2,v2,fmt2] of detRows) {
-    sc(ws.getCell(r,1), {font:{color:{argb:C.gray}}}).value = l1;
-    inp(ws.getCell(r,2), v1, typeof v1==='number' ? {numFmt:'#,##0'} : {align:{horizontal:'left'}});
-    sc(ws.getCell(r,4), {font:{color:{argb:C.gray}}}).value = l2;
-    inp(ws.getCell(r,5), v2, fmt2 ? {numFmt:fmt2,align:{horizontal:'right'}} : {align:{horizontal:'left'}});
-    ws.getRow(r).height = 18; r++;
-  }
-  const SHOWS = 'B'+(detStart+2); // Number of Shows cell
-  r++;
-
-  // TICKET REVENUE — per city
-  lhdr(ws, r, 'TICKET REVENUE BY CITY'); r++;
-  colHdrs(ws, r, ['City / Category','Price / Ticket','Seats','Revenue / Show','Shows','Total Revenue']); r++;
-
-  const cityRevRefs = [];
-  let totSeatsAll = 0, tktRevAll = 0;
-  for (const cc of c.cityCalcs) {
-    const tc = cc.tc;
-    const cityLbl = (tc.city_name || tc.venue_name || 'City Stop') + (tc.num_shows > 1 ? ' (' + tc.num_shows + ' shows)' : '');
-    // City header row
-    ws.mergeCells('A'+r+':F'+r);
-    sc(ws.getCell('A'+r),{fill:C.cityBg,font:{bold:true,size:9,color:{argb:C.navy}},border:{bottom:{style:'thin',color:{argb:C.hdrBdr}}}}).value='  ' + cityLbl;
-    ws.getRow(r).height=15; r++;
-
-    const cityCatsStart = r;
-    const cityCats = (cc.cats && cc.cats.length > 0) ? cc.cats : [];
-    for (const cat of cityCats) {
-      const pr = Number(cat.price)||0, ct = Number(cat.count)||0;
-      sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value = '  ' + (cat.name||'');
-      inp(ws.getCell(r,2), pr, {numFmt:'$#,##0'});
-      inp(ws.getCell(r,3), ct, {numFmt:'#,##0'});
-      fml(ws.getCell(r,4),'B'+r+'*C'+r, pr*ct, {numFmt:'$#,##0'});
-      inp(ws.getCell(r,5), cc.shows, {numFmt:'#,##0'});
-      fml(ws.getCell(r,6),'D'+r+'*E'+r, pr*ct*cc.shows, {numFmt:'$#,##0'});
-      ws.getRow(r).height=18; r++;
-    }
-    const cityCatsEnd = r-1;
-    sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value = '  Total — ' + (tc.city_name||tc.venue_name||'City');
-    if (cityCats.length > 0) {
-      fml(ws.getCell(r,3),'SUM(C'+cityCatsStart+':C'+cityCatsEnd+')', cc.seats_per_show, {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'#,##0',border:bTop(C.greenLight)});
-      fml(ws.getCell(r,4),'SUM(D'+cityCatsStart+':D'+cityCatsEnd+')', cc.rev_per_show,   {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-      fml(ws.getCell(r,6),'SUM(F'+cityCatsStart+':F'+cityCatsEnd+')', cc.total_ticket_rev,{fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-    } else {
-      sc(ws.getCell(r,6),{fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0'}).value = cc.total_ticket_rev;
-    }
-    cityRevRefs.push('F'+r);
-    totSeatsAll += cc.seats_per_show; tktRevAll += cc.total_ticket_rev;
-    ws.getRow(r).height=18; r++; r++;
-  }
-
-  // Grand total ticket revenue
-  sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='TOTAL TICKET REVENUE (ALL CITIES)';
-  fml(ws.getCell(r,6), cityRevRefs.join('+'), tktRevAll, {fill:C.totG,font:{bold:true,size:10,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-  const TKT_ALL='F'+r;
-  ws.getRow(r).height=18; r++; r++;
-
-  // Ticketing fee
-  const feePct = Number(co.ticketing_fee_pct)||0;
-  sc(ws.getCell(r,1), {font:{color:{argb:C.gray}}}).value = 'Less: Ticketing / Service Fee';
-  inp(ws.getCell(r,2), feePct, {numFmt:'0%'});
-  sc(ws.getCell(r,3), {font:{size:8,italic:true,color:{argb:C.gray}}}).value = '% of gross ticket rev';
-  fml(ws.getCell(r,6), TKT_ALL+'*B'+r, tktRevAll*feePct, {fill:C.totR,font:{color:{argb:C.red}},numFmt:'"($"#,##0")"'});
-  const FEE_ALL='F'+r;
-  ws.getRow(r).height = 17; r++; r++;
-
-  // ADDITIONAL REVENUE
-  lhdr(ws, r, 'ADDITIONAL REVENUE'); r++;
-  colHdrs(ws, r, ['Item','Rate / Basis','Split %','Net / Show','Qty','Net — All Shows']); r++;
-
-  const addlACs = [];
-  const totAttend = c.total_attendance;
-
-  // Merch (gross per-show × split % × num shows)
-  const mGrossPS = Number(ar.merch_per_show)||0;
-  const mSplitPct = ar.merch_split_pct !== undefined ? Number(ar.merch_split_pct) : 1.0;
-  const mPS = mGrossPS * mSplitPct;
-  const mNetTotal = mPS * n;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='Merchandise Revenue (per show)';
-  inp(ws.getCell(r,2),mPS,{numFmt:'$#,##0'});
-  inp(ws.getCell(r,5),n,  {numFmt:'#,##0'});
-  fml(ws.getCell(r,6),'B'+r+'*E'+r, mNetTotal, {numFmt:'$#,##0'});
-  addlACs.push('F'+r); ws.getRow(r).height=17; r++;
-
-  // F&B — D=$/buyer, E=total attendance across all cities, F=D×E
-  const fHead=Number(ar.fnb_per_head)||0, fPct=Number(ar.fnb_buyer_pct)||0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='F&B Revenue';
-  inp(ws.getCell(r,2),fHead,{numFmt:'$0.00'});
-  inp(ws.getCell(r,3),fPct, {numFmt:'0%'});
-  fml(ws.getCell(r,4),'B'+r+'*C'+r,       fHead*fPct,           {numFmt:'$0.00'});
-  inp(ws.getCell(r,5), totAttend,          {numFmt:'#,##0'});
-  fml(ws.getCell(r,6),'D'+r+'*E'+r,       fHead*fPct*totAttend, {numFmt:'$#,##0'});
-  addlACs.push('F'+r); ws.getRow(r).height=17; r++;
-
-  // Sponsorship
-  const spPS=Number(ar.sponsorship_per_show)||0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='Sponsorship Revenue';
-  inp(ws.getCell(r,2),spPS,{numFmt:'$#,##0'});
-  fml(ws.getCell(r,4),'B'+r,        spPS,   {numFmt:'$#,##0'});
-  inp(ws.getCell(r,5), n,           {numFmt:'#,##0'});
-  fml(ws.getCell(r,6),'D'+r+'*E'+r, spPS*n, {numFmt:'$#,##0'});
-  addlACs.push('F'+r); ws.getRow(r).height=17; r++;
-
-  const addlAll = mNetTotal + fHead*fPct*totAttend + spPS*n; // mNetTotal = mPS*n
-  sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='TOTAL ADDITIONAL REVENUE';
-  fml(ws.getCell(r,6),addlACs.join('+'),addlAll,{fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-  const ADDL_A='F'+r;
-  ws.getRow(r).height=18; r++; r++;
-
-  // TOTAL GROSS REVENUE banner
-  const gRevAll=tktRevAll+addlAll;
-  ws.mergeCells('A'+r+':E'+r);
-  sc(ws.getCell('A'+r),{fill:C.teal,font:{bold:true,size:11,color:{argb:C.white}},align:{horizontal:'left'}}).value='  TOTAL GROSS REVENUE';
-  fml(ws.getCell(r,6),TKT_ALL+'+'+ADDL_A,gRevAll,{fill:C.teal,font:{bold:true,size:11,color:{argb:C.white}},numFmt:'$#,##0'});
-  const GR_A='F'+r;
-  ws.getRow(r).height=24; r++; r++; r++;
-
-  // COST MODEL
-  hdr(ws, r, 'COST MODEL', C.dark); r++; r++;
-
-  // Artist MG
-  lhdr(ws, r, 'Artist Minimum Guarantee (MG)'); r++;
-  const artistMG=Number(co.artist_mg)||0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Total MG (all-in deal)';
-  const mgCell=ws.getCell(r,2);
-  inp(mgCell,artistMG,{numFmt:'$#,##0',font:{bold:true,size:12}});
-  sc(ws.getCell(r,3),{font:{size:9,italic:true,color:{argb:C.gray}}}).value='← edit this cell';
-  const MG_REF='B'+r; ws.getRow(r).height=20; r++; r++;
-
-  // MG Schedule
-  if (mgSched.length > 0) {
-    lhdr(ws, r, 'MG Payment Schedule'); r++;
-    colHdrs(ws, r, ['Milestone','% of MG','Months Before Show','Amount Due','Due Date']); r++;
-
-    const schedS=r;
-    let pctSum=0, amtSum=0;
-    for (const pmt of mgSched) {
-      const pct=Number(pmt.pct)||0, mb=Number(pmt.months_before)||0, amt=artistMG*pct;
-      pctSum+=pct; amtSum+=amt;
-      inp(ws.getCell(r,1),pmt.label||'',{align:{horizontal:'left'}});
-      inp(ws.getCell(r,2),pct,{numFmt:'0%'});
-      inp(ws.getCell(r,3),mb, {numFmt:'0'});
-      fml(ws.getCell(r,4),MG_REF+'*B'+r, amt, {numFmt:'$#,##0'});
-      if (_exDate) {
-        const d=new Date(_exDate+'T12:00:00'); d.setMonth(d.getMonth()-mb);
-        sc(ws.getCell(r,5),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'mmm d, yyyy'}).value=d;
-      }
-      ws.getRow(r).height=17; r++;
-    }
-    const schedE=r-1;
-    sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='SCHEDULE TOTAL';
-    fml(ws.getCell(r,2),'SUM(B'+schedS+':B'+schedE+')',pctSum,{fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'0%',border:bTop(C.greenLight)});
-    fml(ws.getCell(r,4),'SUM(D'+schedS+':D'+schedE+')',amtSum,{fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-    ws.getRow(r).height=18; r++; r++;
-  }
-
-  // Operating costs — full breakdown (within A-D columns)
-  lhdr(ws, r, 'Operating Costs by City / Stop'); r++;
-  colHdrs(ws, r, ['Item','Per Show','Shows','Total']); r++;
-
-  const _cities = (p.tour_cities && p.tour_cities.length > 0)
-    ? p.tour_cities
-    : [{ city_name: p.city||'', num_shows: n, venue_fee: co.venue_fee_per_show||0, production: co.production_per_show||0, hospitality: co.hospitality_per_show||0, insurance: co.insurance_per_show||0 }];
-  const opRowNums=[];
-  for (const tc of _cities) {
-    const vf = Number(tc.venue_fee)||0;
-    const pr = Number(tc.production)||0;
-    const ho = Number(tc.hospitality)||0;
-    const ins = Number(tc.insurance)||0;
-    const cpp = vf + pr + ho + ins;
-    const shows = Number(tc.num_shows)||1;
-    const cityLabel = (tc.city_name||(tc.venue_name?tc.venue_name:'—')) + (tc.venue_name&&tc.city_name?' ('+tc.venue_name+')':'');
-    // City header row
-    sc(ws.getCell(r,1),{fill:C.cityBg||'FFF0F5FF',font:{bold:true,size:9,color:{argb:C.navy||'FF1E3A5F'}},border:{bottom:{style:'thin',color:{argb:C.hdrBdr||'FF94A3B8'}}}}).value='  '+cityLabel;
-    sc(ws.getCell(r,2),{fill:C.cityBg||'FFF0F5FF',font:{bold:true,size:9,color:{argb:C.navy||'FF1E3A5F'}}}).value=shows+' show'+(shows>1?'s':'');
-    ws.getRow(r).height=18; r++;
-    // Breakdown rows
-    const costLines = [['Venue Fee',vf],['Production',pr],['Hospitality',ho],['Insurance',ins]];
-    const lineRefs = [];
-    for (const [label, val] of costLines) {
-      if (val > 0) {
-        sc(ws.getCell(r,1),{font:{color:{argb:C.gray||'FF6B7280'}}}).value='    '+label;
-        inp(ws.getCell(r,2),val,{numFmt:'$#,##0'});
-        inp(ws.getCell(r,3),shows,{numFmt:'#,##0'});
-        fml(ws.getCell(r,4),'B'+r+'*C'+r,val*shows,{numFmt:'$#,##0'});
-        lineRefs.push('D'+r);
-        ws.getRow(r).height=16; r++;
-      }
-    }
-    // City subtotal
-    sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray||'FF374151'}}}).value='  Subtotal — '+(cityLabel||'City');
-    if (lineRefs.length > 0) {
-      fml(ws.getCell(r,2),lineRefs.map(ref=>ref.replace('D','B')).join('+'),cpp,{numFmt:'$#,##0',font:{bold:true}});
-      fml(ws.getCell(r,4),lineRefs.join('+'),cpp*shows,{numFmt:'$#,##0',font:{bold:true,color:{argb:C.red||'FFDC2626'}}});
-    } else {
-      inp(ws.getCell(r,4),0,{numFmt:'$#,##0'});
-    }
-    opRowNums.push(r); ws.getRow(r).height=17; r++;
-  }
-  const opAll = c.total_op_costs;
-  sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray||'FF374151'}}}).value='TOTAL OPERATING COSTS';
-  if (opRowNums.length > 1) {
-    fml(ws.getCell(r,4),opRowNums.map(rn=>'D'+rn).join('+'),opAll,{fill:C.totR,font:{bold:true,color:{argb:C.red||'FFDC2626'}},numFmt:'$#,##0',border:bTop(C.redLight)});
-  } else {
-    fml(ws.getCell(r,4),'D'+opRowNums[0],opAll,{fill:C.totR,font:{bold:true,color:{argb:C.red||'FFDC2626'}},numFmt:'$#,##0',border:bTop(C.redLight)});
-  }
-  const OP_ALL='D'+r;
-  ws.getRow(r).height=18; r++; r++;
-
-  // One-time costs
-  lhdr(ws, r, 'One-Time / Fixed Costs'); r++;
-  const agFees=Number(co.agency_fees)||0, bfFees=Number(co.blufin_fees)||0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Agency / Management Fees';
-  inp(ws.getCell(r,2),agFees,{numFmt:'$#,##0'});
-  const AG_REF='B'+r; ws.getRow(r).height=17; r++;
-
-  let BF_REF=null;
-  if (bfFees>0) {
-    sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='BluFin Fees';
-    inp(ws.getCell(r,2),bfFees,{numFmt:'$#,##0'});
-    BF_REF='B'+r; ws.getRow(r).height=17; r++;
-  }
-  r++;
-
-  // TOTAL COSTS banner
-  const tktFeeAll = tktRevAll*feePct;
-  const totalCosts = artistMG + tktFeeAll + opAll + agFees + bfFees;
-  const tcFml = MG_REF+'+('+FEE_ALL+')+'+OP_ALL+'+'+AG_REF+(BF_REF?'+'+BF_REF:'');
-  ws.mergeCells('A'+r+':E'+r);
-  sc(ws.getCell('A'+r),{fill:C.rose,font:{bold:true,size:11,color:{argb:C.white}},align:{horizontal:'left'}}).value='  TOTAL COSTS (ALL-IN)';
-  fml(ws.getCell(r,6),tcFml,totalCosts,{fill:C.rose,font:{bold:true,size:11,color:{argb:C.white}},numFmt:'$#,##0'});
-  const TC='F'+r;
-  ws.getRow(r).height=24; r++; r++; r++;
-
-  // RESULTS
-  hdr(ws, r, 'RESULTS SUMMARY', C.purple); r++;
-  ['Metric','Per Show (avg)','','','','All Shows (Total)'].forEach((h,i)=>{
-    if (!h) return;
-    sc(ws.getCell(r,i===5?6:i+1),{fill:C.colHdrBg,font:{bold:true,size:9,color:{argb:C.dgray}},align:{horizontal:i===0?'left':'right'},border:{bottom:{style:'medium',color:{argb:'FF94A3B8'}}}}).value=h;
-  }); ws.getRow(r).height=16; r++;
-
-  sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='Total Gross Revenue';
-  fml(ws.getCell(r,2),GR_A+'/'+SHOWS, gRevAll/n, {numFmt:'$#,##0'});
-  fml(ws.getCell(r,6),GR_A,           gRevAll,   {numFmt:'$#,##0'});
-  ws.getRow(r).height=17; const resR1=r; r++;
-
-  sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value='Total Costs (All-In)';
-  fml(ws.getCell(r,2),TC+'/'+SHOWS,   totalCosts/n, {fill:C.totR,font:{color:{argb:C.red}},numFmt:'$#,##0'});
-  fml(ws.getCell(r,6),TC,             totalCosts,   {fill:C.totR,font:{color:{argb:C.red}},numFmt:'$#,##0'});
-  ws.getRow(r).height=17; const resR2=r; r++;
-
-  const netP=c.net_profit, pF=netP>=0?C.totG:C.totR, pFont=netP>=0?C.green:C.red;
-  sc(ws.getCell(r,1),{font:{bold:true,size:12,color:{argb:C.dark}}}).value='NET PROFIT';
-  fml(ws.getCell(r,2),'B'+resR1+'-B'+resR2, gRevAll/n-totalCosts/n, {fill:pF,font:{bold:true,size:12,color:{argb:pFont}},numFmt:'$#,##0'});
-  fml(ws.getCell(r,6),'F'+resR1+'-F'+resR2, netP,                   {fill:pF,font:{bold:true,size:12,color:{argb:pFont}},numFmt:'$#,##0'});
-  const NP='F'+r;
-  ws.getRow(r).height=24; r++; r++;
-
-  // ── Tax + Post-Tax Net Profit + ROI Absolute ─────────────────────────────
-  const taxRateXL   = Number(co.tax_rate) || 0;
-  const taxAmtXL    = c.tax_amount || 0;
-  const bfNetAfterTax = c.blufin_net_profit_after_tax !== undefined ? c.blufin_net_profit_after_tax : c.net_profit;
-  if (taxRateXL > 0) {
-    sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Effective Tax Rate';
-    sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'0.0%'}).value=taxRateXL;
-    sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='applied to BluFin net share';
-    ws.getRow(r).height=17; r++;
-    sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Tax Amount';
-    sc(ws.getCell(r,6),{fill:C.totR,font:{bold:true,color:{argb:C.red}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value=taxAmtXL;
-    ws.getRow(r).height=17; r++;
-  }
-  const atF = bfNetAfterTax >= 0 ? C.totG : C.totR;
-  const atFontC = bfNetAfterTax >= 0 ? C.green : C.red;
-  sc(ws.getCell(r,1),{font:{bold:true,size:12,color:{argb:C.dark}}}).value='NET PROFIT (POST-TAX)';
-  sc(ws.getCell(r,2),{fill:atF,font:{bold:true,size:12,color:{argb:atFontC}},numFmt:'$#,##0',align:{horizontal:'right'}}).value=n>0?bfNetAfterTax/n:0;
-  sc(ws.getCell(r,6),{fill:atF,font:{bold:true,size:12,color:{argb:atFontC}},numFmt:'$#,##0',align:{horizontal:'right'}}).value=bfNetAfterTax;
-  const NP_AT='F'+r;
-  ws.getRow(r).height=22; r++;
-  const absRoiPct = c.invested_capital > 0 ? bfNetAfterTax / c.invested_capital : (c.total_costs > 0 ? bfNetAfterTax / c.total_costs : 0);
-  const absRF = absRoiPct >= 0 ? C.totG : C.totR; const absRFont = absRoiPct >= 0 ? C.green : C.red;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='ROI (Absolute) — Post-Tax Return %';
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='Post-tax BluFin profit ÷ invested capital';
-  sc(ws.getCell(r,6),{fill:absRF,font:{bold:true,color:{argb:absRFont}},numFmt:'0.00%',align:{horizontal:'right'}}).value=absRoiPct;
-  ws.getRow(r).height=17; r++; r++;
-
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Invested Capital (MG Advance + Ops + Agency / BluFin Fees)';
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value=(Math.round(c.mg_advance_pct*100))+'% MG advance + pre-show ops + agency & BluFin fees';
-  sc(ws.getCell(r,6),{numFmt:'$#,##0'}).value=c.invested_capital;
-  const IC_REF='F'+r; ws.getRow(r).height=17; r++;
-
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value=activeRoiScenXL ? 'ROI (adj.) — after investor obligation' : 'Return on Investment (ROI)';
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value=activeRoiScenXL ? 'Net Profit − investor obligation ÷ Invested Capital' : 'Net Profit ÷ Invested Capital (pre-carry)';
-  const roiVal = activeRoiScenXL ? adjRoiXL : c.roi;
-  const roiFill = roiVal >= 0 ? C.totG : C.totR;
-  const roiFontC = roiVal >= 0 ? C.green : C.red;
-  sc(ws.getCell(r,6),{fill:roiFill,font:{bold:true,color:{argb:roiFontC}},numFmt:'0.00%',align:{horizontal:'right'}}).value=roiVal;
-  ws.getRow(r).height=17; r++;
-  if (activeRoiScenXL) {
-    const invList2 = activeRoiScenXL.investors || [];
-    if (invList2.length) {
-      for (const inv of invList2) {
-        const invEq = Number(activeRoiScenXL.equity) * (inv.pct || 0) / 100;
-        const obl = invEq * ((inv.expected_return_pct || 0) / 100);
-        sc(ws.getCell(r,1),{font:{italic:true,size:9,color:{argb:'FF92400E'}}}).value='  ↳ '+(inv.name||'Investor')+' ('+((inv.pct||0).toFixed(1))+'% stake × '+(inv.expected_return_pct||0)+'% return)';
-        sc(ws.getCell(r,6),{font:{italic:true,size:9,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value=obl;
-        ws.getRow(r).height=14; r++;
-      }
-    } else {
-      const obl = Number(activeRoiScenXL.equity) * ((activeRoiScenXL.expected_return_pct || 0) / 100);
-      sc(ws.getCell(r,1),{font:{italic:true,size:9,color:{argb:'FF92400E'}}}).value='  ↳ Investor obligation ('+((activeRoiScenXL.expected_return_pct||0))+'% × equity)';
-      sc(ws.getCell(r,6),{font:{italic:true,size:9,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value=obl;
-      ws.getRow(r).height=14; r++;
-    }
-  }
-
-  const avgTkt = totSeatsAll > 0 ? tktRevAll/totSeatsAll : 0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Blended Average Ticket Price';
-  sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'$#,##0.00'}).value=avgTkt;
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='total ticket rev ÷ total seats sold';
-  ws.getRow(r).height=17; r++;
-
-  const beRatio = gRevAll > 0 ? totalCosts/gRevAll : 0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Cost / Revenue Ratio';
-  fml(ws.getCell(r,2),'IF('+GR_A+'>0,'+TC+'/'+GR_A+',0)',beRatio,{numFmt:'0.0%'});
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='< 100% = profitable';
-  ws.getRow(r).height=17; r++;
-
-  // Break-Even + Working Capital
-  const _beFull = c.cityCalcs.reduce((s,cc) => s + (cc.cats||[]).reduce((a,cat) => a + (Number(cat.count)||0), 0) * cc.shows, 0);
-  const _advPct = Number((p.ticketing_settlement||{}).advance_pct)||0;
-  r++;
-  const _beRevPerSeat = totAttend > 0 ? gRevAll / totAttend : 0;
-  const _beAtt = _beRevPerSeat > 0 ? Math.round(totalCosts / _beRevPerSeat) : 0;
-  const _bePct = _beFull > 0 ? _beAtt / _beFull : 0;
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Break-Even Sell-Through %';
-  sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'0.0%'}).value=_bePct;
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='sell-through needed to cover all costs';
-  ws.getRow(r).height=17; r++;
-
-  sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Break-Even Attendance';
-  sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'#,##0'}).value=_beAtt;
-  ws.getRow(r).height=17; r++;
-
-  r++;
-  const _wcReq = Math.max(0, artistMG + opAll + agFees + bfFees - tktRevAll * _advPct * (1 - feePct));
-  sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dark}}}).value='Working Capital Requirement';
-  sc(ws.getCell(r,2),{fill:C.totR,font:{bold:true,color:{argb:C.red}},align:{horizontal:'right'},numFmt:'$#,##0'}).value=_wcReq;
-  sc(ws.getCell(r,3),{font:{size:8,italic:true,color:{argb:C.gray}}}).value='peak cash out before advance receipts';
-  ws.getRow(r).height=17; r++;
-
-  // INVESTOR SCENARIOS
-  if (invScens.length > 0) {
-    r++; r++;
-    hdr(ws, r, 'INVESTOR SCENARIOS', C.dark); r++;
-    for (const scen of invScens) {
-      const eq=Number(scen.equity)||0, hr=Number(scen.hurdle_rate)||0.20, sp=Number(scen.above_hurdle_investor_pct)||0.50;
-      const sv=computeScenario(c,scen);
-      lhdr(ws, r, scen.label||'Investor Scenario'); r++;
-
-      sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Equity Investment';
-      inp(ws.getCell(r,2),eq,{numFmt:'$#,##0'}); const EQ='B'+r; ws.getRow(r).height=17; r++;
-
-      sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Hurdle Rate (target return)';
-      inp(ws.getCell(r,2),hr,{numFmt:'0.0%'}); const HR='B'+r; ws.getRow(r).height=17; r++;
-
-      sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value='Investor Split (above hurdle)';
-      inp(ws.getCell(r,2),sp,{numFmt:'0%'}); const SP='B'+r; ws.getRow(r).height=17; r++;
-      r++;
-
-      const invDistRef = 'B' + (r + 3); // row offset 3 = 'Investor Distribution' in calcs[]
-      const calcs=[
-        ['Project Net Profit (Post-Tax)', NP_AT,                                                                                            bfNetAfterTax,                             '$#,##0'],
-        ['Hurdle Return Required',        EQ+'*'+HR,                                                                                        sv.hurdle_amount,                          '$#,##0'],
-        ['Above-Hurdle Pool',             'MAX(0,'+NP_AT+'-'+EQ+'*'+HR+')',                                                                 Math.max(0,bfNetAfterTax-sv.hurdle_amount),'$#,##0'],
-        ['Investor Distribution',         EQ+'*'+HR+'+MAX(0,'+NP_AT+'-'+EQ+'*'+HR+')*'+SP,                                                 sv.investor_dist,                          '$#,##0'],
-        ['BluFin Distribution',           'MAX(0,'+NP_AT+'-'+EQ+'*'+HR+')*(1-'+SP+')',                                                     sv.blufin_dist,                            '$#,##0'],
-        ['Investor Total Return',         EQ+'+'+EQ+'*'+HR+'+MAX(0,'+NP_AT+'-'+EQ+'*'+HR+')*'+SP,                                         sv.total_inv_return,                       '$#,##0'],
-        ['MOIC',                          'IF('+EQ+'>0,('+EQ+'+'+EQ+'*'+HR+'+MAX(0,'+NP_AT+'-'+EQ+'*'+HR+')*'+SP+')/'+EQ+',0)',            sv.moic,                                   '0.00"x"'],
-        ['Absolute Return on Equity',     'IF('+EQ+'>0,('+EQ+'*'+HR+'+MAX(0,'+NP_AT+'-'+EQ+'*'+HR+')*'+SP+')/'+EQ+',0)',                  sv.abs_return,                             '0.0%'],
-      ];
-      for (const [lbl,f,v,fmt] of calcs) {
-        sc(ws.getCell(r,1),{font:{color:{argb:C.gray}}}).value=lbl;
-        fml(ws.getCell(r,2),f,v,{numFmt:fmt});
-        ws.getRow(r).height=17; r++;
-      }
-
-      // ── Use for ROI indicator ────────────────────────────────────────────
-      if (scen.use_for_roi) {
-        ws.mergeCells('A'+r+':F'+r);
-        sc(ws.getCell('A'+r),{fill:'FF5B21B6',font:{bold:true,size:9,color:{argb:C.white}},align:{horizontal:'left'}}).value='  ★ USE FOR ROI — Investor obligations factored into Adjusted Promoter ROI above';
-        ws.getRow(r).height=14; r++;
-      }
-
-      // ── Per-investor breakdown (live formula-linked) ──────────────────────
-      const invList = scen.investors || [];
-      if (invList.length > 0) {
-        r++;
-        ws.mergeCells('A'+r+':F'+r);
-        sc(ws.getCell('A'+r),{fill:C.navyLt,font:{bold:true,size:9,color:{argb:C.navy}},align:{horizontal:'left'},border:{bottom:{style:'thin',color:{argb:C.hdrBdr}}}}).value='  Investor Breakdown';
-        ws.getRow(r).height=16; r++;
-        colHdrs(ws, r, ['Investor Name','Stake % (edit)','Equity Amount','Distribution','Total Return','MOIC']); r++;
-
-        const sumPct = invList.reduce((a,i) => a+(i.pct||0), 0);
-        const invRowStart = r;
-        for (const inv of invList) {
-          const frac  = sumPct > 0 ? (inv.pct||0)/sumPct : 0;
-          const eqAmt = sv.equity * frac;
-          const dist  = sv.investor_dist * frac;
-          const totR  = eqAmt + dist;
-          const moic  = eqAmt > 0 ? totR/eqAmt : 0;
-          sc(ws.getCell(r,1),{font:{color:{argb:C.dgray}}}).value = inv.name||'(Unnamed)';
-          inp(ws.getCell(r,2), (inv.pct||0)/100, {numFmt:'0.0%'});
-          fml(ws.getCell(r,3), EQ+'*B'+r,               eqAmt, {numFmt:'$#,##0'});
-          fml(ws.getCell(r,4), invDistRef+'*B'+r,        dist,  {numFmt:'$#,##0'});
-          fml(ws.getCell(r,5), 'C'+r+'+D'+r,            totR,  {numFmt:'$#,##0'});
-          fml(ws.getCell(r,6), 'IF(C'+r+'>0,E'+r+'/C'+r+',0)', moic, {numFmt:'0.00"x"'});
-          ws.getRow(r).height=17; r++;
-        }
-        const invRowEnd = r - 1;
-        sc(ws.getCell(r,1),{font:{bold:true,color:{argb:C.dgray}}}).value='Pool Total';
-        fml(ws.getCell(r,2),'SUM(B'+invRowStart+':B'+invRowEnd+')', sumPct/100,
-            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'0.0%',border:bTop(C.greenLight)});
-        fml(ws.getCell(r,3),'SUM(C'+invRowStart+':C'+invRowEnd+')', sv.equity,
-            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-        fml(ws.getCell(r,4),'SUM(D'+invRowStart+':D'+invRowEnd+')', sv.investor_dist,
-            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-        fml(ws.getCell(r,5),'SUM(E'+invRowStart+':E'+invRowEnd+')', sv.total_inv_return,
-            {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'$#,##0',border:bTop(C.greenLight)});
-        fml(ws.getCell(r,6),
-            'IF(SUM(C'+invRowStart+':C'+invRowEnd+')>0,SUM(E'+invRowStart+':E'+invRowEnd+')/SUM(C'+invRowStart+':C'+invRowEnd+'),0)',
-            sv.moic, {fill:C.totG,font:{bold:true,color:{argb:C.green}},numFmt:'0.00"x"',border:bTop(C.greenLight)});
-        ws.getRow(r).height=18; r++;
-        if (Math.abs(sumPct-100) > 0.01) {
-          ws.mergeCells('A'+r+':F'+r);
-          sc(ws.getCell('A'+r),{fill:'FFFFF8DB',font:{italic:true,color:{argb:'FFB45309'}},align:{horizontal:'left'}}).value=
-            '  ⚠ Stakes sum to '+sumPct.toFixed(1)+'% — edit Stake % column to rebalance to 100%';
-          ws.getRow(r).height=14; r++;
-        }
-
-        // ── Obligation analysis (shown when this scenario is "Use for ROI") ──
-        if (scen.use_for_roi) {
-          r++;
-          ws.mergeCells('A'+r+':F'+r);
-          sc(ws.getCell('A'+r),{fill:'FF5B21B6',font:{bold:true,size:9,color:{argb:C.white}},align:{horizontal:'left'}}).value='  Investor Obligation Analysis';
-          ws.getRow(r).height=16; r++;
-          colHdrs(ws, r, ['Investor Name','Stake %','Equity Amount','Exp. Return %','Obligation','']); r++;
-
-          let totalOblXL = 0;
-          for (const inv of invList) {
-            const frac = sumPct > 0 ? (inv.pct||0)/sumPct : 0;
-            const eqAmt = sv.equity * frac;
-            const retPct = inv.expected_return_pct !== undefined ? inv.expected_return_pct : 20;
-            const obl = eqAmt * (retPct / 100);
-            totalOblXL += obl;
-            sc(ws.getCell(r,1),{font:{color:{argb:'FF92400E'}}}).value = inv.name||'(Unnamed)';
-            sc(ws.getCell(r,2),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'0.0%'}).value = (inv.pct||0)/100;
-            sc(ws.getCell(r,3),{fill:C.calcB,font:{color:{argb:C.blueFont}},align:{horizontal:'right'},numFmt:'$#,##0'}).value = eqAmt;
-            inp(ws.getCell(r,4), retPct/100, {numFmt:'0%',font:{bold:true,color:{argb:'FF92400E'}}});
-            sc(ws.getCell(r,5),{fill:'FFFFF8F0',font:{bold:true,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'}}).value = obl;
-            ws.getRow(r).height=17; r++;
-          }
-          sc(ws.getCell(r,1),{font:{bold:true,color:{argb:'FF92400E'}}}).value='Total Obligation';
-          sc(ws.getCell(r,5),{fill:'FFFFF8F0',font:{bold:true,color:{argb:'FF92400E'}},numFmt:'"($"#,##0")"',align:{horizontal:'right'},border:bTop('FFFDBA74')}).value=totalOblXL;
-          ws.getRow(r).height=18; r++;
-          const adjRF = adjRoiXL >= 0 ? C.totG : C.totR;
-          const adjRFont = adjRoiXL >= 0 ? C.green : C.red;
-          sc(ws.getCell(r,1),{font:{bold:true,size:11,color:{argb:'FF5B21B6'}}}).value='Adjusted Promoter ROI (Waterfall)';
-          sc(ws.getCell(r,5),{fill:adjRF,font:{bold:true,size:11,color:{argb:adjRFont}},numFmt:'0.00%',align:{horizontal:'right'},border:bTop(C.greenLight)}).value=adjRoiXL;
-          ws.getRow(r).height=20; r++;
-        }
-      }
-      r++;
-    }
-  }
-
-  // ── Sheet 2: Sell-Through Scenarios ──────────────────────────────────────
-  const ws2 = wb.addWorksheet('Scenarios');
-  ws2.views = [{ state:'frozen', xSplit:1, ySplit:4, showGridLines:false, zoomScale:110, activeCell:'B5' }];
-  ws2.columns = [{ width: 34 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 }];
-  ws2.properties.tabColor = { argb:'FF1E3A5F' };
-  ws2.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0 };
-
-  // Full-capacity (100% sell-through) baselines
-  let _fullTkt = 0, _fullSeats = 0;
-  for (const cc of c.cityCalcs) {
-    const cats = cc.cats || [];
-    _fullSeats += cats.reduce((s, cat) => s + (Number(cat.count)||0), 0) * cc.shows;
-    _fullTkt   += cats.reduce((s, cat) => s + (Number(cat.price)||0) * (Number(cat.count)||0), 0) * cc.shows;
-  }
-  const _fixedCosts = artistMG + opAll + agFees + bfFees; // ticketing fee varies per scenario
-  const _spon  = spPS * n;
-  const _taxRt = Number(co.tax_rate) || 0;
-  const SP_PCTS = [0.80, 0.85, 0.90, 0.95, 1.00];
-  const spScens = SP_PCTS.map(pct => {
-    const att   = Math.round(_fullSeats * pct);
-    const tkt   = _fullTkt * pct;
-    const fee   = tkt * feePct;
-    const fnb   = fHead * fPct * (_fullSeats * pct);
-    const merch = mPS * n;  // flat per-show, fill-rate independent
-    const addl  = merch + fnb + _spon;
-    const gross = tkt + addl;
-    const costs = _fixedCosts + fee;
-    const net   = gross - costs;
-    const tax   = net > 0 ? net * _taxRt : 0;
-    const netAt = net - tax;
-    return { pct, tkt, fee, fnb, merch, addl, gross, costs, net, tax, netAt, roi: costs > 0 ? net / costs : 0, roiAt: costs > 0 ? netAt / costs : 0, att };
-  });
-
-  const SPHDR_COLS = ['FF991B1B','FFB45309','FF854D0E','FF166534','FF065F46'];
-  let sr = 1;
-
-  // Title
-  ws2.mergeCells('A'+sr+':F'+sr);
-  sc(ws2.getCell('A'+sr),{fill:C.purple,font:{bold:true,size:13,color:{argb:C.white}},align:{horizontal:'left'}}).value='  SELL-THROUGH SCENARIOS  —  '+(p.artist||'Artist').toUpperCase();
-  ws2.getRow(sr).height=28; sr++;
-  ws2.mergeCells('A'+sr+':F'+sr);
-  sc(ws2.getCell('A'+sr),{fill:C.dark,font:{size:9,italic:true,color:{argb:'FF94A3B8'}},align:{horizontal:'left'}}).value
-    ='  Based on full-capacity pricing  ·  Merch & F&B scale with attendance  ·  All other costs fixed';
-  ws2.getRow(sr).height=14; sr++; sr++;
-
-  // Column headers
-  sc(ws2.getCell(sr,1),{fill:C.colHdrBg,font:{bold:true,size:9,color:{argb:C.dgray}},align:{horizontal:'left'},border:{bottom:{style:'medium',color:{argb:'FF94A3B8'}}}}).value='Metric';
-  SP_PCTS.forEach((pct,i)=>{
-    sc(ws2.getCell(sr,i+2),{fill:SPHDR_COLS[i],font:{bold:true,size:12,color:{argb:C.white}},align:{horizontal:'right'},border:bBot('FF94A3B8')}).value=(pct*100)+'%';
-  });
-  ws2.getRow(sr).height=24; sr++;
-
-  function spHdr2(text,col,light){
-    ws2.mergeCells('A'+sr+':F'+sr);
-    if(light){
-      const _c=ws2.getCell('A'+sr);
-      _c.fill=fill(C.navyLt); _c.font={size:10,bold:true,color:{argb:C.navy}};
-      _c.alignment={vertical:'middle',horizontal:'left'};
-      _c.border={bottom:{style:'medium',color:{argb:C.hdrBdr}}};
-      _c.value='  '+text;
-    } else {
-      sc(ws2.getCell('A'+sr),{fill:col,font:{bold:true,size:10,color:{argb:C.white}},align:{horizontal:'left'}}).value='  '+text;
-    }
-    ws2.getRow(sr).height=18; sr++;
-  }
-  function spRow2(label,vals,numFmt,opts){
-    opts=opts||{};
-    const altBg = (!opts.bold && !opts.profit && sr%2===0) ? 'FFF8FAFC' : undefined;
-    sc(ws2.getCell(sr,1),{fill:altBg,font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:opts.bold?C.dark:C.gray}}}).value=label;
-    vals.forEach((v,i)=>{
-      const isPos=typeof v==='number'&&v>=0;
-      const bg=opts.profit?(isPos?C.totG:C.totR):(i===4?'FFF0FDF4':opts.fill||altBg);
-      const fc=opts.profit?(isPos?C.green:C.red):(i===4?C.green:C.blueFont);
-      sc(ws2.getCell(sr,i+2),{fill:bg,font:{bold:!!opts.bold,size:opts.bold?11:10,color:{argb:fc}},align:{horizontal:'right'},numFmt,border:opts.border||undefined}).value=v;
-    });
-    ws2.getRow(sr).height=opts.tall?22:17; sr++;
-  }
-
-  spHdr2('TICKET REVENUE',null,true);
-  spRow2('Ticket Revenue (at sell-through)', spScens.map(s=>s.tkt), '$#,##0');
-  if(feePct>0) spRow2('Less: Ticketing Fee ('+(feePct*100).toFixed(0)+'%)', spScens.map(s=>-s.fee), '"($"#,##0")"');
-  sr++;
-
-  spHdr2('ADDITIONAL REVENUE',null,true);
-  if(mPS>0) spRow2('Merch Revenue (per show × shows)', spScens.map(s=>s.merch), '$#,##0');
-  if(fHead>0||fPct>0) spRow2('F&B Revenue (per-head × attendance)', spScens.map(s=>s.fnb), '$#,##0');
-  if(_spon>0)  spRow2('Sponsorship Revenue (fixed)', spScens.map(()=>_spon), '$#,##0');
-  sr++;
-
-  spHdr2('COSTS (Fixed except ticketing fee)',C.dark);
-  spRow2('Artist MG', spScens.map(()=>artistMG), '$#,##0');
-  spRow2('Operating Costs', spScens.map(()=>opAll), '$#,##0');
-  if(agFees+bfFees>0) spRow2('Agency / Fixed Fees', spScens.map(()=>agFees+bfFees), '$#,##0');
-  if(feePct>0) spRow2('Ticketing Fee (variable)', spScens.map(s=>s.fee), '$#,##0');
-  sr++;
-
-  spHdr2('RESULTS SUMMARY',C.purple);
-  spRow2('GROSS REVENUE', spScens.map(s=>s.gross), '$#,##0',{bold:true,tall:true});
-  spRow2('TOTAL COSTS',   spScens.map(s=>s.costs), '$#,##0',{bold:true});
-  spRow2('NET PROFIT',           spScens.map(s=>s.net),   '$#,##0',{bold:true,profit:true,tall:true,border:bTop('FF94A3B8')});
-  spRow2('ROI (Pre-Tax)',        spScens.map(s=>s.roi),   '0.0%',  {profit:true});
-  if (_taxRt > 0) {
-    spRow2('Tax ('+(_taxRt*100).toFixed(1)+'%)',    spScens.map(s=>-s.tax),  '"($"#,##0")"', {});
-    spRow2('NET PROFIT (POST-TAX)', spScens.map(s=>s.netAt), '$#,##0', {bold:true,profit:true,tall:true});
-    spRow2('ROI (Post-Tax)',        spScens.map(s=>s.roiAt), '0.0%',   {profit:true});
-  }
-  sr++;
-  spRow2('Implied Attendance', spScens.map(s=>s.att), '#,##0');
-
-  if (invScens.length > 0) {
-    sr++; sr++;
-    spHdr2('INVESTOR RETURNS AT EACH SCENARIO', C.purple);
-    for (const invScen of invScens) {
-      const eq2 = Number(invScen.equity)||0;
-      if (eq2 <= 0) continue;
-      const hr2 = Number(invScen.hurdle_rate)||0.20;
-      const sp2 = Number(invScen.above_hurdle_investor_pct)||0.50;
-      const lbl2 = invScen.label || 'Investor';
-      const moics = spScens.map(s => {
-        const net = s.netAt;
-        return (eq2 + Math.min(net, eq2 * hr2) + Math.max(0, net - eq2 * hr2) * sp2) / eq2;
-      });
-      const roes = spScens.map(s => {
-        const net = s.netAt;
-        return (Math.min(net, eq2 * hr2) + Math.max(0, net - eq2 * hr2) * sp2) / eq2;
-      });
-      spRow2(lbl2 + ' \u2014 MOIC', moics, '0.00"x"', {});
-      spRow2(lbl2 + ' \u2014 Return on Equity', roes, '0.0%', { profit: true });
-    }
-  }
-
-  // ── Sheet: Investor View (clean 3-scenario presentation) ─────────────────
-  const wsIV = wb.addWorksheet('Investor View');
-  wsIV.views = [{ showGridLines:false, zoomScale:115 }];
-  wsIV.columns = [{ width:36 },{ width:22 },{ width:22 },{ width:22 }];
-  wsIV.properties.tabColor = { argb:'FF1E40AF' };
-  wsIV.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:1 };
-
-  // Pick the 3 scenarios: 85%, 95%, 100% from spScens
-  const ivScens = [spScens[1], spScens[3], spScens[4]]; // 85%, 95%, 100%
-  const ivLabels = ['Conservative','Base Case','Upside'];
-  const ivPcts = [0.85, 0.95, 1.00];
-
-  // First investor scenario for MOIC/ROE
-  const ivInv = invScens.length > 0 ? invScens[0] : null;
-  const ivEq = ivInv ? (Number(ivInv.equity)||0) : 0;
-  const ivHr = ivInv ? (Number(ivInv.hurdle_rate)||0.20) : 0.20;
-  const ivSp = ivInv ? (Number(ivInv.above_hurdle_investor_pct)||0.50) : 0.50;
-
-  let ir = 1;
-  // Title
-  wsIV.mergeCells('A'+ir+':D'+ir);
-  sc(wsIV.getCell('A'+ir),{font:{bold:true,size:16,color:{argb:'FF111827'}},align:{horizontal:'left',vertical:'middle'}}).value='INVESTOR VIEW \u2014 '+(p.artist||'Artist').toUpperCase();
-  wsIV.getRow(ir).height=36; ir++;
-
-  wsIV.mergeCells('A'+ir+':D'+ir);
-  sc(wsIV.getCell('A'+ir),{font:{size:10,italic:true,color:{argb:'FF6B7280'}},align:{horizontal:'left'}}).value
-    ='Pre-Tax Scenario Analysis'+(ivInv?('  \u00b7  '+ivInv.label+' ('+fmtMoney(ivEq)+' equity)'):'');
-  wsIV.getRow(ir).height=20; ir++; ir++;
-
-  // Column headers
-  const ivHdrBg = 'FF111827';
-  const ivBaseBg = 'FF1E40AF';
-  sc(wsIV.getCell(ir,1),{fill:ivHdrBg,font:{bold:true,size:11,color:{argb:'FFFFFFFF'}},align:{horizontal:'center'},border:bBot('FF374151')}).value='';
-  ivLabels.forEach((lbl2,i)=>{
-    const bg = i===1 ? ivBaseBg : ivHdrBg;
-    sc(wsIV.getCell(ir,i+2),{fill:bg,font:{bold:true,size:11,color:{argb:'FFFFFFFF'}},align:{horizontal:'center'},border:bBot('FF374151')}).value=lbl2;
-  });
-  wsIV.getRow(ir).height=28; ir++;
-
-  // Sell-through row
-  sc(wsIV.getCell(ir,1),{font:{bold:true,size:11,color:{argb:'FF6B7280'}}}).value='Sell-Through Rate';
-  ivPcts.forEach((pct,i)=>{
-    const bg = i===1 ? 'FFEFF6FF' : undefined;
-    sc(wsIV.getCell(ir,i+2),{fill:bg,font:{bold:true,size:11,color:{argb:i===1?'FF1D4ED8':'FF374151'}},align:{horizontal:'right'},numFmt:'0%',border:bBot('FFE5E7EB')}).value=pct;
-  });
-  wsIV.getRow(ir).height=22; ir++;
-
-  // Separator
-  wsIV.getRow(ir).height=8; ir++;
-
-  // Helper for data rows
-  function ivRow(label, vals, numFmt, opts) {
-    opts = opts || {};
-    sc(wsIV.getCell(ir,1),{font:{bold:!!opts.bold,size:11,color:{argb:opts.bold?'FF111827':'FF374151'}},border:bBot('FFE5E7EB')}).value=label;
-    vals.forEach((v,i)=>{
-      const isBase = i===1;
-      const bg = isBase ? 'FFEFF6FF' : undefined;
-      const fc = opts.bold ? (isBase?'FF1E40AF':'FF111827') : (isBase?'FF1E40AF':'FF374151');
-      sc(wsIV.getCell(ir,i+2),{fill:bg,font:{bold:!!opts.bold,size:opts.large?14:(opts.bold?12:11),color:{argb:opts.pctColor||fc}},align:{horizontal:'right'},numFmt,border:bBot('FFE5E7EB')}).value=v;
-    });
-    wsIV.getRow(ir).height=opts.large?30:26; ir++;
-  }
-
-  // Financial rows
-  ivRow('Gross Revenue', ivScens.map(s=>s.gross), '$#,##0');
-  ivRow('Total Costs', ivScens.map(s=>s.costs), '$#,##0');
-  ivRow('Net Profit', ivScens.map(s=>s.net), '$#,##0', {bold:true});
-
-  wsIV.getRow(ir).height=10; ir++; // separator
-
-  ivRow('ROI (Pre-Tax)', ivScens.map(s=>s.roi), '0.0%', {pctColor:'FF1D4ED8'});
-
-  if (ivEq > 0) {
-    const ivROEs = ivScens.map(s => {
-      const net = s.netAt;
-      return (Math.min(net, ivEq * ivHr) + Math.max(0, net - ivEq * ivHr) * ivSp) / ivEq;
-    });
-    const ivMOICs = ivScens.map(s => {
-      const net = s.netAt;
-      return (ivEq + Math.min(net, ivEq * ivHr) + Math.max(0, net - ivEq * ivHr) * ivSp) / ivEq;
-    });
-    ivRow('Return on Equity ('+(ivInv.label||'Scenario A')+')', ivROEs, '0.0%', {pctColor:'FF1D4ED8'});
-    ivRow('Investor MOIC ('+(ivInv.label||'Scenario A')+')', ivMOICs, '0.00"x"', {bold:true,large:true,pctColor:'FF065F46'});
-  }
-
-  wsIV.getRow(ir).height=10; ir++; // separator
-  ivRow('Implied Attendance', ivScens.map(s=>s.att), '#,##0');
-
-  ir++; // blank row
-  wsIV.mergeCells('A'+ir+':D'+ir);
-  sc(wsIV.getCell('A'+ir),{font:{size:9,italic:true,color:{argb:'FF6B7280'}}}).value
-    ='All figures pre-tax, based on '+n+' show'+(n!==1?'s':'')+' across '+c.num_cities+' cit'+(c.num_cities!==1?'ies':'y')+'.';
-  ir++;
-  wsIV.mergeCells('A'+ir+':D'+ir);
-  sc(wsIV.getCell('A'+ir),{font:{size:8,italic:true,color:{argb:'FF9CA3AF'}}}).value
-    ='Costs include Artist MG, operating costs, and fixed fees. Variable ticketing fees included per scenario.';
-
-  // ── Sheet 3: Cash Flow Timeline ──────────────────────────────────────────
-  const ws3 = wb.addWorksheet('Cash Flow');
-  ws3.views = [{ state:'frozen', xSplit:1, ySplit:4, showGridLines:false, zoomScale:110, activeCell:'B5' }];
-  ws3.columns = [{ width: 16 }, { width: 30 }, { width: 16 }, { width: 16 }, { width: 18 }];
-  ws3.properties.tabColor = { argb:'FF0F766E' };
-  ws3.pageSetup = { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0 };
-
-  function _addDays(dt, days)   { const d = new Date(dt); d.setDate(d.getDate() + days); return d; }
-  function _addMonths(dt, mnths) { const d = new Date(dt); d.setMonth(d.getMonth() + mnths); return d; }
-
-  const _tktSet    = p.ticketing_settlement || {};
-  const _advDays   = Number(_tktSet.advance_days_before) || 30;
-  const _daysAfter = Number(_tktSet.days_after_show)     || 7;
-
-  const _firstShowStr = _exDate || null;
-  const _firstShow    = _firstShowStr ? new Date(_firstShowStr + 'T12:00:00') : null;
-
-  const _cfEvents = [];
-  if (_firstShow) {
-    // 1. Agency/BluFin fees — 6 months before first show
-    if (agFees + bfFees > 0) {
-      _cfEvents.push({ date: _addMonths(_firstShow, -6), label: 'Agency & BluFin Fees', out: agFees + bfFees, cin: 0 });
-    }
-    // 2. MG payments
-    if (mgSched.length > 0) {
-      for (const pmt of mgSched) {
-        const mb  = Number(pmt.months_before) || 0;
-        const amt = artistMG * (Number(pmt.pct) || 0);
-        if (amt > 0) _cfEvents.push({ date: _addMonths(_firstShow, -mb), label: pmt.label || 'MG Payment', out: amt, cin: 0 });
-      }
-    } else if (artistMG > 0) {
-      _cfEvents.push({ date: _addMonths(_firstShow, -2), label: 'Artist MG (full)', out: artistMG, cin: 0 });
-    }
-    // 3. Operating costs + ticket advance per city + show markers
-    for (const cc of c.cityCalcs) {
-      const cityDateStr = cc.tc.concert_date || _firstShowStr;
-      if (!cityDateStr) continue;
-      const cityDate = new Date(cityDateStr + 'T12:00:00');
-      const cityName = cc.tc.city_name || cc.tc.venue_name || 'City';
-      const cpp = (Number(cc.tc.venue_fee)||0) + (Number(cc.tc.production)||0) + (Number(cc.tc.hospitality)||0) + (Number(cc.tc.insurance)||0);
-      const cityOp = cpp * cc.shows;
-      if (cityOp > 0) {
-        _cfEvents.push({ date: _addDays(cityDate, -60), label: 'Operating Costs \u2014 ' + cityName, out: cityOp, cin: 0 });
-      }
-      if (_advPct > 0) {
-        const advAmt = cc.total_ticket_rev * _advPct * (1 - feePct);
-        if (advAmt > 0) {
-          _cfEvents.push({ date: _addDays(cityDate, -_advDays), label: 'Ticket Advance \u2014 ' + cityName, out: 0, cin: advAmt });
-        }
-      }
-      _cfEvents.push({ date: cityDate, label: '\u2605 SHOW DATE \u2014 ' + cityName + (cc.shows > 1 ? ' (\xd7' + cc.shows + ')' : ''), out: 0, cin: 0, isShow: true });
-    }
-    // Compute last show date once — used for settlements and tax
-    const _lastShowDate = c.cityCalcs.reduce((latest, cc) => {
-      const d = cc.tc.concert_date ? new Date(cc.tc.concert_date + 'T12:00:00') : _firstShow;
-      return d > latest ? d : latest;
-    }, _firstShow);
-
-    // 6. Additional revenue settlement — 1 day after last show
-    if (addlAll > 0) {
-      _cfEvents.push({ date: _addDays(_lastShowDate, 1), label: 'Additional Revenue Settlement (Merch / F&B / Sponsorship)', out: 0, cin: addlAll });
-    }
-    // 7. Final ticket settlement — after last show
-    const _remainTkt = tktRevAll * (1 - _advPct) * (1 - feePct);
-    if (_remainTkt > 0) {
-      _cfEvents.push({ date: _addDays(_lastShowDate, _daysAfter), label: 'Final Ticket Settlement (' + _daysAfter + ' days after last show)', out: 0, cin: _remainTkt });
-    }
-    // 8. Tax payment — 30 days after last show
-    const _taxAmtCF = c.tax_amount || 0;
-    if (_taxAmtCF > 0) {
-      _cfEvents.push({ date: _addDays(_lastShowDate, 30), label: 'Tax Payment (' + ((Number(co.tax_rate)||0)*100).toFixed(1) + '% effective rate)', out: _taxAmtCF, cin: 0 });
-    }
-  }
-  _cfEvents.sort((a, b) => a.date - b.date);
-
-  let r3 = 1;
-  ws3.mergeCells('A'+r3+':E'+r3);
-  sc(ws3.getCell('A'+r3), { fill: C.purple, font: { bold: true, size: 14, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  CASH FLOW TIMELINE  \u2014  ' + (p.artist || 'Artist').toUpperCase();
-  ws3.getRow(r3).height = 30; r3++;
-  ws3.mergeCells('A'+r3+':E'+r3);
-  sc(ws3.getCell('A'+r3), { fill: C.dark, font: { size: 9, italic: true, color: { argb: 'FF94A3B8' } }, align: { horizontal: 'left' } }).value = '  Cash Out = upfront payments  \xb7  Cash In = revenue receipts  \xb7  Balance = running cumulative';
-  ws3.getRow(r3).height = 14; r3++; r3++;
-
-  ['Date', 'Milestone', 'Cash Out', 'Cash In', 'Cumulative Balance'].forEach((h, i) => {
-    sc(ws3.getCell(r3, i + 1), { fill: C.colHdrBg, font: { bold: true, size:9, color: { argb: C.dgray } }, align: { horizontal: i <= 1 ? 'left' : 'right' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = h;
-  });
-  ws3.getRow(r3).height = 16; r3++;
-
-  let _cumBal = 0;
-  for (const ev of _cfEvents) {
-    _cumBal += ev.cin - ev.out;
-    const isShow = !!ev.isShow;
-    const showFill = 'FFFFF8DC';
-    const showFontC = 'FF92400E';
-    sc(ws3.getCell(r3, 1), { fill: isShow ? showFill : undefined, font: { bold: isShow, color: { argb: isShow ? showFontC : C.gray } }, align: { horizontal: 'left' }, numFmt: 'mmm d, yyyy' }).value = ev.date;
-    sc(ws3.getCell(r3, 2), { fill: isShow ? showFill : undefined, font: { bold: isShow, color: { argb: isShow ? showFontC : C.dgray } } }).value = ev.label;
-    if (ev.out > 0) {
-      sc(ws3.getCell(r3, 3), { fill: isShow ? showFill : undefined, font: { color: { argb: C.red } }, align: { horizontal: 'right' }, numFmt: '"($"#,##0")"' }).value = -ev.out;
-    } else {
-      sc(ws3.getCell(r3, 3), { fill: isShow ? showFill : undefined });
-    }
-    if (ev.cin > 0) {
-      sc(ws3.getCell(r3, 4), { fill: isShow ? showFill : undefined, font: { color: { argb: C.green } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = ev.cin;
-    } else {
-      sc(ws3.getCell(r3, 4), { fill: isShow ? showFill : undefined });
-    }
-    if (!isShow) {
-      sc(ws3.getCell(r3, 5), { fill: _cumBal >= 0 ? C.totG : C.totR, font: { bold: true, color: { argb: _cumBal >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = _cumBal;
-    } else {
-      sc(ws3.getCell(r3, 5), { fill: showFill });
-    }
-    ws3.getRow(r3).height = 17; r3++;
-  }
-
-  // Totals row
-  r3++;
-  const _cfTotalOut = _cfEvents.reduce((s, e) => s + e.out, 0);
-  const _cfTotalIn  = _cfEvents.reduce((s, e) => s + e.cin, 0);
-  const _cfFinalBal = _cfTotalIn - _cfTotalOut;
-  [1, 2, 3, 4, 5].forEach(col => sc(ws3.getCell(r3, col), { fill: C.dark, font: { bold: true, color: { argb: C.white } } }));
-  sc(ws3.getCell(r3, 2), { fill: C.dark, font: { bold: true, color: { argb: C.white } } }).value = 'TOTALS';
-  if (_cfTotalOut > 0) sc(ws3.getCell(r3, 3), { fill: C.totR, font: { bold: true, color: { argb: C.red } }, align: { horizontal: 'right' }, numFmt: '"($"#,##0")"' }).value = -_cfTotalOut;
-  if (_cfTotalIn  > 0) sc(ws3.getCell(r3, 4), { fill: C.totG, font: { bold: true, color: { argb: C.green } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = _cfTotalIn;
-  sc(ws3.getCell(r3, 5), { fill: _cfFinalBal >= 0 ? C.totG : C.totR, font: { bold: true, color: { argb: _cfFinalBal >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = _cfFinalBal;
-  ws3.getRow(r3).height = 20; r3++;
-
-  // Peak working capital callout
-  r3++;
-  let _peakDrain = 0, _runBal3 = 0;
-  for (const ev of _cfEvents) { _runBal3 += ev.cin - ev.out; if (_runBal3 < _peakDrain) _peakDrain = _runBal3; }
-  ws3.mergeCells('A'+r3+':B'+r3);
-  sc(ws3.getCell('A'+r3), { fill: C.rose, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  PEAK WORKING CAPITAL REQUIRED';
-  sc(ws3.getCell(r3, 3), { fill: C.rose, font: { bold: true, color: { argb: C.white } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = Math.abs(_peakDrain);
-  sc(ws3.getCell(r3, 4), { fill: C.rose, font: { size: 8, italic: true, color: { argb: 'FFFECDD3' } } }).value = 'max cash out at any point';
-  ws3.getRow(r3).height = 20;
-
-  // ── Sheet 4: Sensitivity Matrix ──────────────────────────────────────────
-  const ws4 = wb.addWorksheet('Sensitivity');
-  ws4.views = [{ state:'frozen', xSplit:1, ySplit:5, showGridLines:false, zoomScale:110, activeCell:'B6' }];
-  ws4.columns = [{ width: 22 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }, { width: 15 }];
-  ws4.properties.tabColor = { argb:'FF1E40AF' };
-  ws4.pageSetup = { paperSize:9, orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:0 };
-
-  // Recompute full-capacity baselines (avoids block-scope conflict with Sheet 2)
-  let _s4FullTkt = 0, _s4FullSeats = 0;
-  for (const cc of c.cityCalcs) {
-    const _sc4 = cc.cats || [];
-    _s4FullSeats += _sc4.reduce((s, cat) => s + (Number(cat.count)||0), 0) * cc.shows;
-    _s4FullTkt   += _sc4.reduce((s, cat) => s + (Number(cat.price)||0) * (Number(cat.count)||0), 0) * cc.shows;
-  }
-
-  const S4_FILLS  = [0.70, 0.75, 0.80, 0.85, 0.90, 0.95, 1.00];
-  const S4_PMULTS = [0.80, 0.90, 1.00, 1.10, 1.20];
-
-  function _s4Net(fr, pm) {
-    const tkt   = _s4FullTkt * pm * fr;
-    const fee   = tkt * feePct;
-    const fnb   = fHead * fPct * (_s4FullSeats * fr);
-    const merch = mPS * n;  // flat per-show
-    const pre   = (tkt + merch + fnb + _spon) - (_fixedCosts + fee);
-    return pre > 0 ? pre * (1 - _taxRt) : pre;
-  }
-
-  function _s4Color(val, minV, maxV) {
-    if (minV === maxV) return 'FFFFFFFF';
-    const neutral = (minV < 0 && maxV > 0) ? 0 : (minV + maxV) / 2;
-    if (val >= neutral) {
-      const t = maxV > neutral ? Math.max(0, Math.min(1, (val - neutral) / (maxV - neutral))) : 1;
-      const rv = Math.round(255 + t * (110 - 255)), gv = Math.round(255 + t * (231 - 255)), bv = Math.round(255 + t * (183 - 255));
-      return 'FF' + [rv,gv,bv].map(x => Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0').toUpperCase()).join('');
-    } else {
-      const t = neutral > minV ? Math.max(0, Math.min(1, (neutral - val) / (neutral - minV))) : 1;
-      const rv = Math.round(255 + t * (252 - 255)), gv = Math.round(255 + t * (165 - 255)), bv = Math.round(255 + t * (165 - 255));
-      return 'FF' + [rv,gv,bv].map(x => Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0').toUpperCase()).join('');
-    }
-  }
-
-  const _s4Nets   = S4_FILLS.map(fr => S4_PMULTS.map(pm => _s4Net(fr, pm)));
-  const _s4All    = _s4Nets.flat();
-  const _s4Min    = Math.min(..._s4All), _s4Max = Math.max(..._s4All);
-  const _s4CurFr  = _s4FullSeats > 0 ? totAttend / _s4FullSeats : 1;
-  const _s4CurRow = S4_FILLS.reduce((bi, fr, i) => Math.abs(fr - _s4CurFr) < Math.abs(S4_FILLS[bi] - _s4CurFr) ? i : bi, 0);
-
-  let r4 = 1;
-  ws4.mergeCells('A'+r4+':F'+r4);
-  sc(ws4.getCell('A'+r4), { fill: C.purple, font: { bold: true, size: 14, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  SENSITIVITY MATRIX  \u2014  ' + (p.artist || 'Artist').toUpperCase();
-  ws4.getRow(r4).height = 30; r4++;
-  ws4.mergeCells('A'+r4+':F'+r4);
-  sc(ws4.getCell('A'+r4), { fill: C.dark, font: { size: 9, italic: true, color: { argb: 'FF94A3B8' } }, align: { horizontal: 'left' } }).value = '  Rows = Fill Rate  \xb7  Columns = Ticket Price Multiplier  \xb7  \u25c4 = current scenario';
-  ws4.getRow(r4).height = 14; r4++; r4++;
-
-  // NET PROFIT section header
-  ws4.mergeCells('A'+r4+':F'+r4);
-  sc(ws4.getCell('A'+r4), { fill: C.dark, font: { bold: true, size: 10, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  NET PROFIT BY FILL RATE & TICKET PRICE' + (_taxRt > 0 ? '  (POST-TAX)' : '');
-  ws4.getRow(r4).height = 18; r4++;
-
-  // Column headers
-  sc(ws4.getCell(r4, 1), { fill: C.colHdrBg, font: { bold: true, size:9, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = 'Fill Rate \\ Price Mult';
-  S4_PMULTS.forEach((pm, i) => {
-    sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, size:9, color: { argb: C.white } }, align: { horizontal: 'right' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
-  });
-  ws4.getRow(r4).height = 18; r4++;
-
-  // NET PROFIT data rows
-  S4_FILLS.forEach((fr, ri) => {
-    const isCur = ri === _s4CurRow;
-    const rowLabelBg = isCur ? C.calcB : (ri % 2 === 0 ? C.bgLt : 'FFFAFAFA');
-    sc(ws4.getCell(r4, 1), { fill: rowLabelBg, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
-    S4_PMULTS.forEach((pm, ci) => {
-      const net = _s4Nets[ri][ci];
-      sc(ws4.getCell(r4, ci + 2), { fill: _s4Color(net, _s4Min, _s4Max), font: { bold: isCur, color: { argb: net >= 0 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '$#,##0' }).value = net;
-    });
-    ws4.getRow(r4).height = isCur ? 20 : 17; r4++;
-  });
-
-  // MOIC grid (first investor scenario with equity > 0)
-  if (invScens.length > 0 && Number(invScens[0].equity) > 0) {
-    const _iv  = invScens[0];
-    const _ieq = Number(_iv.equity)||0;
-    const _ihr = Number(_iv.hurdle_rate)||0.20;
-    const _isp = Number(_iv.above_hurdle_investor_pct)||0.50;
-
-    r4++;
-    ws4.mergeCells('A'+r4+':F'+r4);
-    sc(ws4.getCell('A'+r4), { fill: C.purple, font: { bold: true, size: 10, color: { argb: C.white } }, align: { horizontal: 'left' } }).value = '  INVESTOR MOIC \u2014 ' + (_iv.label || 'Investor').toUpperCase();
-    ws4.getRow(r4).height = 18; r4++;
-
-    // Column headers (repeat)
-    sc(ws4.getCell(r4, 1), { fill: C.colHdrBg, font: { bold: true, size:9, color: { argb: C.dgray } }, align: { horizontal: 'left' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = 'Fill Rate \\ Price Mult';
-    S4_PMULTS.forEach((pm, i) => {
-      sc(ws4.getCell(r4, i + 2), { fill: C.navy, font: { bold: true, size:9, color: { argb: C.white } }, align: { horizontal: 'right' }, border: {bottom:{style:'medium',color:{argb:'FF94A3B8'}}} }).value = '\xd7' + (pm * 100).toFixed(0) + '%' + (pm === 1.00 ? ' (Base)' : '');
-    });
-    ws4.getRow(r4).height = 18; r4++;
-
-    const _s4Moics   = S4_FILLS.map(fr => S4_PMULTS.map(pm => {
-      const net = _s4Net(fr, pm);
-      return (_ieq + Math.min(net, _ieq * _ihr) + Math.max(0, net - _ieq * _ihr) * _isp) / _ieq;
-    }));
-    const _s4MoicAll = _s4Moics.flat();
-    const _s4MMin    = Math.min(..._s4MoicAll), _s4MMax = Math.max(..._s4MoicAll);
-
-    S4_FILLS.forEach((fr, ri) => {
-      const isCur = ri === _s4CurRow;
-      const mRowLabelBg = isCur ? C.calcB : (ri % 2 === 0 ? C.bgLt : 'FFFAFAFA');
-      sc(ws4.getCell(r4, 1), { fill: mRowLabelBg, font: { bold: isCur, color: { argb: isCur ? C.blueFont : C.dgray } }, align: { horizontal: 'left' } }).value = (fr * 100).toFixed(0) + '% Fill' + (isCur ? '  \u25c4' : '');
-      S4_PMULTS.forEach((pm, ci) => {
-        const moic = _s4Moics[ri][ci];
-        sc(ws4.getCell(r4, ci + 2), { fill: _s4Color(moic, _s4MMin, _s4MMax), font: { bold: isCur, color: { argb: moic >= 1 ? C.green : C.red } }, align: { horizontal: 'right' }, numFmt: '0.00"x"' }).value = moic;
-      });
-      ws4.getRow(r4).height = isCur ? 20 : 17; r4++;
-    });
-  }
-
-  }  // ← closes `if (false) {` that disables legacy sheet builders
 
   // Download
   const buf  = await wb.xlsx.writeBuffer();
@@ -8000,56 +7023,76 @@ async function fdBatchExport() {
 
   // ── Summary Sheet ──────────────────────────────────────────────────────────
   const wsSumm = wb.addWorksheet('Summary');
-  wsSumm.views = [{ showGridLines:false, zoomScale:110 }];
+  wsSumm.views = [{ showGridLines:false, zoomScale:105 }];
   wsSumm.columns = [
-    { width:28 }, { width:18 }, { width:10 }, { width:10 },
-    { width:18 }, { width:18 }, { width:10 }, { width:14 }
+    { width:26 }, { width:14 }, { width:8 }, { width:8 },
+    { width:16 }, { width:16 }, { width:16 }, { width:16 },
+    { width:10 }, { width:12 }, { width:16 }, { width:12 }, { width:10 }
   ];
   // Header row
-  const hdrLabels = ['Artist','Deal Stage','Cities','Shows','Gross Revenue','Net Profit','ROI','Best MOIC'];
+  const hdrLabels = ['Artist','Deal Stage','Cities','Shows',
+    'Ticket Rev (Base)','Ticket Rev (Best)','Net Profit','Total Costs',
+    'ROI','Best MOIC','Peak Capital Req','Peak Month','Min Cash OK'];
   const hdrRow = wsSumm.addRow(hdrLabels);
-  hdrRow.height = 22;
+  hdrRow.height = 30;
   hdrLabels.forEach((_, i) => {
     sc(wsSumm.getCell(1, i+1), {
       fill: C.purple,
-      font: { bold:true, color:{argb:C.white}, size:10 },
-      align: { horizontal: i < 2 ? 'left' : 'right' },
+      font: { bold:true, color:{argb:C.white}, size:9 },
+      align: { horizontal: i < 2 ? 'left' : 'right', wrapText:true },
       border: { bottom: thin('FF7C3AED') }
     });
   });
   // Data rows
   fdState.profiles.forEach(p => {
-    const c = computeProfile(p);
+    const cBase = computeProfile(p, { case:'base' });
+    const cBest = computeProfile(p, { case:'best' });
+    const cfBest = computeCashFlow(p, cBest, { case:'best' });
+    const matrix = cfBest && cfBest.matrix;
     const scens = (p.investor_scenarios||[]).filter(s => Number(s.equity)>0);
-    const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(c,s).moic)) : 0;
+    const bestMoic = scens.length ? Math.max(...scens.map(s => computeScenario(cBest,s).moic)) : 0;
+    const peakAmt = matrix ? matrix.peak_deficit : 0;
+    const peakMonth = matrix ? (matrix.peak_exposure_month || '—') : '—';
+    const minOk = matrix ? !matrix.breached_min_cash : true;
     const row = wsSumm.addRow([
-      p.artist||'Unnamed',
-      p.deal_stage||'',
-      c.num_cities,
-      c.n,
-      c.total_gross_rev,
-      c.net_profit,
-      c.roi,
-      bestMoic||''
+      p.artist || 'Unnamed',
+      p.deal_stage || '',
+      cBest.num_cities,
+      cBest.n,
+      cBase.total_ticket_rev,
+      cBest.total_ticket_rev,
+      cBest.net_profit,
+      cBest.total_costs,
+      cBest.roi,
+      bestMoic || '',
+      peakAmt,
+      peakMonth,
+      minOk ? '✓' : '✗'
     ]);
     row.height = 18;
-    // Gross Revenue
-    sc(wsSumm.getCell(row.number, 5), { numFmt:'"$"#,##0', align:{horizontal:'right'} });
-    // Net Profit — color green/red
-    const npCell = wsSumm.getCell(row.number, 6);
-    sc(npCell, {
-      fill: c.net_profit >= 0 ? C.totG : C.totR,
-      font: { bold:true, color:{argb: c.net_profit >= 0 ? C.green : C.red} },
-      numFmt: '"$"#,##0',
-      align: { horizontal:'right' }
-    });
-    // ROI
-    sc(wsSumm.getCell(row.number, 7), { numFmt:'0.0%', align:{horizontal:'right'} });
-    // MOIC
-    if (bestMoic) sc(wsSumm.getCell(row.number, 8), { numFmt:'0.00"x"', align:{horizontal:'right'} });
-    // Left-align text cols
     sc(wsSumm.getCell(row.number, 1), { align:{horizontal:'left'} });
     sc(wsSumm.getCell(row.number, 2), { align:{horizontal:'left'} });
+    sc(wsSumm.getCell(row.number, 5), { numFmt:'"$"#,##0', align:{horizontal:'right'} });
+    sc(wsSumm.getCell(row.number, 6), { numFmt:'"$"#,##0', align:{horizontal:'right'} });
+    const npCell = wsSumm.getCell(row.number, 7);
+    sc(npCell, {
+      fill: cBest.net_profit >= 0 ? C.totG : C.totR,
+      font: { bold:true, color:{argb: cBest.net_profit >= 0 ? C.green : C.red} },
+      numFmt:'"$"#,##0', align:{horizontal:'right'}
+    });
+    sc(wsSumm.getCell(row.number, 8), { numFmt:'"$"#,##0', align:{horizontal:'right'} });
+    sc(wsSumm.getCell(row.number, 9), { numFmt:'0.0%', align:{horizontal:'right'} });
+    if (bestMoic) sc(wsSumm.getCell(row.number, 10), { numFmt:'0.00"x"', align:{horizontal:'right'} });
+    sc(wsSumm.getCell(row.number, 11), {
+      fill: peakAmt < 0 ? C.totR : C.totG,
+      font: { bold:true, color:{argb: peakAmt < 0 ? C.red : C.green} },
+      numFmt:'"$"#,##0', align:{horizontal:'right'}
+    });
+    sc(wsSumm.getCell(row.number, 12), { align:{horizontal:'right'}, font:{color:{argb:C.dgray}} });
+    sc(wsSumm.getCell(row.number, 13), {
+      align:{horizontal:'center'},
+      font:{bold:true, color:{argb: minOk ? C.green : C.red}}
+    });
   });
 
   // ── Per-profile sheets (max 15) ────────────────────────────────────────────
@@ -8059,11 +7102,14 @@ async function fdBatchExport() {
   }
 
   profiles.forEach(p => {
-    const c = computeProfile(p);
+    const cBase = computeProfile(p, { case:'base' });
+    const cBest = computeProfile(p, { case:'best' });
+    const cfBest = computeCashFlow(p, cBest, { case:'best' });
+    const matrix = cfBest && cfBest.matrix;
     const sheetName = sanitizeName(p.artist||'Profile');
     const ws = wb.addWorksheet(sheetName);
     ws.views = [{ showGridLines:false, zoomScale:105 }];
-    ws.columns = [{ width:24 },{ width:18 },{ width:18 },{ width:18 },{ width:18 }];
+    ws.columns = [{ width:28 },{ width:18 },{ width:18 },{ width:4 },{ width:18 }];
 
     // Title row
     ws.mergeCells('A1:E1');
@@ -8074,35 +7120,78 @@ async function fdBatchExport() {
     }).value = '  ' + (p.artist||'Profile') + (p.deal_stage ? ' — ' + p.deal_stage : '');
     ws.getRow(1).height = 26;
 
-    // KPI row (row 3)
-    const kpiRow = ws.addRow(['']);
+    // Base / Best P&L side-by-side (mirrors JISOO Total tab)
     ws.addRow(['']);
-    const kpiLabels = ['Gross Revenue','Total Costs','Net Profit','ROI'];
-    const kpiVals   = [c.total_gross_rev, c.total_costs, c.net_profit, c.roi];
-    const kpiRow2 = ws.addRow(kpiLabels);
-    kpiRow2.height = 16;
-    kpiLabels.forEach((_,i) => {
-      sc(ws.getCell(kpiRow2.number, i+1), { fill:C.bgLt, font:{bold:true,color:{argb:C.dgray}}, align:{horizontal:'right'} });
-    });
-    const kpiValRow = ws.addRow(kpiVals);
-    kpiValRow.height = 20;
-    [c.total_gross_rev, c.total_costs, c.net_profit, c.roi].forEach((v,i) => {
-      const cl = ws.getCell(kpiValRow.number, i+1);
-      const isProfit = i === 2;
-      const fmt = i === 3 ? '0.0%' : '"$"#,##0';
-      sc(cl, {
-        fill: isProfit ? (v>=0 ? C.totG : C.totR) : (i===0?C.totG:i===1?C.totR:undefined),
-        font: { bold:true, color:{argb: isProfit ? (v>=0?C.green:C.red) : (i===0?C.green:i===1?C.red:C.dgray)} },
-        numFmt: fmt, align:{horizontal:'right'}
+    const pnlHdr = ws.addRow(['', 'Base (90%)', 'Best (100%)']);
+    pnlHdr.height = 18;
+    [2,3].forEach(i => sc(ws.getCell(pnlHdr.number,i), { fill:C.navyLt, font:{bold:true,size:10,color:{argb:C.navy}}, align:{horizontal:'right'}, border:{bottom:{style:'medium',color:{argb:C.hdrBdr}}} }));
+    const pnlLines = [
+      ['Ticket Revenue',       cBase.total_ticket_rev,   cBest.total_ticket_rev],
+      ['Merch Revenue',        cBase.merch_rev||0,       cBest.merch_rev||0],
+      ['F&B Revenue',          cBase.fnb_rev||0,         cBest.fnb_rev||0],
+      ['Sponsorship Revenue',  cBase.sponsor_rev||0,     cBest.sponsor_rev||0],
+      ['Total Revenue',        cBase.total_gross_rev,    cBest.total_gross_rev, true],
+      [''],
+      ['Production Costs',     cBase.total_op_costs,     cBest.total_op_costs],
+      ['Ticketing Fees',       cBase.ticketing_fee||0,   cBest.ticketing_fee||0],
+      ['Artist MG',            cBase.artist_mg_cost||0,  cBest.artist_mg_cost||0],
+      ['Agency + BluFin Fees', Number(p.costs?.agency_fees||0) + Number(p.costs?.blufin_fees||0),
+                                Number(p.costs?.agency_fees||0) + Number(p.costs?.blufin_fees||0)],
+      ['Total Costs',          cBase.total_costs,        cBest.total_costs, true],
+      [''],
+      ['Net Profit',           cBase.net_profit,         cBest.net_profit, true],
+      ['ROI',                  cBase.roi,                cBest.roi, false, true]
+    ];
+    pnlLines.forEach(line => {
+      if (!line[0]) { ws.addRow(['']); return; }
+      const [label, bVal, bestVal, bold, isPct] = line;
+      const r = ws.addRow([label, bVal, bestVal]);
+      const fmt = isPct ? '0.0%' : '"$"#,##0;[Red]("$"#,##0)';
+      sc(ws.getCell(r.number,1), { font:{bold:!!bold,color:{argb:bold?C.navy:C.dgray}}, align:{horizontal:'left'} });
+      [2,3].forEach(i => {
+        const cell = ws.getCell(r.number, i);
+        const v = i === 2 ? bVal : bestVal;
+        const isNetProfit = label === 'Net Profit';
+        sc(cell, {
+          numFmt: fmt,
+          font: { bold:!!bold, color:{argb: isNetProfit ? (v>=0?C.green:C.red) : (bold?C.navy:C.dgray)} },
+          fill: isNetProfit ? (v>=0?C.totG:C.totR) : (bold ? C.bgLt : undefined),
+          align: { horizontal:'right' }
+        });
       });
+      r.height = bold ? 20 : 16;
     });
+
+    // Peak capital requirement (if timeline set)
+    if (matrix) {
+      ws.addRow(['']);
+      const peakHdr = ws.addRow(['Cash Flow (Best Case)']);
+      ws.mergeCells('A' + peakHdr.number + ':C' + peakHdr.number);
+      sc(ws.getCell(peakHdr.number, 1), { fill:C.navyLt, font:{bold:true,size:10,color:{argb:C.navy}}, align:{horizontal:'left'}, border:{bottom:{style:'medium',color:{argb:C.hdrBdr}}} });
+      const peakRow = ws.addRow(['Peak Capital Requirement', matrix.peak_deficit]);
+      sc(ws.getCell(peakRow.number,1), { align:{horizontal:'left'} });
+      sc(ws.getCell(peakRow.number,2), {
+        numFmt:'"$"#,##0;[Red]("$"#,##0)', align:{horizontal:'right'},
+        font:{bold:true, color:{argb: matrix.peak_deficit < 0 ? C.red : C.green}},
+        fill: matrix.peak_deficit < 0 ? C.totR : C.totG
+      });
+      const peakMo = ws.addRow(['Peak Month', matrix.peak_exposure_month || '—']);
+      sc(ws.getCell(peakMo.number,1), { align:{horizontal:'left'} });
+      sc(ws.getCell(peakMo.number,2), { align:{horizontal:'right'}, font:{color:{argb:C.dgray}} });
+      const breachRow = ws.addRow(['Min Cash Balance Met', matrix.breached_min_cash ? '✗ BREACHED' : '✓ OK']);
+      sc(ws.getCell(breachRow.number,1), { align:{horizontal:'left'} });
+      sc(ws.getCell(breachRow.number,2), {
+        align:{horizontal:'right'},
+        font:{bold:true, color:{argb: matrix.breached_min_cash ? C.red : C.green}}
+      });
+    }
 
     // Tour Cities
     ws.addRow(['']);
-    const cityHdr = ws.addRow(['City','Shows','Ticket Rev']);
+    const cityHdr = ws.addRow(['City','Shows','Ticket Rev (Best)']);
     cityHdr.height = 16;
     [1,2,3].forEach(i => sc(ws.getCell(cityHdr.number,i), { fill:C.bgLt, font:{bold:true,color:{argb:C.dgray}}, align:{horizontal:i===1?'left':'right'} }));
-    c.cityCalcs.forEach(cc => {
+    cBest.cityCalcs.forEach(cc => {
       const r = ws.addRow([(cc.tc.city_name||cc.tc.venue_name||'Stop'), cc.shows, cc.total_ticket_rev]);
       sc(ws.getCell(r.number,1),{align:{horizontal:'left'}});
       sc(ws.getCell(r.number,2),{align:{horizontal:'right'}});
@@ -8117,7 +7206,7 @@ async function fdBatchExport() {
       invHdr.height = 16;
       [1,2,3,4].forEach(i => sc(ws.getCell(invHdr.number,i), { fill:C.navyLt, font:{bold:true,size:9,color:{argb:C.navy}}, align:{horizontal:i===1?'left':'right'}, border:{bottom:{style:'medium',color:{argb:C.hdrBdr}}} }));
       invScens.forEach(scen => {
-        const s = computeScenario(c, scen);
+        const s = computeScenario(cBest, scen);
         const r = ws.addRow([scen.label||'Investor', s.equity, s.moic, s.abs_return]);
         sc(ws.getCell(r.number,1),{align:{horizontal:'left'}});
         sc(ws.getCell(r.number,2),{numFmt:'"$"#,##0',align:{horizontal:'right'}});
