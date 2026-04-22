@@ -5961,12 +5961,1004 @@ async function fdExportExcel() {
     ws.getRow(r).height = 18;
   }
 
-  // ── Sheet: Model ──────────────────────────────────────────────────────────
-  const ws = wb.addWorksheet('Model');
-  ws.views = [{ state:'frozen', xSplit:1, ySplit:2, showGridLines:false, zoomScale:110, activeCell:'B3' }];
-  ws.columns = [{width:32},{width:18},{width:14},{width:18},{width:20},{width:18}];
-  ws.properties.tabColor = { argb:'FFCC6437' };
-  ws.pageSetup = { paperSize:9, orientation:'portrait', fitToPage:true, fitToWidth:1, fitToHeight:0 };
+  // ═══════════════════════════════════════════════════════════════════════════
+  // JISOO-MIRRORING 6-TAB FORMULA-DRIVEN EXPORT
+  // See docs/superpowers/plans/2026-04-22-jisoo-cell-map.md for the cell spec.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Normalize profile and pre-compute BOTH cases (formula results are fallback values)
+  fdMigrateProfile(p);
+  const cBase   = computeProfile(p, { case: 'base' });
+  const cBest   = computeProfile(p, { case: 'best' });
+  const cfBest  = computeCashFlow(p, cBest, { case: 'best' });
+  const cfBase  = computeCashFlow(p, cBase, { case: 'base' });
+  const rcfBase = computeRevenueCashFlow(p, cBase, { case: 'base' });
+  const rcfBest = computeRevenueCashFlow(p, cBest, { case: 'best' });
+  const hasTimeline = !!(p.timeline && cfBest && cfBest.matrix);
+
+  // Cities: limit to 10 slots (JISOO reserves D..M for 10 cities; active D..K = 8)
+  const jiCities = (p.tour_cities || []).slice(0, 10);
+  const nCities  = jiCities.length;
+  const cityCols = ['D','E','F','G','H','I','J','K','L','M'];  // 10 slots
+  // Use 7 price tiers per JISOO: P5, P4, P3, P2, P1, VIP Premium, VIP Ultimate
+  // Pad from each city's seat_categories (fixture has 7 tiers per city).
+  const tierNames = ['  P5','  P4','  P3','  P2','  P1','  VIP Premium','  VIP Ultimate'];
+  const TIER_SLOTS = 11;   // 7 used + 4 empty per JISOO
+  // Per-city per-tier [price, count] arrays (padded to 11)
+  function tiersForCity(tc) {
+    const cats = tc.seat_categories || [];
+    const out = [];
+    for (let i = 0; i < TIER_SLOTS; i++) {
+      const c = cats[i];
+      out.push({
+        name:  c ? (c.name || tierNames[i] || '') : (tierNames[i] || ''),
+        price: c ? Number(c.price)||0 : 0,
+        count: c ? Number(c.count)||0 : 0
+      });
+    }
+    return out;
+  }
+  const cityTiers = jiCities.map(tiersForCity);
+
+  // Cost lines — JISOO has 10 line rows (7 "real" + 3 empty) + 2 %-of-rev rows
+  const costLines = (p.costs && p.costs.cost_lines) || [];
+  const COST_LINE_SLOTS = 10;
+  const paddedCostLines = [];
+  for (let i = 0; i < COST_LINE_SLOTS; i++) {
+    paddedCostLines.push(costLines[i] || { id: 'empty'+i, name: '', kind:'per_city_absolute', per_city:{} });
+  }
+  const taxLines = (p.costs && p.costs.tax_lines) || [];
+
+  // Month list (13 months default — Mar 2026 → Mar 2027 pattern).
+  // Use profile.timeline if available; else derive from cities; else default.
+  let months = [];
+  if (hasTimeline) {
+    months = cfBest.matrix.months;
+  } else if (nCities && jiCities.some(tc => tc.concert_date)) {
+    const dates = jiCities.map(tc => tc.concert_date).filter(Boolean).sort();
+    const first = new Date(dates[0] + 'T12:00:00');
+    const last  = new Date(dates[dates.length-1] + 'T12:00:00');
+    const sD = new Date(first.getFullYear(), first.getMonth() - 5, 1);
+    const eD = new Date(last.getFullYear(),  last.getMonth()  + 6, 1);
+    let cur = sD.getFullYear()+'-'+String(sD.getMonth()+1).padStart(2,'0');
+    const end = eD.getFullYear()+'-'+String(eD.getMonth()+1).padStart(2,'0');
+    while (cur <= end) {
+      months.push(cur);
+      const [yy,mm] = cur.split('-').map(Number);
+      const nd = new Date(yy, mm, 1);
+      cur = nd.getFullYear()+'-'+String(nd.getMonth()+1).padStart(2,'0');
+    }
+  }
+  // Force 13 months minimum if none derivable (prevents empty Cash Flow header)
+  if (!months.length) {
+    months = ['2026-03','2026-04','2026-05','2026-06','2026-07','2026-08',
+              '2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03'];
+  }
+  const monthCols = [];
+  // Cash Flow uses C..O for months (13 max). Extend if more.
+  for (let i = 0; i < months.length; i++) {
+    // Columns starting at C (index 3). Go to Z (26) then AA..
+    const idx = 3 + i;  // 1-based column index
+    let col = '';
+    let n = idx;
+    while (n > 0) { const rem = (n - 1) % 26; col = String.fromCharCode(65 + rem) + col; n = Math.floor((n - 1) / 26); }
+    monthCols.push(col);
+  }
+  const monthDateISO = (mStr) => mStr + '-01';
+
+  // Short helpers for writing input and formula cells in this section
+  const yInp = (cell, value, numFmt) => {
+    cell.value = value;
+    cell.fill  = fill(C.inputY);
+    cell.font  = { size:10, bold:true, color:{argb:C.blueFont} };
+    cell.alignment = { vertical:'middle', horizontal:'right' };
+    if (numFmt) cell.numFmt = numFmt;
+    return cell;
+  };
+  const jFml = (cell, formula, result, numFmt, opts) => {
+    cell.value = { formula: formula, result: (result === undefined ? 0 : result) };
+    cell.fill  = fill(C.calcB);
+    cell.font  = { size:10, color:{argb:C.blueFont} };
+    cell.alignment = { vertical:'middle', horizontal:'right' };
+    if (numFmt) cell.numFmt = numFmt;
+    if (opts && opts.bold) cell.font = { ...cell.font, bold: true };
+    return cell;
+  };
+  const lbl = (cell, text, opts) => {
+    cell.value = text;
+    cell.font  = { size:10, bold: (opts && opts.bold) || false, color:{argb:(opts && opts.color) || C.dgray} };
+    cell.alignment = { vertical:'middle', horizontal:(opts && opts.align) || 'left' };
+    if (opts && opts.fill) cell.fill = fill(opts.fill);
+    return cell;
+  };
+  const FMT_USD    = '"$"#,##0;[Red]("$"#,##0)';
+  const FMT_USD2   = '"$"#,##0.00;[Red]("$"#,##0.00)';
+  const FMT_PCT    = '0%';
+  const FMT_INT    = '#,##0';
+  const FMT_DATE   = 'd-mmm-yy';
+  const FMT_MMYY   = '@';
+  const FMT_MOIC   = '0.00"x"';
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Sheet 1: Assumptions  (source of truth; all yellow inputs live here)
+  // See cell-map §1
+  // ══════════════════════════════════════════════════════════════════════════
+  const wsA = wb.addWorksheet('Assumptions');
+  wsA.views = [{ showGridLines:false, zoomScale:100 }];
+  wsA.columns = [
+    {width:8},{width:3},{width:34},{width:14},{width:14},{width:14},{width:14},
+    {width:14},{width:14},{width:14},{width:14},{width:14},{width:14},{width:14},
+    {width:14},{width:14},{width:14}
+  ];
+  wsA.properties.tabColor = { argb: C.navy };
+
+  // Title (B1)
+  wsA.mergeCells('B1:Q1');
+  lbl(wsA.getCell('B1'), 'Assumptions', { bold:true, color: C.white, fill: C.header });
+  wsA.getRow(1).height = 24;
+
+  // Revenue Assumptions section header (C3)
+  lbl(wsA.getCell('C3'), 'Revenue Assumptions', { bold:true, color: C.navy });
+  // Ticket Sales Revenue Realized (curve) rows 5-8
+  lbl(wsA.getCell('C5'), 'Ticket Sales Revenue Realized');
+  lbl(wsA.getCell('D5'), 'Months before the concert');
+  const curve = (p.ticket_curve || [{months_before:0,pct:1}]);
+  for (let i = 0; i < 3; i++) {
+    const rung = curve[i] || { pct:0, months_before:0 };
+    yInp(wsA.getCell('C'+(6+i)), rung.pct, FMT_PCT);
+    yInp(wsA.getCell('D'+(6+i)), rung.months_before, FMT_INT);
+  }
+
+  // Case labels rows 10 and 52 (via formula so A10 / A11 can reference them)
+  lbl(wsA.getCell('C10'), 'Base', { bold:true });
+  jFml(wsA.getCell('A10'), '=C10', 'Base', FMT_MMYY);
+  jFml(wsA.getCell('A11'), '=C52', 'Best', FMT_MMYY);
+  lbl(wsA.getCell('C52'), 'Best', { bold:true });
+
+  // Base per-city revenue table header row 12
+  const headerTexts = ['No.','Country','Schedule','Venue Capacity','Occupancy Rate',
+    'Expected Attendance','Avg Ticket Price','Ticket Revenue','Expected Merch Sales',
+    'Split Received','Merchandise Revenue','Average F&B Spend Per Head',
+    'F&B Buyers out of total Attendance','F&B Revenue','Sponsorship Revenue'];
+  // Col C = No., D = Country, E = Schedule, F = Cap, G = Occ, H = Attend,
+  // I = ATP, J = Ticket Rev, K = Merch Sales, L = Split, M = Merch Rev,
+  // N = F&B/head, O = F&B Buyers, P = F&B Rev, Q = Sponsorship Rev
+  const revHdrCols = ['C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q'];
+  revHdrCols.forEach((col, i) => {
+    lbl(wsA.getCell(col+'12'), headerTexts[i], { bold:true, align:'center', fill: C.colHdrBg });
+  });
+  wsA.getRow(12).height = 30;
+
+  // Base city rows 13-22 (10 slots; fill with cities, pad rest with zeros)
+  for (let i = 0; i < 10; i++) {
+    const rA = 13 + i;
+    const tc = jiCities[i] || null;
+    const cc = cBase.cityCalcs[i] || null;
+    if (tc) {
+      // A = mmyy from E (date)
+      jFml(wsA.getCell('A'+rA), `=TEXT(E${rA},"mmyy")`, '', FMT_MMYY);
+      // C = city number (C13 = 1, C14 = C13+1, etc.)
+      if (i === 0) yInp(wsA.getCell('C13'), 1, FMT_INT);
+      else         jFml(wsA.getCell('C'+rA), `=C${rA-1}+1`, i+1, FMT_INT);
+      // D = country/city name
+      yInp(wsA.getCell('D'+rA), tc.city_name || '', '@');
+      // E = date
+      yInp(wsA.getCell('E'+rA), tc.concert_date ? new Date(tc.concert_date + 'T12:00:00') : '', FMT_DATE);
+      // F = capacity
+      yInp(wsA.getCell('F'+rA), Number(tc.capacity)||0, FMT_INT);
+      // G = occupancy (Base = 0.9 default or per case_override)
+      yInp(wsA.getCell('G'+rA), (p.case_overrides && p.case_overrides.base && p.case_overrides.base.fill_rate) || 0.9, FMT_PCT);
+      // H = attendance = F*G
+      jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, cc ? cc.seats_per_show : 0, FMT_INT);
+      // I = ATP = J/H (IFERROR)
+      jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, cc ? (cc.seats_per_show ? cc.rev_per_show/cc.seats_per_show : 0) : 0, FMT_USD2);
+      // J = SUMPRODUCT(prices_col, counts_col) for this city
+      //   Prices at rows 26..36 (11 tiers). Counts at rows 39..49. City i → column cityCols[i].
+      const colL = cityCols[i];
+      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}/IFERROR(G${rA},1)`, cc ? cc.total_ticket_rev/Math.max(1,cc.shows) : 0, FMT_USD);
+      // K = merch sales/show (yellow input), L = split (%), M = K*L
+      yInp(wsA.getCell('K'+rA), Number(((p.additional_revenue)||{}).merch_per_show)||0, FMT_USD);
+      yInp(wsA.getCell('L'+rA), Number(((p.additional_revenue)||{}).merch_split_pct)||0.2, FMT_PCT);
+      jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
+      // N = F&B/head, O = buyers, P = N*O, Q = sponsorship
+      yInp(wsA.getCell('N'+rA), Number(((p.additional_revenue)||{}).fnb_per_head)||0, FMT_USD);
+      yInp(wsA.getCell('O'+rA), Number(((p.additional_revenue)||{}).fnb_buyer_pct)||0, FMT_INT);
+      jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}`, 0, FMT_USD);
+      yInp(wsA.getCell('Q'+rA), Number(((p.additional_revenue)||{}).sponsorship_per_show)||0, FMT_USD);
+    } else {
+      // Empty slot
+      if (i === 0) yInp(wsA.getCell('C13'), i+1, FMT_INT);
+      else         jFml(wsA.getCell('C'+rA), `=C${rA-1}+1`, i+1, FMT_INT);
+      yInp(wsA.getCell('F'+rA), 0, FMT_INT);
+      yInp(wsA.getCell('G'+rA), 0.9, FMT_PCT);
+      jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, 0, FMT_INT);
+      jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, 0, FMT_USD2);
+      const colL = cityCols[i];
+      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)`, 0, FMT_USD);
+      jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
+      jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}`, 0, FMT_USD);
+    }
+  }
+  // Base totals row 23
+  jFml(wsA.getCell('H23'), '=SUM(H13:H22)', cBase.total_attendance, FMT_INT, {bold:true});
+  jFml(wsA.getCell('I23'), '=IFERROR(SUM(J13:J22)/SUM(H13:H22), "")', cBase.total_ticket_rev && cBase.total_attendance ? cBase.total_ticket_rev/cBase.total_attendance : 0, FMT_USD2, {bold:true});
+  jFml(wsA.getCell('J23'), '=SUM(J13:J22)', cBase.total_ticket_rev, FMT_USD, {bold:true});
+  jFml(wsA.getCell('M23'), '=SUM(M13:M22)', cBase.merch_rev || 0, FMT_USD, {bold:true});
+  jFml(wsA.getCell('P23'), '=SUM(P13:P22)', cBase.fnb_rev || 0, FMT_USD, {bold:true});
+  jFml(wsA.getCell('Q23'), '=SUM(Q13:Q22)', cBase.sponsor_rev || 0, FMT_USD, {bold:true});
+
+  // Base pricing matrix rows 25-36 (header + 7 real tiers + 4 empty)
+  // Header row 25: labels D25..M25 point to cost-row 98 city names
+  lbl(wsA.getCell('C25'), 'Category / Price', { bold:true });
+  cityCols.forEach((col, i) => {
+    // D25=F98, E25=G98, ..., M25=O98 (but JISOO uses F..O for cities in cost row 98,
+    // with column offset: D25 should reference F98, E25→G98, etc.)
+    // Mapping: cityCols[i] in pricing row ↔ costCols[i+2] in cost row.
+    const costCol = String.fromCharCode(65 + 5 + i);  // F,G,H,...
+    jFml(wsA.getCell(col+'25'), `=${costCol}98`, jiCities[i]?.city_name || '', '@');
+  });
+  // Tier rows 26-36 (C col = tier label, D..M = prices)
+  for (let t = 0; t < TIER_SLOTS; t++) {
+    const rA = 26 + t;
+    if (t < tierNames.length) {
+      lbl(wsA.getCell('C'+rA), tierNames[t]);
+    } else {
+      lbl(wsA.getCell('C'+rA), '');  // empty slot
+    }
+    for (let i = 0; i < 10; i++) {
+      const col = cityCols[i];
+      const tier = cityTiers[i] ? cityTiers[i][t] : { price: 0 };
+      yInp(wsA.getCell(col+rA), tier.price || 0, FMT_USD2);
+    }
+  }
+
+  // Base seat-count matrix rows 38-50
+  lbl(wsA.getCell('C38'), 'Category / Number of Seats', { bold:true });
+  cityCols.forEach((col, i) => {
+    jFml(wsA.getCell(col+'38'), `=${col}25`, jiCities[i]?.city_name || '', '@');
+  });
+  // Row 39 = first tier (P5) — auto-balance formula: =D50 - SUM(D40:D49)
+  for (let i = 0; i < 10; i++) {
+    const col = cityCols[i];
+    jFml(wsA.getCell(col+'39'), `=${col}50-SUM(${col}40:${col}49)`,
+      cityTiers[i] ? cityTiers[i][0].count : 0, FMT_INT);
+  }
+  // Rows 40-49 = tiers 2..11 (yellow inputs; only first 6 "real" used by default)
+  for (let t = 1; t < TIER_SLOTS; t++) {
+    const rA = 39 + t;
+    for (let i = 0; i < 10; i++) {
+      const col = cityCols[i];
+      const tier = cityTiers[i] ? cityTiers[i][t] : { count: 0 };
+      // Copy the C column label from pricing matrix (C40=C27, C41=C28, etc.)
+      // Only do this once (outside the city loop). Handled below.
+      yInp(wsA.getCell(col+rA), tier.count || 0, FMT_INT);
+    }
+  }
+  // C column label references for rows 39-49
+  for (let t = 0; t < TIER_SLOTS; t++) {
+    const rA = 39 + t;
+    const priceRow = 26 + t;
+    jFml(wsA.getCell('C'+rA), `=C${priceRow}`, tierNames[t] || '', '@');
+  }
+  // Row 50 = Total seats per city (= H col attendance ref for base city rows 13-22)
+  lbl(wsA.getCell('C50'), 'Total', { bold:true });
+  for (let i = 0; i < 10; i++) {
+    const col = cityCols[i];
+    const baseRow = 13 + i;
+    jFml(wsA.getCell(col+'50'), `=$H${baseRow}`, cBase.cityCalcs[i] ? cBase.cityCalcs[i].seats_per_show : 0, FMT_INT, {bold:true});
+  }
+
+  // ── Best case mirror (rows 52-92) ────────────────────────────────────────
+  // Row 54: headers (formulas referencing row 12)
+  revHdrCols.forEach(col => {
+    jFml(wsA.getCell(col+'54'), `=${col}12`, '', '@');
+  });
+  wsA.getRow(54).height = 30;
+  for (let i = 0; i < 10; i++) {
+    const rA = 55 + i;
+    const rBase = 13 + i;
+    const tc = jiCities[i] || null;
+    jFml(wsA.getCell('A'+rA), `=TEXT(E${rA},"mmyy")`, '', FMT_MMYY);
+    if (i === 0) jFml(wsA.getCell('C55'), `=C${rBase}`, i+1, FMT_INT);
+    else         jFml(wsA.getCell('C'+rA), `=C${rA-1}+1`, i+1, FMT_INT);
+    // D/E/F reference Base
+    jFml(wsA.getCell('D'+rA), `=D${rBase}`, tc ? tc.city_name : '', '@');
+    jFml(wsA.getCell('E'+rA), `=E${rBase}`, tc && tc.concert_date ? new Date(tc.concert_date+'T12:00:00') : '', FMT_DATE);
+    jFml(wsA.getCell('F'+rA), `=F${rBase}`, tc ? Number(tc.capacity)||0 : 0, FMT_INT);
+    // G = 100% (or best override)
+    yInp(wsA.getCell('G'+rA), (p.case_overrides && p.case_overrides.best && p.case_overrides.best.fill_rate) || 1.0, FMT_PCT);
+    jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].seats_per_show : 0, FMT_INT);
+    jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, 0, FMT_USD2);
+    const colL = cityCols[i];
+    jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}68:${colL}78,${colL}81:${colL}91)*G${rA}/IFERROR(G${rA},1)`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].total_ticket_rev/Math.max(1,cBest.cityCalcs[i].shows) : 0, FMT_USD);
+    jFml(wsA.getCell('K'+rA), `=K${rBase}`, 0, FMT_USD);
+    jFml(wsA.getCell('L'+rA), `=L${rBase}`, 0, FMT_PCT);
+    jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
+    jFml(wsA.getCell('N'+rA), `=N${rBase}`, 0, FMT_USD);
+    jFml(wsA.getCell('O'+rA), `=O${rBase}`, 0, FMT_INT);
+    jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}`, 0, FMT_USD);
+    jFml(wsA.getCell('Q'+rA), `=Q${rBase}`, 0, FMT_USD);
+  }
+  jFml(wsA.getCell('H65'), '=SUM(H55:H64)', cBest.total_attendance, FMT_INT, {bold:true});
+  jFml(wsA.getCell('I65'), '=IFERROR(SUM(J55:J64)/SUM(H55:H64), "")', cBest.total_attendance ? cBest.total_ticket_rev/cBest.total_attendance : 0, FMT_USD2, {bold:true});
+  jFml(wsA.getCell('J65'), '=SUM(J55:J64)', cBest.total_ticket_rev, FMT_USD, {bold:true});
+  jFml(wsA.getCell('M65'), '=SUM(M55:M64)', cBest.merch_rev || 0, FMT_USD, {bold:true});
+  jFml(wsA.getCell('P65'), '=SUM(P55:P64)', cBest.fnb_rev || 0, FMT_USD, {bold:true});
+  jFml(wsA.getCell('Q65'), '=SUM(Q55:Q64)', cBest.sponsor_rev || 0, FMT_USD, {bold:true});
+
+  // Best pricing matrix rows 67-78 (C67 hdr + 11 tiers)
+  lbl(wsA.getCell('C67'), 'Category / Price', { bold:true });
+  cityCols.forEach((col, i) => {
+    jFml(wsA.getCell(col+'67'), `=${col}38`, jiCities[i]?.city_name || '', '@');
+  });
+  for (let t = 0; t < TIER_SLOTS; t++) {
+    const rA = 68 + t;
+    jFml(wsA.getCell('C'+rA), `=C${39+t}`, tierNames[t] || '', '@');
+    for (let i = 0; i < 10; i++) {
+      const col = cityCols[i];
+      const tier = cityTiers[i] ? cityTiers[i][t] : { price: 0 };
+      yInp(wsA.getCell(col+rA), tier.price || 0, FMT_USD2);
+    }
+  }
+  // Best seat-count matrix rows 80-92
+  lbl(wsA.getCell('C80'), 'Category / Number of Seats', { bold:true });
+  cityCols.forEach((col, i) => {
+    jFml(wsA.getCell(col+'80'), `=${col}67`, jiCities[i]?.city_name || '', '@');
+  });
+  for (let i = 0; i < 10; i++) {
+    const col = cityCols[i];
+    jFml(wsA.getCell(col+'81'), `=${col}92-SUM(${col}82:${col}91)`,
+      cityTiers[i] ? cityTiers[i][0].count : 0, FMT_INT);
+  }
+  for (let t = 1; t < TIER_SLOTS; t++) {
+    const rA = 81 + t;
+    jFml(wsA.getCell('C'+rA), `=C${68+t}`, tierNames[t] || '', '@');
+    for (let i = 0; i < 10; i++) {
+      const col = cityCols[i];
+      const tier = cityTiers[i] ? cityTiers[i][t] : { count: 0 };
+      yInp(wsA.getCell(col+rA), tier.count || 0, FMT_INT);
+    }
+  }
+  lbl(wsA.getCell('C92'), 'Total', { bold:true });
+  for (let i = 0; i < 10; i++) {
+    const col = cityCols[i];
+    const bestRow = 55 + i;
+    jFml(wsA.getCell(col+'92'), `=$H${bestRow}`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].seats_per_show : 0, FMT_INT, {bold:true});
+  }
+
+  // ── Cost Assumptions rows 96-113 ──────────────────────────────────────────
+  lbl(wsA.getCell('C96'), 'Cost Assumptions', { bold:true, color: C.navy });
+  lbl(wsA.getCell('C98'), 'Particulars', { bold:true, fill: C.colHdrBg });
+  lbl(wsA.getCell('D98'), 'Notes',       { bold:true, fill: C.colHdrBg });
+  lbl(wsA.getCell('E98'), 'Assumption',  { bold:true, fill: C.colHdrBg });
+  // F98..O98 = city name formulas (=D13..D22)
+  for (let i = 0; i < 10; i++) {
+    const costCol = String.fromCharCode(65 + 5 + i);  // F..O
+    jFml(wsA.getCell(costCol+'98'), `=D${13+i}`, jiCities[i]?.city_name || '', '@');
+  }
+  // Rows 99-108: 10 cost line slots (padded)
+  for (let k = 0; k < COST_LINE_SLOTS; k++) {
+    const rA = 99 + k;
+    const cl = paddedCostLines[k];
+    lbl(wsA.getCell('C'+rA), cl.name || '');
+    lbl(wsA.getCell('D'+rA), 'Variable');
+    // Per-city amounts in F..O
+    for (let i = 0; i < 10; i++) {
+      const costCol = String.fromCharCode(65 + 5 + i);
+      const tc = jiCities[i];
+      const amt = (tc && cl.per_city && cl.per_city[tc.id] !== undefined) ? Number(cl.per_city[tc.id]) || 0 : 0;
+      yInp(wsA.getCell(costCol+rA), amt, FMT_USD);
+    }
+  }
+  // Rows 109-110: %-of-gross tax lines (Music Copyright, GST)
+  for (let k = 0; k < 2; k++) {
+    const rA = 109 + k;
+    const tax = taxLines[k] || { name: k===0?'Music Copyright Fee':'Goods & Services tax', pct: 0 };
+    lbl(wsA.getCell('C'+rA), tax.name || '');
+    lbl(wsA.getCell('D'+rA), 'as a % of Gross Revenue');
+    yInp(wsA.getCell('E'+rA), tax.pct || 0, FMT_PCT);
+    // Per-city: IF(case=Base, base_gross*E, best_gross*E)
+    for (let i = 0; i < 10; i++) {
+      const costCol = String.fromCharCode(65 + 5 + i);
+      const baseRow = 13 + i, bestRow = 55 + i;
+      jFml(wsA.getCell(costCol+rA),
+        `=IF('Cash Flow'!$C$9=Assumptions!$C$10, J${baseRow}*$E${rA}, J${bestRow}*$E${rA})`,
+        0, FMT_USD);
+    }
+  }
+  // Row 111: Total per city = SUM(F99:F110)
+  lbl(wsA.getCell('C111'), 'Total', { bold:true });
+  for (let i = 0; i < 10; i++) {
+    const costCol = String.fromCharCode(65 + 5 + i);
+    const result = jiCities[i]
+      ? paddedCostLines.reduce((s, cl) => s + ((cl.per_city && cl.per_city[jiCities[i].id]) || 0), 0)
+      : 0;
+    jFml(wsA.getCell(costCol+'111'), `=SUM(${costCol}99:${costCol}110)`, result, FMT_USD, {bold:true});
+  }
+  // Row 113: Grand Total Production Cost = SUM(F111:O111)
+  lbl(wsA.getCell('C113'), 'Total Production Cost', { bold:true });
+  const prodTotal = jiCities.reduce((s, tc) =>
+    s + paddedCostLines.reduce((ss, cl) => ss + ((cl.per_city && cl.per_city[tc.id]) || 0), 0), 0);
+  jFml(wsA.getCell('D113'), '=SUM(F111:O111)', prodTotal, FMT_USD, {bold:true});
+
+  // ── Production payment schedule rows 114-124 ─────────────────────────────
+  lbl(wsA.getCell('C114'), 'Concert Start Date');
+  jFml(wsA.getCell('D114'), '=E13', jiCities[0]?.concert_date ? new Date(jiCities[0].concert_date+'T12:00:00') : '', FMT_DATE);
+  lbl(wsA.getCell('C116'), 'Payment Schedule', { bold:true });
+  lbl(wsA.getCell('D116'), 'Months before the first concert', { bold:true });
+  lbl(wsA.getCell('E116'), '% of Cost', { bold:true });
+  lbl(wsA.getCell('F116'), 'Total Amount', { bold:true });
+  const prodSched = (p.costs && p.costs.production_schedule) || [];
+  const prodLabels = ['1st Payment','2nd Payment','3rd Payment','4th Payment','Final Payment'];
+  for (let k = 0; k < 5; k++) {
+    const rA = 117 + k;
+    const pmt = prodSched[k] || { months_before: 0, pct: 0 };
+    lbl(wsA.getCell('C'+rA), pmt.label || prodLabels[k]);
+    jFml(wsA.getCell('A'+rA), `=TEXT(EDATE($D$114, -D${rA}),"mmyy")`, '', FMT_MMYY);
+    yInp(wsA.getCell('D'+rA), Number(pmt.months_before)||0, FMT_INT);
+    yInp(wsA.getCell('E'+rA), Number(pmt.pct)||0, FMT_PCT);
+    jFml(wsA.getCell('F'+rA), `=$D$113*E${rA}`, prodTotal * (Number(pmt.pct)||0), FMT_USD);
+  }
+  lbl(wsA.getCell('C122'), 'Total', { bold:true });
+  jFml(wsA.getCell('E122'), '=SUM(E117:E121)', prodSched.reduce((s,x)=>s+(Number(x.pct)||0),0), FMT_PCT, {bold:true});
+  jFml(wsA.getCell('F122'), '=SUM(F117:F121)', prodTotal, FMT_USD, {bold:true});
+
+  // Ticketing Platform Fees % row 124
+  jFml(wsA.getCell('A124'), '=TEXT($E124,"mmyy")', '', FMT_MMYY);
+  lbl(wsA.getCell('C124'), 'Ticketing Platform Fees %');
+  yInp(wsA.getCell('D124'), Number((p.costs && p.costs.ticketing_fee_pct))||0, FMT_PCT);
+  const tfDate = (p.costs && p.costs.ticketing_fee_date) || (jiCities[0]?.concert_date ? jiCities[0].concert_date.slice(0,7)+'-01' : '2026-08-01');
+  yInp(wsA.getCell('E124'), new Date(tfDate + 'T12:00:00'), FMT_DATE);
+
+  // ── Artist MG (JISOO) rows 127-142 ────────────────────────────────────────
+  lbl(wsA.getCell('C127'), 'Fees and Loyalty', { bold:true, color: C.navy });
+  lbl(wsA.getCell('C129'), 'JISOO Fees and Royalty', { bold:true });
+  lbl(wsA.getCell('C131'), 'MG Payment to JISOO');
+  const mgTotal = Number((p.costs && p.costs.artist_mg))||0;
+  yInp(wsA.getCell('D131'), mgTotal, FMT_USD);
+  lbl(wsA.getCell('C132'), 'Concert Start Date');
+  jFml(wsA.getCell('D132'), '=D114', jiCities[0]?.concert_date ? new Date(jiCities[0].concert_date+'T12:00:00') : '', FMT_DATE);
+  lbl(wsA.getCell('C134'), 'Payment Schedule', { bold:true });
+  lbl(wsA.getCell('D134'), 'Months before the first concert', { bold:true });
+  lbl(wsA.getCell('E134'), '% of Cost', { bold:true });
+  lbl(wsA.getCell('F134'), 'Total Amount', { bold:true });
+  const mgSchedJI = (p.costs && p.costs.mg_schedule) || [];
+  const mgLabels = ['1st Payment','2nd Payment','3rd Payment','4th Payment','5th Payment'];
+  for (let k = 0; k < 5; k++) {
+    const rA = 135 + k;
+    const pmt = mgSchedJI[k] || { months_before: 0, pct: 0 };
+    lbl(wsA.getCell('C'+rA), pmt.label || mgLabels[k]);
+    jFml(wsA.getCell('A'+rA), `=TEXT(EDATE($D$132, -D${rA}),"mmyy")`, '', FMT_MMYY);
+    yInp(wsA.getCell('D'+rA), Number(pmt.months_before)||0, FMT_INT);
+    yInp(wsA.getCell('E'+rA), Number(pmt.pct)||0, FMT_PCT);
+    jFml(wsA.getCell('F'+rA), `=E${rA}*$D$131`, mgTotal * (Number(pmt.pct)||0), FMT_USD);
+  }
+  jFml(wsA.getCell('F140'), '=SUM(F135:F139)', mgTotal, FMT_USD, {bold:true});
+  lbl(wsA.getCell('C142'), 'JISOO Sponsorship Royalty');
+  yInp(wsA.getCell('D142'), Number((p.costs && p.costs.artist_sponsorship_royalty_pct))||0, FMT_PCT);
+
+  // ── Agency Fees rows 145-151 ──────────────────────────────────────────────
+  lbl(wsA.getCell('C145'), 'Agency Fees', { bold:true });
+  lbl(wsA.getCell('C147'), 'Agency Fees Upfront');
+  const agTotal = Number((p.costs && p.costs.agency_fees))||0;
+  yInp(wsA.getCell('D147'), agTotal, FMT_USD);
+  lbl(wsA.getCell('C149'), 'Payment Schedule', { bold:true });
+  lbl(wsA.getCell('D149'), 'Date', { bold:true });
+  lbl(wsA.getCell('E149'), 'Total Amount', { bold:true });
+  const agSched = (p.costs && p.costs.agency_schedule) || [];
+  for (let k = 0; k < 2; k++) {
+    const rA = 150 + k;
+    const pmt = agSched[k] || { date: '2026-03-01', amount: 0 };
+    lbl(wsA.getCell('C'+rA), (k===0?'1st':'2nd') + ' Payment');
+    jFml(wsA.getCell('A'+rA), `=TEXT($D${rA},"mmyy")`, '', FMT_MMYY);
+    yInp(wsA.getCell('D'+rA), pmt.date ? new Date(pmt.date + 'T12:00:00') : '', FMT_DATE);
+    if (k === 0) yInp(wsA.getCell('E'+rA), Number(pmt.amount)||0, FMT_USD);
+    else         jFml(wsA.getCell('E'+rA), `=D147-E150`, Number(pmt.amount)||0, FMT_USD);
+  }
+
+  // ── Other Fees (BluFin) rows 153-159 ─────────────────────────────────────
+  lbl(wsA.getCell('C153'), 'Other Fees', { bold:true });
+  lbl(wsA.getCell('C155'), 'Other Fees');
+  yInp(wsA.getCell('D155'), Number((p.costs && p.costs.blufin_fees))||0, FMT_USD);
+  lbl(wsA.getCell('C157'), 'Payment Schedule', { bold:true });
+  lbl(wsA.getCell('D157'), 'Date', { bold:true });
+  lbl(wsA.getCell('E157'), 'Total Amount', { bold:true });
+  const bfSched = (p.costs && p.costs.blufin_schedule) || [];
+  for (let k = 0; k < 2; k++) {
+    const rA = 158 + k;
+    const pmt = bfSched[k] || { date: '2026-03-01', amount: 0 };
+    lbl(wsA.getCell('C'+rA), (k===0?'1st':'2nd') + ' Payment');
+    jFml(wsA.getCell('A'+rA), `=TEXT($D${rA},"mmyy")`, '', FMT_MMYY);
+    yInp(wsA.getCell('D'+rA), pmt.date ? new Date(pmt.date + 'T12:00:00') : '', FMT_DATE);
+    if (k === 0) yInp(wsA.getCell('E'+rA), Number(pmt.amount)||0, FMT_USD);
+    else         jFml(wsA.getCell('E'+rA), `=D155-E158`, Number(pmt.amount)||0, FMT_USD);
+  }
+
+  // ── Investor Equity row 162-164 ──────────────────────────────────────────
+  lbl(wsA.getCell('C162'), "Investor's Equity Requirement", { bold:true, color: C.navy });
+  lbl(wsA.getCell('C164'), 'Equity');
+  const scen0 = (p.investor_scenarios || [])[0] || {};
+  yInp(wsA.getCell('D164'), Number(scen0.equity)||0, FMT_USD);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Sheet 2: Cash Flow  (cell-map §3)
+  // ══════════════════════════════════════════════════════════════════════════
+  const wsCF = wb.addWorksheet('Cash Flow');
+  wsCF.views = [{ showGridLines:false, zoomScale:95 }];
+  wsCF.columns = [{width:3},{width:34}].concat(monthCols.map(() => ({width:13})));
+  wsCF.properties.tabColor = { argb: C.teal };
+
+  // Title
+  lbl(wsCF.getCell('A1'), 'Cash Flow Schedule', { bold:true, color: C.white, fill: C.header });
+  wsCF.mergeCells('A1:O1'); wsCF.getRow(1).height = 22;
+
+  // Rows 3-8: equity + distribution + min-cash block
+  lbl(wsCF.getCell('B3'), 'Equity Contributions', { bold:true, color: C.navy });
+  lbl(wsCF.getCell('E3'), 'Distribution Assumptions', { bold:true, color: C.navy });
+  lbl(wsCF.getCell('J3'), 'Distribution Timing Assumptions', { bold:true, color: C.navy });
+  lbl(wsCF.getCell('B4'), 'Partner'); lbl(wsCF.getCell('E4'), 'Total Deal'); lbl(wsCF.getCell('F4'), 'Return');
+  lbl(wsCF.getCell('G4'), 'Investor'); lbl(wsCF.getCell('H4'), 'BluFin');
+  lbl(wsCF.getCell('J4'), 'Total Deal'); lbl(wsCF.getCell('K4'), '% of Equity'); lbl(wsCF.getCell('L4'), 'Month');
+
+  lbl(wsCF.getCell('B5'), 'Total');
+  jFml(wsCF.getCell('C4'), '=Assumptions!$D$164', Number(scen0.equity)||0, FMT_USD);
+  jFml(wsCF.getCell('C5'), '=SUM(C4)', Number(scen0.equity)||0, FMT_USD, {bold:true});
+  // F6 = hurdle, G5 = investor below hurdle (1.0), G6 = investor above-hurdle split
+  yInp(wsCF.getCell('F6'), Number(scen0.hurdle_rate)||0.20, FMT_PCT);
+  yInp(wsCF.getCell('G5'), 1.0, FMT_PCT);
+  jFml(wsCF.getCell('H5'), '=1-G5', 0, FMT_PCT);
+  yInp(wsCF.getCell('G6'), Number(scen0.above_hurdle_investor_pct)||0.5, FMT_PCT);
+  jFml(wsCF.getCell('H6'), '=1-G6', 0.5, FMT_PCT);
+  jFml(wsCF.getCell('E5'), '=" Absolute Return < "&TEXT($F$6, "0%")', '', '@');
+  jFml(wsCF.getCell('E6'), '="Above Hurdle of "&TEXT($F$6, "0%")', '', '@');
+
+  // Distribution Timing (rows 5-7)
+  const distros = p.distributions || [];
+  lbl(wsCF.getCell('J5'), '1st Distribution');
+  yInp(wsCF.getCell('K5'), Number(distros[0]?.pct)||0.5, FMT_PCT);
+  yInp(wsCF.getCell('L5'), distros[0]?.date ? new Date(distros[0].date+'T12:00:00') : '', FMT_DATE);
+  jFml(wsCF.getCell('M5'), '=TEXT(L5, "mmyy")', '', FMT_MMYY);
+  lbl(wsCF.getCell('J6'), '2nd Distribution');
+  jFml(wsCF.getCell('K6'), '=1-K5', Number(distros[1]?.pct)||0.5, FMT_PCT);
+  yInp(wsCF.getCell('L6'), distros[1]?.date ? new Date(distros[1].date+'T12:00:00') : '', FMT_DATE);
+  jFml(wsCF.getCell('M6'), '=TEXT(L6, "mmyy")', '', FMT_MMYY);
+  lbl(wsCF.getCell('J7'), 'Remaining + Upside');
+  yInp(wsCF.getCell('L7'), distros[1]?.date ? new Date(distros[1].date+'T12:00:00') : '', FMT_DATE);
+  jFml(wsCF.getCell('M7'), '=TEXT(L7, "mmyy")', '', FMT_MMYY);
+
+  lbl(wsCF.getCell('E8'), 'Required minimum Cash Balance');
+  yInp(wsCF.getCell('F8'), Number(p.min_cash_balance)||0, FMT_USD);
+
+  lbl(wsCF.getCell('B9'), 'Case', { bold:true });
+  yInp(wsCF.getCell('C9'), (p.case === 'base' ? 'Base' : 'Best'), '@');
+
+  // Rows 11-12: month header + dates
+  monthCols.forEach((col, i) => {
+    jFml(wsCF.getCell(col+'11'), `=TEXT(${col}12,"mmyy")`, '', FMT_MMYY);
+  });
+  lbl(wsCF.getCell('B12'), 'Item', { bold:true });
+  monthCols.forEach((col, i) => {
+    yInp(wsCF.getCell(col+'12'), new Date(monthDateISO(months[i])+'T12:00:00'), 'mmm-yy');
+  });
+
+  // Rows 14-18: Revenue
+  lbl(wsCF.getCell('B14'), 'Ticket Revenue');
+  lbl(wsCF.getCell('B15'), 'Merchandising Revenue');
+  lbl(wsCF.getCell('B16'), 'F&B Revenue');
+  lbl(wsCF.getCell('B17'), 'Sponsorship Revenue');
+  lbl(wsCF.getCell('B18'), 'Total Revenue', { bold:true });
+  monthCols.forEach((col, i) => {
+    const baseV = cfBase.matrix ? cfBase.matrix.inflows.ticket[i] : 0;
+    const bestV = cfBest.matrix ? cfBest.matrix.inflows.ticket[i] : 0;
+    const activeV = (p.case === 'base') ? baseV : bestV;
+    jFml(wsCF.getCell(col+'14'),
+      `=IF($C$9=Assumptions!$C$10, 'Revenue Cash Flow'!${col}$22, 'Revenue Cash Flow'!${col}$44)`,
+      activeV, FMT_USD);
+    // Merch/F&B/Sponsor: SUMIF on mmyy match (they all land on show month in our model)
+    jFml(wsCF.getCell(col+'15'),
+      `=IF($C$9=Assumptions!$C$10, SUMIF(Assumptions!$A$13:$A$22, ${col}$11, Assumptions!$M$13:$M$22), SUMIF(Assumptions!$A$55:$A$64, ${col}$11, Assumptions!$M$55:$M$64))`,
+      0, FMT_USD);
+    jFml(wsCF.getCell(col+'16'),
+      `=IF($C$9=Assumptions!$C$10, SUMIF(Assumptions!$A$13:$A$22, ${col}$11, Assumptions!$P$13:$P$22), SUMIF(Assumptions!$A$55:$A$64, ${col}$11, Assumptions!$P$55:$P$64))`,
+      0, FMT_USD);
+    jFml(wsCF.getCell(col+'17'),
+      `=IF($C$9=Assumptions!$C$10, SUMIF(Assumptions!$A$13:$A$22, ${col}$11, Assumptions!$Q$13:$Q$22), SUMIF(Assumptions!$A$55:$A$64, ${col}$11, Assumptions!$Q$55:$Q$64))`,
+      0, FMT_USD);
+    jFml(wsCF.getCell(col+'18'), `=SUM(${col}14:${col}17)`, activeV, FMT_USD, {bold:true});
+  });
+
+  // Rows 20-24: Op costs
+  lbl(wsCF.getCell('B20'), 'Production Cost');
+  lbl(wsCF.getCell('B21'), 'Ticketing Platform Fees');
+  lbl(wsCF.getCell('B22'), 'Total Operating Costs', { bold:true });
+  lbl(wsCF.getCell('B24'), 'Net Operating Profit', { bold:true });
+  monthCols.forEach((col, i) => {
+    const prodV = cfBest.matrix ? cfBest.matrix.outflows.production[i] : 0;
+    const feeV  = cfBest.matrix ? cfBest.matrix.outflows.ticketing_fees[i] : 0;
+    jFml(wsCF.getCell(col+'20'),
+      `=SUMIF(Assumptions!$A$117:$A$121, ${col}$11, Assumptions!$F$117:$F$121)`,
+      prodV, FMT_USD);
+    jFml(wsCF.getCell(col+'21'),
+      `=IF(${col}$11=Assumptions!$A$124, Assumptions!$D$124*${col}$14, 0)`,
+      feeV, FMT_USD);
+    jFml(wsCF.getCell(col+'22'), `=SUM(${col}20:${col}21)`, prodV + feeV, FMT_USD, {bold:true});
+    jFml(wsCF.getCell(col+'24'), `=${col}18-${col}22`, cfBest.matrix ? cfBest.matrix.net_operating[i] : 0, FMT_USD, {bold:true});
+  });
+
+  // Rows 26-30: Artist fees
+  lbl(wsCF.getCell('B26'), "Jisoo's Fee Schedule", { bold:true, color: C.navy });
+  lbl(wsCF.getCell('B28'), 'MG Payment for Jisoo');
+  lbl(wsCF.getCell('B29'), "Jisoo's Sponsorship Royalty");
+  lbl(wsCF.getCell('B30'), 'Total Payment to Jisoo', { bold:true });
+  monthCols.forEach((col, i) => {
+    const mgV = cfBest.matrix ? cfBest.matrix.outflows.artist_mg[i] : 0;
+    jFml(wsCF.getCell(col+'28'),
+      `=SUMIF(Assumptions!$A$135:$A$139, ${col}$11, Assumptions!$F$135:$F$139)`,
+      mgV, FMT_USD);
+    jFml(wsCF.getCell(col+'29'),
+      `=Assumptions!$D$142*${col}$17`, 0, FMT_USD);
+    jFml(wsCF.getCell(col+'30'), `=SUM(${col}28:${col}29)`, mgV, FMT_USD, {bold:true});
+  });
+
+  // Rows 32-36: Other payments
+  lbl(wsCF.getCell('B32'), 'Other Payment', { bold:true, color: C.navy });
+  lbl(wsCF.getCell('B34'), 'Agency Fees');
+  lbl(wsCF.getCell('B35'), 'BluFin Fees');
+  lbl(wsCF.getCell('B36'), 'Total Payment to Agency and Producer', { bold:true });
+  monthCols.forEach((col, i) => {
+    const agV = cfBest.matrix ? cfBest.matrix.outflows.agency[i] : 0;
+    const bfV = cfBest.matrix ? cfBest.matrix.outflows.blufin[i] : 0;
+    jFml(wsCF.getCell(col+'34'),
+      `=SUMIF(Assumptions!$A$150:$A$151, ${col}$11, Assumptions!$E$150:$E$151)`,
+      agV, FMT_USD);
+    jFml(wsCF.getCell(col+'35'),
+      `=SUMIF(Assumptions!$A$158:$A$159, ${col}$11, Assumptions!$E$158:$E$159)`,
+      bfV, FMT_USD);
+    jFml(wsCF.getCell(col+'36'), `=SUM(${col}34:${col}35)`, agV + bfV, FMT_USD, {bold:true});
+    jFml(wsCF.getCell(col+'38'), `=${col}24-${col}30-${col}36`, 0, FMT_USD, {bold:true});
+  });
+  lbl(wsCF.getCell('B38'), 'Net Cash Flow', { bold:true });
+
+  // Rows 40-51: Cumulative + waterfall
+  lbl(wsCF.getCell('B40'), 'Cumulative Cash Flow Schedule', { bold:true, color: C.navy });
+  jFml(wsCF.getCell('B42'), '=B12', 'Item', '@');
+  monthCols.forEach((col, i) => {
+    jFml(wsCF.getCell(col+'42'), `=${col}12`, new Date(monthDateISO(months[i])+'T12:00:00'), 'mmm-yy');
+  });
+  lbl(wsCF.getCell('B44'), "Investor's Capital");
+  lbl(wsCF.getCell('B45'), 'Net Operating Profit');
+  lbl(wsCF.getCell('B46'), "Jisoo's Fees");
+  lbl(wsCF.getCell('B47'), 'Agency Fees');
+  lbl(wsCF.getCell('B48'), 'BluFin Fees');
+  lbl(wsCF.getCell('B49'), 'Return of Capital');
+  jFml(wsCF.getCell('B50'), '="Hurdle "&TEXT($F$6, "0%")', 'Hurdle 20%', '@');
+  lbl(wsCF.getCell('B51'), 'Total Cash Flow', { bold:true });
+  jFml(wsCF.getCell('C44'), '=Assumptions!D164', Number(scen0.equity)||0, FMT_USD);
+  for (let i = 1; i < monthCols.length; i++) {
+    const col = monthCols[i], prev = monthCols[i-1];
+    jFml(wsCF.getCell(col+'44'), `=IF(${col}12>$L$7, 0, ${prev}51)`, 0, FMT_USD);
+  }
+  monthCols.forEach((col, i) => {
+    jFml(wsCF.getCell(col+'45'), `=${col}24`, 0, FMT_USD);
+    jFml(wsCF.getCell(col+'46'), `=-${col}30`, 0, FMT_USD);
+    jFml(wsCF.getCell(col+'47'), `=-${col}34`, 0, FMT_USD);
+    jFml(wsCF.getCell(col+'48'), `=-${col}35`, 0, FMT_USD);
+    // Return of Capital: simplified — = 0 unless this month matches a distribution
+    jFml(wsCF.getCell(col+'49'),
+      `=IF(OR(${col}$11=$M$5, ${col}$11=$M$6), -MIN($C$5, SUM($C$45:${col}$45)-SUM($B$49:${prevIfExists(monthCols, i)}49)), 0)`.replace('prevIfExists(monthCols, i)', i===0?'B':monthCols[i-1]),
+      0, FMT_USD);
+    jFml(wsCF.getCell(col+'50'),
+      `=-IF(${col}$11=$M$7, MIN($C$5*$F$6, SUM(${col}$44:${col}$49)), 0)`,
+      0, FMT_USD);
+    jFml(wsCF.getCell(col+'51'), `=SUM(${col}44:${col}50)`, 0, FMT_USD, {bold:true});
+  });
+  // Fix the broken placeholder above: rewrite Return of Capital more simply.
+  monthCols.forEach((col, i) => {
+    const prevCol = i === 0 ? 'B' : monthCols[i-1];
+    jFml(wsCF.getCell(col+'49'),
+      `=IF(OR(${col}$11=$M$5, ${col}$11=$M$6), -MIN($C$5, SUM($C$45:${col}$45)-(-SUM($B$49:${prevCol}49))), 0)`,
+      0, FMT_USD);
+  });
+
+  // Waterfall rows 53-64
+  jFml(wsCF.getCell('B53'),
+    '="Distribution after " & TEXT($F$6, "0%") & " absolute return"', '', '@');
+  lbl(wsCF.getCell('B54'), 'Investor');
+  const firstMC = monthCols[0], lastMC = monthCols[monthCols.length-1];
+  jFml(wsCF.getCell('C54'),
+    `=SUMIF($${firstMC}$11:$${lastMC}$11, $M$7, $${firstMC}$51:$${lastMC}$51)*$G$6`,
+    (cfBest.matrix && cfBest.matrix.totals.investor) || 0, FMT_USD);
+  lbl(wsCF.getCell('B55'), 'BluFin');
+  jFml(wsCF.getCell('C55'),
+    `=SUMIF($${firstMC}$11:$${lastMC}$11, $M$7, $${firstMC}$51:$${lastMC}$51)*$H$6`,
+    (cfBest.matrix && cfBest.matrix.totals.blufin_return) || 0, FMT_USD);
+  lbl(wsCF.getCell('B57'), 'Total Investor Return', { bold:true });
+  jFml(wsCF.getCell('C57'),
+    `=-SUM($${firstMC}$49:$${lastMC}$50)+$C$54`,
+    ((cfBest.matrix && cfBest.matrix.totals.investor) || 0) + (Number(scen0.equity)||0), FMT_USD, {bold:true});
+  lbl(wsCF.getCell('B58'), 'Investor Profit', { bold:true });
+  jFml(wsCF.getCell('C58'), '=$C$57-$C$44', (cfBest.matrix && cfBest.matrix.totals.investor) || 0, FMT_USD, {bold:true});
+  lbl(wsCF.getCell('B59'), 'MOIC', { bold:true });
+  jFml(wsCF.getCell('C59'), '=IFERROR($C$57/$C$5, "")', (cfBest.matrix && cfBest.matrix.totals.moic) || 0, FMT_MOIC, {bold:true});
+  lbl(wsCF.getCell('B60'), 'Absolute Return', { bold:true });
+  jFml(wsCF.getCell('C60'), '=IFERROR($C$57/$C$44-1, "")', (cfBest.matrix && cfBest.matrix.totals.abs_return) || 0, FMT_PCT, {bold:true});
+  lbl(wsCF.getCell('B62'), 'Total BluFin Return', { bold:true });
+  jFml(wsCF.getCell('C62'),
+    `=$C$55+SUM($${firstMC}$35:$${lastMC}$35)`,
+    (cfBest.matrix && cfBest.matrix.totals.blufin_return) || 0, FMT_USD, {bold:true});
+  lbl(wsCF.getCell('B64'), 'Check');
+  jFml(wsCF.getCell('C64'), '=$C$58-(-SUM($C$50:$'+lastMC+'$50)+$C$54)', 0, FMT_USD);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Sheet 3: Revenue Cash Flow  (cell-map §2)
+  // ══════════════════════════════════════════════════════════════════════════
+  const wsRCF = wb.addWorksheet('Revenue Cash Flow');
+  wsRCF.views = [{ showGridLines:false, zoomScale:95 }];
+  wsRCF.columns = [{width:3},{width:16}].concat(monthCols.map(() => ({width:13}))).concat([{width:13},{width:13}]);
+  wsRCF.properties.tabColor = { argb: C.teal };
+
+  lbl(wsRCF.getCell('A1'), 'Ticket Revenue Cash Flow', { bold:true, color: C.white, fill: C.header });
+  wsRCF.mergeCells('A1:O1'); wsRCF.getRow(1).height = 22;
+
+  // Base block (rows 3-22)
+  lbl(wsRCF.getCell('B3'), 'Case', { bold:true });
+  jFml(wsRCF.getCell('C3'), '=Assumptions!$C$10', 'Base', '@');
+  // Row 5 = month mmyy
+  monthCols.forEach((col, i) => {
+    jFml(wsRCF.getCell(col+'5'), `=TEXT(${col}11,"mmyy")`, '', FMT_MMYY);
+  });
+  // Rows 7-9: curve rungs (pct | shifted mmyy per month)
+  for (let r = 0; r < 3; r++) {
+    jFml(wsRCF.getCell('B'+(7+r)), `=Assumptions!C${6+r}`, 0, FMT_PCT);
+    monthCols.forEach((col, i) => {
+      jFml(wsRCF.getCell(col+(7+r)),
+        `=TEXT(EDATE(${col}11, Assumptions!$D$${6+r}),"mmyy")`,
+        '', FMT_MMYY);
+    });
+  }
+  // Row 11 month dates (pull from Cash Flow)
+  monthCols.forEach((col, i) => {
+    jFml(wsRCF.getCell(col+'11'), `='Cash Flow'!${col}12`, new Date(monthDateISO(months[i])+'T12:00:00'), 'mmm-yy');
+  });
+  // City rows 12-21 (10 slots)
+  for (let i = 0; i < 10; i++) {
+    const rA = 12 + i;
+    const aRow = 13 + i;  // Assumptions base row
+    jFml(wsRCF.getCell('B'+rA), `=Assumptions!D${aRow}`, jiCities[i]?.city_name || '', '@');
+    monthCols.forEach((col, mi) => {
+      const v = rcfBase && rcfBase.rows[i] ? rcfBase.rows[i].totalsByMonth[mi] || 0 : 0;
+      jFml(wsRCF.getCell(col+rA),
+        `=IF(${col}$7=Assumptions!$A${aRow}, Assumptions!$J${aRow}, 0)*$B$7+` +
+        `IF(${col}$8=Assumptions!$A${aRow}, Assumptions!$J${aRow}, 0)*$B$8+` +
+        `IF(${col}$9=Assumptions!$A${aRow}, Assumptions!$J${aRow}, 0)*$B$9`,
+        v, FMT_USD);
+    });
+  }
+  // Row 22 totals
+  lbl(wsRCF.getCell('B22'), 'Total', { bold:true });
+  monthCols.forEach((col, i) => {
+    jFml(wsRCF.getCell(col+'22'), `=SUM(${col}12:${col}21)`,
+      rcfBase ? rcfBase.colTotals[i] || 0 : 0, FMT_USD, {bold:true});
+  });
+
+  // Best block (rows 25-44)
+  lbl(wsRCF.getCell('B25'), 'Case', { bold:true });
+  jFml(wsRCF.getCell('C25'), '=Assumptions!$C$52', 'Best', '@');
+  monthCols.forEach((col, i) => {
+    jFml(wsRCF.getCell(col+'27'), `=TEXT(${col}33,"mmyy")`, '', FMT_MMYY);
+  });
+  for (let r = 0; r < 3; r++) {
+    jFml(wsRCF.getCell('B'+(29+r)), `=Assumptions!C${6+r}`, 0, FMT_PCT);
+    monthCols.forEach((col, i) => {
+      jFml(wsRCF.getCell(col+(29+r)),
+        `=TEXT(EDATE(${col}33, Assumptions!$D$${6+r}),"mmyy")`,
+        '', FMT_MMYY);
+    });
+  }
+  monthCols.forEach((col, i) => {
+    jFml(wsRCF.getCell(col+'33'), `=${col}11`, new Date(monthDateISO(months[i])+'T12:00:00'), 'mmm-yy');
+  });
+  for (let i = 0; i < 10; i++) {
+    const rA = 34 + i;
+    const aRow = 55 + i;  // Assumptions best row
+    jFml(wsRCF.getCell('B'+rA), `=B${12+i}`, jiCities[i]?.city_name || '', '@');
+    monthCols.forEach((col, mi) => {
+      const v = rcfBest && rcfBest.rows[i] ? rcfBest.rows[i].totalsByMonth[mi] || 0 : 0;
+      jFml(wsRCF.getCell(col+rA),
+        `=IF(${col}$29=Assumptions!$A${aRow}, Assumptions!$J${aRow}, 0)*$B$29+` +
+        `IF(${col}$30=Assumptions!$A${aRow}, Assumptions!$J${aRow}, 0)*$B$30+` +
+        `IF(${col}$31=Assumptions!$A${aRow}, Assumptions!$J${aRow}, 0)*$B$31`,
+        v, FMT_USD);
+    });
+  }
+  lbl(wsRCF.getCell('B44'), 'Total', { bold:true });
+  monthCols.forEach((col, i) => {
+    jFml(wsRCF.getCell(col+'44'), `=SUM(${col}34:${col}43)`,
+      rcfBest ? rcfBest.colTotals[i] || 0 : 0, FMT_USD, {bold:true});
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Sheet 4: Summary  (cell-map §4)
+  // ══════════════════════════════════════════════════════════════════════════
+  const wsSumm = wb.addWorksheet('Summary');
+  wsSumm.views = [{ showGridLines:false, zoomScale:95 }];
+  wsSumm.columns = [{width:3},{width:30}].concat(monthCols.map(() => ({width:13})));
+  wsSumm.properties.tabColor = { argb: C.purple };
+
+  lbl(wsSumm.getCell('A1'), 'Summary Chart', { bold:true, color: C.white, fill: C.header });
+  wsSumm.mergeCells('A1:O1'); wsSumm.getRow(1).height = 22;
+
+  // Month header row 3 = 'Cash Flow'!C42..O42
+  monthCols.forEach((col, i) => {
+    jFml(wsSumm.getCell(col+'3'), `='Cash Flow'!${col}42`, new Date(monthDateISO(months[i])+'T12:00:00'), 'mmm-yy');
+  });
+  lbl(wsSumm.getCell('B4'), 'Outflow', { bold:true, color: C.navy });
+  lbl(wsSumm.getCell('B5'), 'Artist Fees');
+  lbl(wsSumm.getCell('B6'), 'Agency Fees');
+  lbl(wsSumm.getCell('B7'), 'Production Costs');
+  lbl(wsSumm.getCell('B8'), 'Total Outflow', { bold:true });
+  monthCols.forEach((col, i) => {
+    jFml(wsSumm.getCell(col+'5'), `='Cash Flow'!${col}28`, 0, FMT_USD);
+    jFml(wsSumm.getCell(col+'6'), `=-SUM('Cash Flow'!${col}47:${col}48)`, 0, FMT_USD);
+    jFml(wsSumm.getCell(col+'7'), `='Cash Flow'!${col}20`, 0, FMT_USD);
+    jFml(wsSumm.getCell(col+'8'), `=SUM(${col}5:${col}7)`, 0, FMT_USD, {bold:true});
+  });
+
+  monthCols.forEach((col, i) => {
+    jFml(wsSumm.getCell(col+'11'), `=${col}3`, '', 'mmm-yy');
+  });
+  lbl(wsSumm.getCell('B12'), 'Inflow', { bold:true, color: C.navy });
+  lbl(wsSumm.getCell('B13'), "Investor's Capital Inflow");
+  lbl(wsSumm.getCell('B14'), 'Return of Capital');
+  lbl(wsSumm.getCell('B15'), 'Hurdle');
+  monthCols.forEach((col, i) => {
+    if (i === 0) jFml(wsSumm.getCell(col+'13'), `='Cash Flow'!${col}44`, 0, FMT_USD);
+    jFml(wsSumm.getCell(col+'14'), `='Cash Flow'!${col}49`, 0, FMT_USD);
+    jFml(wsSumm.getCell(col+'15'), `='Cash Flow'!${col}50`, 0, FMT_USD);
+  });
+
+  lbl(wsSumm.getCell('C19'), 'Base', { bold:true });
+  lbl(wsSumm.getCell('D19'), 'Best', { bold:true });
+  lbl(wsSumm.getCell('B20'), 'Total Expected Attendance');
+  jFml(wsSumm.getCell('C20'), '=Assumptions!H23', cBase.total_attendance, FMT_INT);
+  jFml(wsSumm.getCell('D20'), '=Assumptions!H65', cBest.total_attendance, FMT_INT);
+  lbl(wsSumm.getCell('B21'), 'Average Ticket Price');
+  jFml(wsSumm.getCell('C21'), '=Assumptions!I23', cBase.total_attendance ? cBase.total_ticket_rev/cBase.total_attendance : 0, FMT_USD2);
+  jFml(wsSumm.getCell('D21'), '=Assumptions!I65', cBest.total_attendance ? cBest.total_ticket_rev/cBest.total_attendance : 0, FMT_USD2);
+  lbl(wsSumm.getCell('B22'), 'Expected Ticket Revenue');
+  jFml(wsSumm.getCell('C22'), '=Assumptions!J23', cBase.total_ticket_rev, FMT_USD);
+  jFml(wsSumm.getCell('D22'), '=Assumptions!J65', cBest.total_ticket_rev, FMT_USD);
+  lbl(wsSumm.getCell('B24'), 'Absolute Return');
+  jFml(wsSumm.getCell('C24'), "='Cash Flow'!C60", (cfBest.matrix && cfBest.matrix.totals.abs_return) || 0, FMT_PCT);
+  lbl(wsSumm.getCell('B25'), 'MOIC');
+  jFml(wsSumm.getCell('C25'), "='Cash Flow'!C59", (cfBest.matrix && cfBest.matrix.totals.moic) || 0, FMT_MOIC);
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Sheet 5: Total  (cell-map §5)
+  // ══════════════════════════════════════════════════════════════════════════
+  const wsT = wb.addWorksheet('Total');
+  wsT.views = [{ showGridLines:false, zoomScale:110 }];
+  wsT.columns = [{width:30},{width:18},{width:24}];
+  wsT.properties.tabColor = { argb: C.navy };
+
+  lbl(wsT.getCell('A1'), `Concert — ${p.artist || 'Artist'}`, { bold:true, color: C.white, fill: C.header });
+  wsT.mergeCells('A1:C1'); wsT.getRow(1).height = 22;
+
+  const nShows = nCities;
+  const forShows = `for ${nShows} shows`;
+
+  lbl(wsT.getCell('A3'), 'Base', { bold:true, color: C.navy });
+  lbl(wsT.getCell('A5'), 'Ticket Revenue');
+  jFml(wsT.getCell('B5'), '=Assumptions!J23', cBase.total_ticket_rev, FMT_USD);
+  lbl(wsT.getCell('C5'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A6'), 'Merch Revenue');
+  jFml(wsT.getCell('B6'), '=Assumptions!M23', cBase.merch_rev || 0, FMT_USD);
+  lbl(wsT.getCell('C6'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A7'), 'F&B Revenue');
+  jFml(wsT.getCell('B7'), '=Assumptions!P23', cBase.fnb_rev || 0, FMT_USD);
+  lbl(wsT.getCell('C7'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A8'), 'Sponsorship Revenue');
+  jFml(wsT.getCell('B8'), '=Assumptions!Q23', cBase.sponsor_rev || 0, FMT_USD);
+  lbl(wsT.getCell('C8'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A9'), 'Total Revenue', { bold:true });
+  jFml(wsT.getCell('B9'), '=SUM(B5:B8)', cBase.total_gross_rev, FMT_USD, {bold:true});
+
+  lbl(wsT.getCell('A11'), 'Cost Assumptions', { bold:true, color: C.navy });
+  lbl(wsT.getCell('A13'), 'Total Production Costs');
+  jFml(wsT.getCell('B13'), '=Assumptions!D113', prodTotal, FMT_USD);
+  lbl(wsT.getCell('C13'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A14'), 'Ticketing Fees');
+  jFml(wsT.getCell('B14'), '=B5*Assumptions!$D$124', cBase.ticketing_fee || 0, FMT_USD);
+  lbl(wsT.getCell('C14'), '% of Tkt Revenue', { color: C.gray });
+  lbl(wsT.getCell('A15'), 'Artist Fees');
+  jFml(wsT.getCell('B15'), '=Assumptions!D131', mgTotal, FMT_USD);
+  lbl(wsT.getCell('C15'), forShows, { color: C.gray });
+  jFml(wsT.getCell('A16'), '=Assumptions!C145', 'Agency Fees', '@');
+  jFml(wsT.getCell('B16'), '=Assumptions!D147', agTotal, FMT_USD);
+  jFml(wsT.getCell('A17'), '=Assumptions!C155', 'Other Fees', '@');
+  jFml(wsT.getCell('B17'), '=Assumptions!D155', Number((p.costs && p.costs.blufin_fees))||0, FMT_USD);
+  lbl(wsT.getCell('A18'), 'Total Costs', { bold:true });
+  jFml(wsT.getCell('B18'), '=SUM(B13:B17)', cBase.total_costs || 0, FMT_USD, {bold:true});
+
+  lbl(wsT.getCell('A20'), 'Best', { bold:true, color: C.navy });
+  lbl(wsT.getCell('A22'), 'Ticket Revenue');
+  jFml(wsT.getCell('B22'), '=Assumptions!J65', cBest.total_ticket_rev, FMT_USD);
+  lbl(wsT.getCell('C22'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A23'), 'Merch Revenue');
+  jFml(wsT.getCell('B23'), '=Assumptions!M65', cBest.merch_rev || 0, FMT_USD);
+  lbl(wsT.getCell('C23'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A24'), 'F&B Revenue');
+  jFml(wsT.getCell('B24'), '=Assumptions!P65', cBest.fnb_rev || 0, FMT_USD);
+  lbl(wsT.getCell('C24'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A25'), 'Sponsorship Revenue');
+  jFml(wsT.getCell('B25'), '=Assumptions!Q65', cBest.sponsor_rev || 0, FMT_USD);
+  lbl(wsT.getCell('C25'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A26'), 'Total Revenue', { bold:true });
+  jFml(wsT.getCell('B26'), '=SUM(B22:B25)', cBest.total_gross_rev, FMT_USD, {bold:true});
+
+  lbl(wsT.getCell('A28'), 'Cost Assumptions', { bold:true, color: C.navy });
+  lbl(wsT.getCell('A30'), 'Total Production Costs');
+  jFml(wsT.getCell('B30'), '=Assumptions!D113', prodTotal, FMT_USD);
+  lbl(wsT.getCell('C30'), forShows, { color: C.gray });
+  lbl(wsT.getCell('A31'), 'Ticketing Fees');
+  jFml(wsT.getCell('B31'), '=B22*Assumptions!$D$124', cBest.ticketing_fee || 0, FMT_USD);
+  lbl(wsT.getCell('C31'), '% of Tkt Revenue', { color: C.gray });
+  lbl(wsT.getCell('A32'), 'Artist Fees');
+  jFml(wsT.getCell('B32'), '=Assumptions!D131', mgTotal, FMT_USD);
+  lbl(wsT.getCell('C32'), forShows, { color: C.gray });
+  jFml(wsT.getCell('A33'), '=Assumptions!C145', 'Agency Fees', '@');
+  jFml(wsT.getCell('B33'), '=Assumptions!D147', agTotal, FMT_USD);
+  jFml(wsT.getCell('A34'), '=Assumptions!C155', 'Other Fees', '@');
+  jFml(wsT.getCell('B34'), '=Assumptions!D155', Number((p.costs && p.costs.blufin_fees))||0, FMT_USD);
+  lbl(wsT.getCell('A35'), 'Total Costs', { bold:true });
+  jFml(wsT.getCell('B35'), '=SUM(B30:B34)', cBest.total_costs || 0, FMT_USD, {bold:true});
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Sheet 6: Data  (reference; cell-map §6 — simple value table)
+  // ══════════════════════════════════════════════════════════════════════════
+  const wsD = wb.addWorksheet('Data');
+  wsD.views = [{ showGridLines:false }];
+  wsD.columns = [{width:3},{width:24},{width:32},{width:18},{width:50}];
+  wsD.properties.tabColor = { argb: C.gray };
+
+  lbl(wsD.getCell('B1'), 'Reference Data', { bold:true, color: C.white, fill: C.header });
+  wsD.mergeCells('B1:E1'); wsD.getRow(1).height = 22;
+
+  lbl(wsD.getCell('B3'), 'Region',   { bold:true, fill: C.colHdrBg });
+  lbl(wsD.getCell('C3'), 'Venue',    { bold:true, fill: C.colHdrBg });
+  lbl(wsD.getCell('D3'), 'Capacity', { bold:true, fill: C.colHdrBg });
+  lbl(wsD.getCell('E3'), 'Notes',    { bold:true, fill: C.colHdrBg });
+  const dataRows = [
+    ['Singapore',  'National Stadium',                '~55,000',  'Largest outdoor stadium in Singapore.'],
+    ['Singapore',  'Singapore Indoor Stadium',        '~12-15k',  'Indoor concert arena.'],
+    ['Japan',      'Nissan Stadium (Yokohama)',       '~72,000',  'Japan\'s largest stadium.'],
+    ['Japan',      'Tokyo Dome',                      '~45-55k',  'Concert configuration.'],
+    ['Hong Kong',  'Kai Tak Sports Park Stadium',     '~50,000',  'HK\'s largest outdoor stadium.'],
+    ['South Korea','Seoul World Cup Stadium',         '~66,700',  'World Cup football stadium.'],
+    ['South Korea','Seoul Olympic Stadium',           '~69,950',  'Multi-purpose venue.'],
+    ['South Korea','Gocheok Sky Dome (concerts)',     '~25,000',  'Baseball dome, concert config.']
+  ];
+  dataRows.forEach((row, i) => {
+    row.forEach((val, j) => {
+      lbl(wsD.getCell(String.fromCharCode(66+j) + (4+i)), val);
+    });
+  });
+  // Pricing reference
+  lbl(wsD.getCell('B14'), 'Pricing Reference (Standard GA)', { bold:true, color: C.navy });
+  const priceRows = [
+    ['Singapore',   '$130-200'],
+    ['Japan',       '$70-125'],
+    ['Hong Kong',   '$115-190'],
+    ['South Korea', '$115-190']
+  ];
+  priceRows.forEach((row, i) => {
+    lbl(wsD.getCell('B' + (15+i)), row[0]);
+    lbl(wsD.getCell('C' + (15+i)), row[1]);
+  });
+
+  // Done building sheets — SKIP the legacy single-sheet below (jump to download)
+  if (false) {
+    // legacy sheet builder remains below but is disabled
 
   let r = 1;
 
@@ -6947,6 +7939,8 @@ async function fdExportExcel() {
       ws4.getRow(r4).height = isCur ? 20 : 17; r4++;
     });
   }
+
+  }  // ← closes `if (false) {` that disables legacy sheet builders
 
   // Download
   const buf  = await wb.xlsx.writeBuffer();
