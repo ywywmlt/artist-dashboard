@@ -6094,7 +6094,7 @@ async function fdExportExcel() {
 
   // Title (B1)
   wsA.mergeCells('B1:Q1');
-  lbl(wsA.getCell('B1'), 'Assumptions', { bold:true, color: C.white, fill: C.header });
+  lbl(wsA.getCell('B1'), 'Assumptions', { bold:true, color: C.white, fill: C.navy });
   wsA.getRow(1).height = 24;
 
   // Revenue Assumptions section header (C3)
@@ -6489,7 +6489,7 @@ async function fdExportExcel() {
   wsCF.properties.tabColor = { argb: C.teal };
 
   // Title
-  lbl(wsCF.getCell('A1'), 'Cash Flow Schedule', { bold:true, color: C.white, fill: C.header });
+  lbl(wsCF.getCell('A1'), 'Cash Flow Schedule', { bold:true, color: C.white, fill: C.navy });
   wsCF.mergeCells('A1:O1'); wsCF.getRow(1).height = 22;
 
   // Rows 3-8: equity + distribution + min-cash block
@@ -6697,7 +6697,7 @@ async function fdExportExcel() {
   wsRCF.columns = [{width:3},{width:16}].concat(monthCols.map(() => ({width:13}))).concat([{width:13},{width:13}]);
   wsRCF.properties.tabColor = { argb: C.teal };
 
-  lbl(wsRCF.getCell('A1'), 'Ticket Revenue Cash Flow', { bold:true, color: C.white, fill: C.header });
+  lbl(wsRCF.getCell('A1'), 'Ticket Revenue Cash Flow', { bold:true, color: C.white, fill: C.navy });
   wsRCF.mergeCells('A1:O1'); wsRCF.getRow(1).height = 22;
 
   // Base block (rows 3-22)
@@ -6785,7 +6785,7 @@ async function fdExportExcel() {
   wsSumm.columns = [{width:3},{width:30}].concat(monthCols.map(() => ({width:13})));
   wsSumm.properties.tabColor = { argb: C.purple };
 
-  lbl(wsSumm.getCell('A1'), 'Summary Chart', { bold:true, color: C.white, fill: C.header });
+  lbl(wsSumm.getCell('A1'), 'Summary Chart', { bold:true, color: C.white, fill: C.navy });
   wsSumm.mergeCells('A1:O1'); wsSumm.getRow(1).height = 22;
 
   // Month header row 3 = 'Cash Flow'!C42..O42
@@ -6841,7 +6841,7 @@ async function fdExportExcel() {
   wsT.columns = [{width:30},{width:18},{width:24}];
   wsT.properties.tabColor = { argb: C.navy };
 
-  lbl(wsT.getCell('A1'), `Concert — ${p.artist || 'Artist'}`, { bold:true, color: C.white, fill: C.header });
+  lbl(wsT.getCell('A1'), `Concert — ${p.artist || 'Artist'}`, { bold:true, color: C.white, fill: C.navy });
   wsT.mergeCells('A1:C1'); wsT.getRow(1).height = 22;
 
   const nShows = nCities;
@@ -6921,7 +6921,7 @@ async function fdExportExcel() {
   wsD.columns = [{width:3},{width:24},{width:32},{width:18},{width:50}];
   wsD.properties.tabColor = { argb: C.gray };
 
-  lbl(wsD.getCell('B1'), 'Reference Data', { bold:true, color: C.white, fill: C.header });
+  lbl(wsD.getCell('B1'), 'Reference Data', { bold:true, color: C.white, fill: C.navy });
   wsD.mergeCells('B1:E1'); wsD.getRow(1).height = 22;
 
   lbl(wsD.getCell('B3'), 'Region',   { bold:true, fill: C.colHdrBg });
