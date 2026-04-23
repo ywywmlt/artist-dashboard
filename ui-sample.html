@@ -4784,9 +4784,18 @@ function fdMmyyFromMonth(monthStr) {
 
 function computeProfile(p, opts) {
   opts = opts || {};
-  const activeCase = opts.case || p.case || "base";
-  const caseOverride = (p.case_overrides && p.case_overrides[activeCase]) || {};
-  const caseFillRate = caseOverride.fill_rate;
+  // Case override applies ONLY when the caller explicitly requests a case
+  // (the exporter does this: computeProfile(p, {case:'base'|'best'}) to emit
+  // the two Assumptions blocks). The live UI calls computeProfile(p) with no
+  // opts, so tc.fill_rate (the sensitivity slider / per-city value) drives.
+  // When forced:
+  //   - p.case_overrides[case].fill_rate if set (user-tuned)
+  //   - else default 0.9 for base, 1.0 for best (JISOO convention)
+  const forcedCase  = opts.case;
+  const override    = (forcedCase && p.case_overrides && p.case_overrides[forcedCase]) || {};
+  const caseFillRate = forcedCase !== undefined
+    ? (override.fill_rate !== undefined ? Number(override.fill_rate) : (forcedCase === 'base' ? 0.9 : 1.0))
+    : undefined;
   // Fallback global cats for legacy profiles before per-city migration
   const globalCats = p.seat_categories || [];
 
@@ -5435,7 +5444,9 @@ function fdMigrateProfile(p) {
   }
   if (p.min_cash_balance === undefined) p.min_cash_balance = 0;
   if (!p.case) p.case = "base";
-  if (!p.case_overrides) p.case_overrides = { base: { fill_rate: 0.9 }, best: { fill_rate: 1.0 } };
+  // NOTE: case_overrides intentionally NOT defaulted. Legacy profiles keep
+  // their tc.fill_rate semantics untouched. A user engages case_overrides by
+  // editing the 5B Base/Best toggle (which sets both entries explicitly).
 }
 
 function fdSetMain(p) {
