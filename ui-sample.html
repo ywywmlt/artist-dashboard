@@ -4812,12 +4812,18 @@ function computeProfile(p, opts) {
     const cats = (tc.seat_categories && tc.seat_categories.length > 0)
       ? tc.seat_categories : globalCats;
     const shows    = Number(tc.num_shows) || 1;
-    const capacity = Number(tc.capacity)  || 0;
+    const declaredCap = Number(tc.capacity) || 0;
+    // Seat layout total — actual ticket inventory per show (sum of tier counts).
+    // When the user's seat-tier breakdown totals more than the declared venue
+    // capacity, the tier sum becomes the effective capacity. This prevents the
+    // ">100% occupancy" confusion when capacity and seat counts disagree.
+    const seatPlanTotal = cats.reduce((s, c) => s + (Number(c.count)||0), 0);
+    const capacity = Math.max(declaredCap, seatPlanTotal);
     const fill_rate       = Math.min(1, Math.max(0,
       caseFillRate !== undefined ? Number(caseFillRate)
       : (tc.fill_rate !== undefined ? Number(tc.fill_rate) : 1)));
     const rev_per_show    = cats.reduce((s, c) => s + (Number(c.price)||0)*(Number(c.count)||0)*fill_rate, 0);
-    const seats_per_show  = cats.reduce((s, c) => s + (Number(c.count)||0)*fill_rate, 0);
+    const seats_per_show  = seatPlanTotal * fill_rate;
     const occ             = capacity > 0 ? seats_per_show / capacity : 0;
     const cpp             = (Number(tc.venue_fee)||0)+(Number(tc.production)||0)
                           + (Number(tc.hospitality)||0)+(Number(tc.insurance)||0);
@@ -4825,7 +4831,7 @@ function computeProfile(p, opts) {
     // Break-even fill: local op costs per show ÷ ticket revenue per show at 100% fill
     const break_even_fill = rev_at_100 > 0 ? Math.min(1, cpp / rev_at_100) : null;
     return {
-      tc, cats, shows, capacity, seats_per_show, occ, fill_rate,
+      tc, cats, shows, capacity, declaredCap, seatPlanTotal, seats_per_show, occ, fill_rate,
       rev_per_show, rev_at_100,
       total_ticket_rev:  rev_per_show * shows,
       total_attendance:  seats_per_show * shows,
