@@ -7597,10 +7597,9 @@ function fdUpdateLive() {
     const tcId = cc.tc.id;
     if (!tcId) continue;
     upd('fd-city-cat-totals-' + tcId, fdCityCatTotalsHTML(cc));
-    // Update per-category revenue cells (reflect fill_rate without re-rendering the form)
-    const tcFillRate = cc.fill_rate;
+    // Update per-category revenue cells (face-value — fill_rate is applied at Total)
     (cc.tc.seat_categories || []).forEach((cat, i) => {
-      const revPS = (Number(cat.price)||0) * (Number(cat.count)||0) * tcFillRate;
+      const revPS = (Number(cat.price)||0) * (Number(cat.count)||0);
       upd('fd-cat-rev-' + tcId + '-' + i, fmtMoney(revPS));
       upd('fd-cat-tot-' + tcId + '-' + i, fmtMoney(revPS * cc.shows));
     });
@@ -9641,10 +9640,13 @@ function fdRenderLive(p) {
             const shows = Number(tc.num_shows) || 1;
             const canRemove = (p.tour_cities||[]).length > 1;
 
-            // Per-category rows (revenue cells are fill_rate-adjusted and have IDs for live updates)
+            // Per-category rows show FACE-VALUE revenue (price × count × shows) at 100%
+            // sell-through. The Total row applies fill_rate to show expected revenue.
+            // This matches ticket pricing semantics: tiers are priced at face value;
+            // fill rate is a separate occupancy parameter aggregated at the total.
             const fillRate = Number(tc.fill_rate) !== undefined ? Math.min(1, Math.max(0, Number(tc.fill_rate) || 1)) : 1.0;
             const catRows = cats.map((cat, i) => {
-              const revPS  = (Number(cat.price)||0) * (Number(cat.count)||0) * fillRate;
+              const revPS  = (Number(cat.price)||0) * (Number(cat.count)||0);
               const revTot = revPS * shows;
               return '<tr class="border-b border-white/5">' +
                 '<td class="py-1 pl-2 pr-1"><input type="text" class="' + FD_INPUT + ' text-[11px] py-1" value="' + (cat.name||'').replace(/"/g,'&quot;') + '" placeholder="Category" oninput="fdPatchCityCategory(\'' + tc.id + '\',' + i + ',\'name\',this.value)"></td>' +
