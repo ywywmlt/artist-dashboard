@@ -6016,6 +6016,7 @@ async function fdExportExcel() {
   // Cities: limit to 10 slots (JISOO reserves D..M for 10 cities; active D..K = 8)
   const jiCities = (p.tour_cities || []).slice(0, 10);
   const nCities  = jiCities.length;
+  const nShows   = jiCities.reduce((s, tc) => s + (Number(tc.num_shows) || 1), 0) || 1;
   const cityCols = ['D','E','F','G','H','I','J','K','L','M'];  // 10 slots
   // Use 7 price tiers per JISOO: P5, P4, P3, P2, P1, VIP Premium, VIP Ultimate
   // Pad from each city's seat_categories (fixture has 7 tiers per city).
@@ -7019,7 +7020,7 @@ async function fdExportExcel() {
   lbl(wsSumm.getCell('B57'), 'Cost Assumptions', { bold:true, color: C.navy });
   lbl(wsSumm.getCell('B59'), 'Total Production Costs');
   jFml(wsSumm.getCell('C59'), '=Assumptions!D113', prodTotal, FMT_USD);
-  lbl(wsSumm.getCell('D59'), `for ${nCities} shows`, { color: C.gray });
+  lbl(wsSumm.getCell('D59'), `for ${nShows} show${nShows===1?'':'s'}`, { color: C.gray });
 
   // ══════════════════════════════════════════════════════════════════════════
   // Sheet 5: Total  (cell-map §5)
@@ -7032,8 +7033,7 @@ async function fdExportExcel() {
   lbl(wsT.getCell('A1'), `Concert — ${p.artist || 'Artist'}`, { bold:true, color: C.white, fill: C.navy });
   wsT.mergeCells('A1:C1'); wsT.getRow(1).height = 22;
 
-  const nShows = nCities;
-  const forShows = `for ${nShows} shows`;
+  const forShows = `for ${nShows} show${nShows===1?'':'s'}`;
 
   lbl(wsT.getCell('A3'), 'Base', { bold:true, color: C.navy });
   lbl(wsT.getCell('A5'), 'Ticket Revenue');
@@ -7162,7 +7162,7 @@ async function fdExportExcel() {
   lbl(wsD.getCell('B32'), 'Category', { bold:true, fill: C.colHdrBg });
   lbl(wsD.getCell('C32'), 'Item',     { bold:true, fill: C.colHdrBg });
   lbl(wsD.getCell('D32'), 'Per Show (USD)', { bold:true, fill: C.colHdrBg });
-  lbl(wsD.getCell('E32'), `${nCities} Shows (USD)`, { bold:true, fill: C.colHdrBg });
+  lbl(wsD.getCell('E32'), `${nShows} Show${nShows===1?'':'s'} (USD)`, { bold:true, fill: C.colHdrBg });
   const avgCap = nCities > 0 ? Math.round(jiCities.reduce((s,tc)=>s+Number(tc.capacity||0),0)/nCities) : 0;
   const atp    = cBest.total_attendance > 0 ? cBest.total_ticket_rev/cBest.total_attendance : 0;
   const tkPS   = cBest.n > 0 ? cBest.total_ticket_rev/cBest.n : 0;
@@ -7172,13 +7172,13 @@ async function fdExportExcel() {
   const netPS  = tkPS - totalCostPS;
   const margin = tkPS > 0 ? netPS/tkPS : 0;
   const dataRowsPerShow = [
-    ['Revenue Inputs', 'Capacity',             avgCap,        avgCap * nCities],
+    ['Revenue Inputs', 'Capacity',             avgCap,        avgCap * nShows],
     ['',               'Avg Ticket Price',     atp,           atp],
-    ['',               'Ticket Sales Revenue', tkPS,          tkPS * nCities],
-    ['Costs',          'Production / Venue / Ops', -opPS,     -opPS * nCities],
+    ['',               'Ticket Sales Revenue', tkPS,          tkPS * nShows],
+    ['Costs',          'Production / Venue / Ops', -opPS,     -opPS * nShows],
     ['',               'Artist Fee',           -mgPS,         -mgTotal],
-    ['',               'Total Cost',           -totalCostPS,  -totalCostPS * nCities],
-    ['Results',        'Net',                  netPS,         netPS * nCities],
+    ['',               'Total Cost',           -totalCostPS,  -totalCostPS * nShows],
+    ['Results',        'Net',                  netPS,         netPS * nShows],
     ['',               'Margin',               margin,        margin]
   ];
   dataRowsPerShow.forEach((row, i) => {
