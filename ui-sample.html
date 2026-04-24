@@ -4949,8 +4949,10 @@ function computeScenario(c, scen) {
   const baseProfit = (c.blufin_net_profit_after_tax !== undefined) ? c.blufin_net_profit_after_tax
                    : (c.blufin_net_profit !== undefined) ? c.blufin_net_profit : c.net_profit;
   const equity      = Number(scen.equity) || 0;
-  const hurdle_rate = Number(scen.hurdle_rate) || 0.20;
-  const inv_split   = Number(scen.above_hurdle_investor_pct) || 0.50;
+  // Default hurdle = 0 (simple absolute return — investor share applies from first dollar).
+  // Users can still opt into a hurdle by setting it in the scenario.
+  const hurdle_rate = scen.hurdle_rate !== undefined ? Number(scen.hurdle_rate) : 0;
+  const inv_split   = scen.above_hurdle_investor_pct !== undefined ? Number(scen.above_hurdle_investor_pct) : 0.50;
   const mode        = scen.return_mode || 'waterfall'; // 'waterfall' or 'fixed_return'
   const fixed_pct   = Number(scen.fixed_return_pct) || 0.12;
 
@@ -5174,8 +5176,8 @@ function computeCashFlow(p, c, opts) {
       // Distribution outflows from project entity
       const scen = (p.investor_scenarios||[])[0] || {};
       const equity = Number(scen.equity)||0;
-      const hurdleRate = Number(scen.hurdle_rate)||0.20;
-      const invSplit   = Number(scen.above_hurdle_investor_pct)||0.5;
+      const hurdleRate = scen.hurdle_rate !== undefined ? Number(scen.hurdle_rate) : 0;
+      const invSplit   = scen.above_hurdle_investor_pct !== undefined ? Number(scen.above_hurdle_investor_pct) : 0.5;
       const totalProfit = netOp.reduce((a,b) => a+b, 0);
       const hurdleAmt = equity * hurdleRate;
       const above = Math.max(0, totalProfit - hurdleAmt);
@@ -5351,14 +5353,14 @@ function fdMigrateProfile(p) {
   if (p.investor && !p.investor_scenarios) {
     p.investor_scenarios = [
       { id: 'scen_a', label: 'Scenario A', ...p.investor },
-      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50 }
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0, above_hurdle_investor_pct: 0.50 }
     ];
     delete p.investor;
   }
   if (!p.investor_scenarios) {
     p.investor_scenarios = [
-      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] },
-      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [] }
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0, above_hurdle_investor_pct: 0.50, investors: [] },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0, above_hurdle_investor_pct: 0.50, investors: [] }
     ];
   }
   for (const scen of (p.investor_scenarios || [])) {
@@ -5843,8 +5845,8 @@ function fdStartCreate() {
     },
     ticketing_settlement: { company: 'ticketmaster', days_after_show: 5, advance_pct: 0, advance_days_before: 0 },
     investor_scenarios: [
-      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false },
-      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false }
+      { id: 'scen_a', label: 'Scenario A', equity: 0, hurdle_rate: 0, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false },
+      { id: 'scen_b', label: 'Scenario B', equity: 0, hurdle_rate: 0, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false }
     ],
     deal_stage: null,
     festival_mode: false,
@@ -6190,7 +6192,7 @@ async function fdExportExcel() {
       // J = SUMPRODUCT(prices_col, counts_col) for this city
       //   Prices at rows 26..36 (11 tiers). Counts at rows 39..49. City i → column cityCols[i].
       const colL = cityCols[i];
-      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}/IFERROR(G${rA},1)`, cc ? cc.total_ticket_rev/Math.max(1,cc.shows) : 0, FMT_USD);
+      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}`, cc ? cc.total_ticket_rev/Math.max(1,cc.shows) : 0, FMT_USD);
       // K = merch sales/show (yellow input), L = split (%), M = K*L
       yInp(wsA.getCell('K'+rA), Number(((p.additional_revenue)||{}).merch_per_show)||0, FMT_USD);
       yInp(wsA.getCell('L'+rA), Number(((p.additional_revenue)||{}).merch_split_pct)||0.2, FMT_PCT);
@@ -6305,7 +6307,7 @@ async function fdExportExcel() {
     jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].seats_per_show : 0, FMT_INT);
     jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, 0, FMT_USD2);
     const colL = cityCols[i];
-    jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}68:${colL}78,${colL}81:${colL}91)*G${rA}/IFERROR(G${rA},1)`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].total_ticket_rev/Math.max(1,cBest.cityCalcs[i].shows) : 0, FMT_USD);
+    jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}68:${colL}78,${colL}81:${colL}91)*G${rA}`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].total_ticket_rev/Math.max(1,cBest.cityCalcs[i].shows) : 0, FMT_USD);
     jFml(wsA.getCell('K'+rA), `=K${rBase}`, 0, FMT_USD);
     jFml(wsA.getCell('L'+rA), `=L${rBase}`, 0, FMT_PCT);
     jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
@@ -6539,7 +6541,7 @@ async function fdExportExcel() {
   jFml(wsCF.getCell('C4'), '=Assumptions!$D$164', Number(scen0.equity)||0, FMT_USD);
   jFml(wsCF.getCell('C5'), '=SUM(C4)', Number(scen0.equity)||0, FMT_USD, {bold:true});
   // F6 = hurdle, G5 = investor below hurdle (1.0), G6 = investor above-hurdle split
-  yInp(wsCF.getCell('F6'), Number(scen0.hurdle_rate)||0.20, FMT_PCT);
+  yInp(wsCF.getCell('F6'), scen0.hurdle_rate !== undefined ? Number(scen0.hurdle_rate) : 0, FMT_PCT);
   yInp(wsCF.getCell('G5'), 1.0, FMT_PCT);
   jFml(wsCF.getCell('H5'), '=1-G5', 0, FMT_PCT);
   yInp(wsCF.getCell('G6'), Number(scen0.above_hurdle_investor_pct)||0.5, FMT_PCT);
@@ -7663,8 +7665,8 @@ function fdInvestorViewPopupHTML(p, c) {
   });
   const inv = (p.investor_scenarios || []).find(s => Number(s.equity) > 0) || null;
   const eq = inv ? Number(inv.equity) : 0;
-  const hr = inv ? Number(inv.hurdle_rate) || 0.20 : 0;
-  const sp = inv ? Number(inv.above_hurdle_investor_pct) || 0.50 : 0;
+  const hr = inv ? (inv.hurdle_rate !== undefined ? Number(inv.hurdle_rate) : 0) : 0;
+  const sp = inv ? (inv.above_hurdle_investor_pct !== undefined ? Number(inv.above_hurdle_investor_pct) : 0.50) : 0;
 
   const th = 'padding:6px 10px;font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;';
   const td = 'padding:5px 10px;font-size:11px;text-align:right;';
@@ -7957,8 +7959,8 @@ function fdInvestorViewHTML(p, c) {
   // First investor scenario
   const invScen = (p.investor_scenarios || []).find(s => Number(s.equity) > 0) || null;
   const eq = invScen ? Number(invScen.equity) : 0;
-  const hr = invScen ? Number(invScen.hurdle_rate) || 0.20 : 0;
-  const sp = invScen ? Number(invScen.above_hurdle_investor_pct) || 0.50 : 0;
+  const hr = invScen ? (invScen.hurdle_rate !== undefined ? Number(invScen.hurdle_rate) : 0) : 0;
+  const sp = invScen ? (invScen.above_hurdle_investor_pct !== undefined ? Number(invScen.above_hurdle_investor_pct) : 0.50) : 0;
 
   function ivCell(val, fmt, isBase, opts) {
     opts = opts || {};
@@ -11193,7 +11195,7 @@ function fdScenModePanelHTML(scen) {
     <button onclick="fdPatchScen('${scen.id}','return_mode','fixed_return')" onmouseover="${hoverOn}" onmouseout="${hoverOff}" ${isFx ? 'data-active="1"' : ''} style="${baseBtn}border-left:1px solid rgba(255,255,255,0.08);${isFx ? onStyle : offStyle}">Fixed Return</button>
   </div>
   ${isWf ? `<div class="grid grid-cols-2 gap-2">
-    <div><label class="${FD_LABEL}">Hurdle Rate (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.hurdle_rate??0.20)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','hurdle_rate',Number(this.value)/100)"></div>
+    <div><label class="${FD_LABEL}">Hurdle Rate (%) <span class="text-[8px] text-slate-600 font-normal normal-case">optional — 0 = simple split</span></label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.hurdle_rate??0)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','hurdle_rate',Number(this.value)/100)"></div>
     <div><label class="${FD_LABEL}">Inv. Split Above Hurdle (%)</label><input type="number" class="${FD_INPUT} text-xs py-1.5" min="0" max="100" value="${((scen.above_hurdle_investor_pct??0.50)*100).toFixed(0)}" oninput="fdPatchScen('${scen.id}','above_hurdle_investor_pct',Number(this.value)/100)"></div>
   </div>` : `<div>
     <label class="${FD_LABEL}">Expected Return (%)</label>
@@ -11245,7 +11247,7 @@ function fdAddScenario() {
   if (!fdState.draftProfile) return;
   const id = 'scen_' + fdGenId();
   const letter = String.fromCharCode(65 + fdState.draftProfile.investor_scenarios.length);
-  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0.20, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false });
+  fdState.draftProfile.investor_scenarios.push({ id, label: 'Scenario ' + letter, equity: 0, hurdle_rate: 0, above_hurdle_investor_pct: 0.50, investors: [], use_for_roi: false });
   fdSetMain(fdState.draftProfile);
 }
 function fdRemoveScenario(id) {
