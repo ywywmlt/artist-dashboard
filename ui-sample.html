@@ -6125,7 +6125,7 @@ async function fdExportExcel() {
   const wsA = wb.addWorksheet('Assumptions');
   wsA.views = [{ showGridLines:false, zoomScale:100 }];
   wsA.columns = [
-    {width:8},{width:3},{width:34},{width:14},{width:14},{width:14},{width:14},
+    {width:8},{width:9},{width:34},{width:14},{width:14},{width:14},{width:14},
     {width:14},{width:14},{width:14},{width:14},{width:14},{width:14},{width:14},
     {width:14},{width:14},{width:14}
   ];
@@ -6159,9 +6159,12 @@ async function fdExportExcel() {
     'Expected Attendance','Avg Ticket Price','Ticket Revenue','Expected Merch Sales',
     'Split Received','Merchandise Revenue','Average F&B Spend Per Head',
     'F&B Buyers out of total Attendance','F&B Revenue','Sponsorship Revenue'];
-  // Col C = No., D = Country, E = Schedule, F = Cap, G = Occ, H = Attend,
-  // I = ATP, J = Ticket Rev, K = Merch Sales, L = Split, M = Merch Rev,
-  // N = F&B/head, O = F&B Buyers, P = F&B Rev, Q = Sponsorship Rev
+  // Col B = # Shows, C = No., D = Country, E = Schedule, F = Cap, G = Occ,
+  // H = Attend (F*G*B), I = ATP (J/H), J = Ticket Rev (SUMPRODUCT*G*B),
+  // K = Merch Sales/show, L = Split, M = Merch Rev (K*L*B),
+  // N = F&B/head, O = F&B Buyers/show, P = F&B Rev (N*O*B),
+  // Q = Sponsorship Rev (tour total per city)
+  lbl(wsA.getCell('B12'), '# Shows', { bold:true, align:'center', fill: C.colHdrBg });
   const revHdrCols = ['C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q'];
   revHdrCols.forEach((col, i) => {
     lbl(wsA.getCell(col+'12'), headerTexts[i], { bold:true, align:'center', fill: C.colHdrBg });
@@ -6174,8 +6177,11 @@ async function fdExportExcel() {
     const tc = jiCities[i] || null;
     const cc = cBase.cityCalcs[i] || null;
     if (tc) {
+      const shows = Number(tc.num_shows) || 1;
       // A = mmyy from E (date)
       jFml(wsA.getCell('A'+rA), `=TEXT(E${rA},"mmyy")`, '', FMT_MMYY);
+      // B = # shows (yellow input)
+      yInp(wsA.getCell('B'+rA), shows, FMT_INT);
       // C = city number (C13 = 1, C14 = C13+1, etc.)
       if (i === 0) yInp(wsA.getCell('C13'), 1, FMT_INT);
       else         jFml(wsA.getCell('C'+rA), `=C${rA-1}+1`, i+1, FMT_INT);
@@ -6187,36 +6193,38 @@ async function fdExportExcel() {
       yInp(wsA.getCell('F'+rA), Number(tc.capacity)||0, FMT_INT);
       // G = occupancy (Base = 0.9 default or per case_override)
       yInp(wsA.getCell('G'+rA), (p.case_overrides && p.case_overrides.base && p.case_overrides.base.fill_rate) || 0.9, FMT_PCT);
-      // H = attendance = F*G
-      jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, cc ? cc.seats_per_show : 0, FMT_INT);
+      // H = attendance (tour total) = F*G*B
+      jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}*B${rA}`, cc ? cc.seats_per_show * shows : 0, FMT_INT);
       // I = ATP = J/H (IFERROR)
       jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, cc ? (cc.seats_per_show ? cc.rev_per_show/cc.seats_per_show : 0) : 0, FMT_USD2);
-      // J = SUMPRODUCT(prices_col, counts_col) for this city
+      // J = SUMPRODUCT(prices_col, counts_col) * G * B for this city (tour total)
       //   Prices at rows 26..36 (11 tiers). Counts at rows 39..49. City i → column cityCols[i].
       const colL = cityCols[i];
-      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}`, cc ? cc.total_ticket_rev/Math.max(1,cc.shows) : 0, FMT_USD);
-      // K = merch sales/show (yellow input), L = split (%), M = K*L
+      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}*B${rA}`, cc ? cc.total_ticket_rev : 0, FMT_USD);
+      // K = merch sales/show (yellow input), L = split (%), M = K*L*B (tour total)
       yInp(wsA.getCell('K'+rA), Number(((p.additional_revenue)||{}).merch_per_show)||0, FMT_USD);
       yInp(wsA.getCell('L'+rA), Number(((p.additional_revenue)||{}).merch_split_pct)||0.2, FMT_PCT);
-      jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
-      // N = F&B/head, O = buyers, P = N*O, Q = sponsorship
+      jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}*B${rA}`, 0, FMT_USD);
+      // N = F&B/head, O = buyers/show, P = N*O*B (tour total)
       yInp(wsA.getCell('N'+rA), Number(((p.additional_revenue)||{}).fnb_per_head)||0, FMT_USD);
       yInp(wsA.getCell('O'+rA), Number(((p.additional_revenue)||{}).fnb_buyer_pct)||0, FMT_INT);
-      jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}`, 0, FMT_USD);
-      yInp(wsA.getCell('Q'+rA), Number(((p.additional_revenue)||{}).sponsorship_per_show)||0, FMT_USD);
+      jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}*B${rA}`, 0, FMT_USD);
+      // Q = sponsorship (tour total per city = per-show × shows)
+      yInp(wsA.getCell('Q'+rA), (Number(((p.additional_revenue)||{}).sponsorship_per_show)||0) * shows, FMT_USD);
     } else {
-      // Empty slot — still emit A/C/F/G/H/I/J/M/P formulas so the row is complete
+      // Empty slot — still emit A/B/C/F/G/H/I/J/M/P formulas so the row is complete
       jFml(wsA.getCell('A'+rA), `=TEXT(E${rA},"mmyy")`, '', FMT_MMYY);
+      yInp(wsA.getCell('B'+rA), 0, FMT_INT);
       if (i === 0) yInp(wsA.getCell('C13'), i+1, FMT_INT);
       else         jFml(wsA.getCell('C'+rA), `=C${rA-1}+1`, i+1, FMT_INT);
       yInp(wsA.getCell('F'+rA), 0, FMT_INT);
       yInp(wsA.getCell('G'+rA), 0.9, FMT_PCT);
-      jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, 0, FMT_INT);
+      jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}*B${rA}`, 0, FMT_INT);
       jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, 0, FMT_USD2);
       const colL = cityCols[i];
-      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}`, 0, FMT_USD);
-      jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
-      jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}`, 0, FMT_USD);
+      jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}26:${colL}36,${colL}39:${colL}49)*G${rA}*B${rA}`, 0, FMT_USD);
+      jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}*B${rA}`, 0, FMT_USD);
+      jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}*B${rA}`, 0, FMT_USD);
     }
   }
   // Base totals row 23
@@ -6314,7 +6322,11 @@ async function fdExportExcel() {
     const rA = 55 + i;
     const rBase = 13 + i;
     const tc = jiCities[i] || null;
+    const ccB = cBest.cityCalcs[i] || null;
+    const showsB = tc ? (Number(tc.num_shows) || 1) : 0;
     jFml(wsA.getCell('A'+rA), `=TEXT(E${rA},"mmyy")`, '', FMT_MMYY);
+    // B = shows count (mirrors Base)
+    jFml(wsA.getCell('B'+rA), `=B${rBase}`, showsB, FMT_INT);
     if (i === 0) jFml(wsA.getCell('C55'), `=C${rBase}`, i+1, FMT_INT);
     else         jFml(wsA.getCell('C'+rA), `=C${rA-1}+1`, i+1, FMT_INT);
     // D/E/F reference Base
@@ -6323,16 +6335,16 @@ async function fdExportExcel() {
     jFml(wsA.getCell('F'+rA), `=F${rBase}`, tc ? Number(tc.capacity)||0 : 0, FMT_INT);
     // G = 100% (or best override)
     yInp(wsA.getCell('G'+rA), (p.case_overrides && p.case_overrides.best && p.case_overrides.best.fill_rate) || 1.0, FMT_PCT);
-    jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].seats_per_show : 0, FMT_INT);
+    jFml(wsA.getCell('H'+rA), `=F${rA}*G${rA}*B${rA}`, ccB ? ccB.seats_per_show * showsB : 0, FMT_INT);
     jFml(wsA.getCell('I'+rA), `=IFERROR(J${rA}/H${rA}, "")`, 0, FMT_USD2);
     const colL = cityCols[i];
-    jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}68:${colL}78,${colL}81:${colL}91)*G${rA}`, cBest.cityCalcs[i] ? cBest.cityCalcs[i].total_ticket_rev/Math.max(1,cBest.cityCalcs[i].shows) : 0, FMT_USD);
+    jFml(wsA.getCell('J'+rA), `=SUMPRODUCT(${colL}68:${colL}78,${colL}81:${colL}91)*G${rA}*B${rA}`, ccB ? ccB.total_ticket_rev : 0, FMT_USD);
     jFml(wsA.getCell('K'+rA), `=K${rBase}`, 0, FMT_USD);
     jFml(wsA.getCell('L'+rA), `=L${rBase}`, 0, FMT_PCT);
-    jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}`, 0, FMT_USD);
+    jFml(wsA.getCell('M'+rA), `=K${rA}*L${rA}*B${rA}`, 0, FMT_USD);
     jFml(wsA.getCell('N'+rA), `=N${rBase}`, 0, FMT_USD);
     jFml(wsA.getCell('O'+rA), `=O${rBase}`, 0, FMT_INT);
-    jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}`, 0, FMT_USD);
+    jFml(wsA.getCell('P'+rA), `=N${rA}*O${rA}*B${rA}`, 0, FMT_USD);
     jFml(wsA.getCell('Q'+rA), `=Q${rBase}`, 0, FMT_USD);
   }
   jFml(wsA.getCell('H65'), '=SUM(H55:H64)', cBest.total_attendance, FMT_INT, {bold:true});
