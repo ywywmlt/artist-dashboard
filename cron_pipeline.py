@@ -3,17 +3,20 @@
 # Recommended schedule: 0 6 * * * (daily at 6 AM UTC)
 """Daily pipeline cron job — runs automatically on Railway schedule.
 
-Executes the quick refresh sequence:
+Executes the full daily refresh:
   1. Seed kworb.net (+ append listener history snapshot)
+  2. Touring filter (setlist.fm) — slow (~27 min @ 7,500 artists)
+  3. MusicBrainz enrichment (genres, country, socials) — slow (~51 min @ 7,500)
   7. Spotify enrichment
   5. News mentions
   6. Ticketmaster events
+  9. Rostr signings + intel
   8. Generate alerts
   4. Export CSV/JSON
 
-Steps 2 (touring) and 3 (MusicBrainz) are slow (~25min total) and run
-separately on demand via the full pipeline CLI. This cron keeps daily
-listener history, Spotify data, news, and alerts up to date.
+Total runtime ~85 min on the 7,500-artist seed. Steps 2 and 3 used to be
+manual-only (faster cron) but were folded in once the dataset expanded so
+new artists get touring/region data without operator intervention.
 """
 
 import importlib
@@ -29,6 +32,8 @@ logger = logging.getLogger("cron_pipeline")
 
 STEPS = [
     ("kworb rankings + history snapshot", "pipeline.step1_seed_kworb"),
+    ("touring filter (setlist.fm)",       "pipeline.step3_touring_filter"),
+    ("MusicBrainz enrichment",            "pipeline.step4_social_handles"),
     ("Spotify enrichment",                "pipeline.step_spotify"),
     ("news articles",                     "pipeline.step6_news"),
     ("Ticketmaster events",               "pipeline.step_ticketmaster"),
