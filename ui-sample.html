@@ -1436,6 +1436,26 @@ function renderWatchlistButtons(sid) {
     return `<button onclick="watchlistSet('${sid}','${isCur ? '' : t.label}')" class="text-[10px] px-2.5 py-1 rounded-full border font-medium transition-all ${isCur ? t.active : 'bg-transparent ' + t.base} hover:opacity-80">${t.label}</button>`;
   }).join('') + (cur ? `<button onclick="watchlistSet('${sid}','')" class="text-[10px] px-1.5 py-0.5 text-slate-600 hover:text-slate-400 transition-colors">✕</button>` : '');
 }
+// Pollstar-style monthly-listeners → artist guarantee tier (USD low/high).
+// Returns null when listeners aren't known, so callers can skip the badge.
+function guaranteeEstimate(a) {
+  const ml = Number(a && a.monthly_listeners) || 0;
+  if (ml <= 0)             return null;
+  if (ml < 100000)         return { low: 1000,    high: 10000   };
+  if (ml < 500000)         return { low: 5000,    high: 25000   };
+  if (ml < 1000000)        return { low: 15000,   high: 50000   };
+  if (ml < 2000000)        return { low: 25000,   high: 75000   };
+  if (ml < 5000000)        return { low: 50000,   high: 150000  };
+  if (ml < 10000000)       return { low: 100000,  high: 300000  };
+  if (ml < 25000000)       return { low: 250000,  high: 750000  };
+  if (ml < 50000000)       return { low: 500000,  high: 1500000 };
+  return                          { low: 1000000, high: 3000000 };
+}
+function fmtGuaranteeBadge(est) {
+  if (!est) return '';
+  const k = (n) => n >= 1000000 ? (n/1000000).toFixed(1).replace(/\.0$/, '') + 'M' : Math.round(n/1000) + 'k';
+  return '$' + k(est.low) + '–$' + k(est.high);
+}
 function priorityBadge(sid) {
   const p = artistMeta[sid]?.priority;
   if (!p) return '';
@@ -3653,6 +3673,19 @@ function showArtistList() {
       '</div>' +
       '<div id="custom-artist-status" class="text-xs mt-2 hidden"></div>' +
     '</div>' +
+    '<div class="flex items-center gap-2 mb-3 text-xs">' +
+      '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Budget ($k):</span>' +
+      '<input type="number" id="artist-budget-min" placeholder="Min" min="0" step="5" ' +
+        'class="w-20 bg-black border border-amber-900/30 rounded px-2 py-1 text-xs text-amber-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" ' +
+        'oninput="renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')">' +
+      '<span class="text-slate-600">–</span>' +
+      '<input type="number" id="artist-budget-max" placeholder="Max" min="0" step="5" ' +
+        'class="w-20 bg-black border border-amber-900/30 rounded px-2 py-1 text-xs text-amber-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" ' +
+        'oninput="renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')">' +
+      '<button onclick="document.getElementById(\'artist-budget-min\').value=\'\';document.getElementById(\'artist-budget-max\').value=\'\';renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')" ' +
+        'class="text-[10px] text-slate-500 hover:text-white transition-colors">Clear</button>' +
+      '<span class="text-[10px] text-slate-600 italic ml-2">Estimated from monthly listeners (Pollstar tiers)</span>' +
+    '</div>' +
     '<div class="flex items-center gap-1.5 mb-4">' +
       '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Watchlist:</span>' +
       filterTabs +
@@ -3883,7 +3916,22 @@ function renderArtistGrid(query) {
   const q = (query || '').toLowerCase().trim();
   let filtered = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : artists;
   if (wlFilter) filtered = filtered.filter(a => watchlist[a.spotify_id] === wlFilter);
+  // Budget filter: keep artists whose estimated guarantee range overlaps the user's range.
+  const budMinK = Number(document.getElementById('artist-budget-min')?.value) || 0;
+  const budMaxK = Number(document.getElementById('artist-budget-max')?.value) || 0;
+  if (budMinK > 0 || budMaxK > 0) {
+    const lo = budMinK * 1000;
+    const hi = budMaxK > 0 ? budMaxK * 1000 : Infinity;
+    filtered = filtered.filter(a => {
+      const e = guaranteeEstimate(a);
+      return e && e.high >= lo && e.low <= hi;
+    });
+  }
   if (countEl) countEl.textContent = filtered.length.toLocaleString() + ' artists';
+  if (filtered.length === 0 && (budMinK > 0 || budMaxK > 0)) {
+    grid.innerHTML = '<div class="col-span-5 text-center py-16 text-slate-500 text-sm">No artists in this budget range. Try widening it or clearing the filter.</div>';
+    return;
+  }
   if (filtered.length === 0 && wlFilter) {
     grid.innerHTML = '<div class="col-span-5 text-center py-16 text-slate-500 text-sm">No artists tagged as <span class="text-white font-medium">' + wlFilter + '</span>. Tag artists from their profile page.</div>';
     return;
@@ -3927,6 +3975,10 @@ function renderArtistGrid(query) {
     const genreTag = genre
       ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-slate-500 truncate max-w-[80px]">' + escHtml(genre) + '</span>'
       : '';
+    const feeEst = guaranteeEstimate(a);
+    const feeBadge = feeEst
+      ? '<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300/80 font-medium" title="Estimated artist guarantee (Pollstar tier from monthly listeners) — directional only">' + fmtGuaranteeBadge(feeEst) + '</span>'
+      : '';
     return (
       '<div class="' + cardCls + '" data-bulk-id="' + a.spotify_id + '" onclick="' + onClickAttr + '"' + hoverAttrs + '>' +
         checkboxOverlay +
@@ -3951,6 +4003,7 @@ function renderArtistGrid(query) {
           heatBadge +
           (a.source === 'custom' ? '<span class="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-medium">Custom</span>' : '') +
           touringBadge +
+          feeBadge +
           genreTag +
           (tag ? watchlistTagChip(tag) : '') +
           priorityBadge(a.spotify_id) +
