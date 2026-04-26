@@ -42,8 +42,12 @@ MUSICBRAINZ_RATE_LIMIT = 1  # enforced by API
 TOURING_MIN_EVENTS = 5          # min events in lookback period to count as "active"
 TOURING_LOOKBACK_YEARS = 2      # how far back to check
 
-# Scraping
+# Scraping — kworb publishes 10 paginated pages of 2,500 artists each.
+# Page 1 covers the top 2,500 (≥5.7M listeners), page 2 ≥3M, page 3 ≥1.5M.
+# Increase KWORB_PAGE_COUNT to expand the seed; cost is ~9 min step-2 +
+# 17 min step-3 per added page.
 KWORB_URL = "https://kworb.net/spotify/listeners.html"
+KWORB_PAGE_COUNT = 3
 USER_AGENT = "ArtistDashboard/0.1 (github.com/artist-dashboard)"
 
 # News RSS feeds

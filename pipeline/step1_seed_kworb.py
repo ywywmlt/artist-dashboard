@@ -9,17 +9,24 @@ from typing import Optional
 
 from bs4 import BeautifulSoup
 
-from config import KWORB_URL
+from config import KWORB_URL, KWORB_PAGE_COUNT
 from models import ArtistSeed
 from utils import get_session, save_json, http_retry, append_listener_snapshot
 
 logger = logging.getLogger("artist_pipeline.step1")
 
 
+def _kworb_page_url(page: int) -> str:
+    """Build the kworb URL for a given 1-indexed page (page 1 has no suffix)."""
+    if page <= 1:
+        return KWORB_URL
+    return KWORB_URL.replace("listeners.html", f"listeners{page}.html")
+
+
 @http_retry
-def fetch_kworb_page(session) -> str:
-    """Fetch the kworb.net listeners page."""
-    resp = session.get(KWORB_URL, timeout=30)
+def fetch_kworb_page(session, page: int = 1) -> str:
+    """Fetch one kworb.net listeners page (1-indexed)."""
+    resp = session.get(_kworb_page_url(page), timeout=30)
     resp.raise_for_status()
     # kworb serves UTF-8 but without a charset header — requests would otherwise
     # guess Latin-1 and mangle accented names (Tiësto → TiÃ«sto, Beyoncé → BeyoncÃ©).
@@ -75,53 +82,65 @@ def _append_custom_artists(artists: list[dict], scraped_at: str) -> list[dict]:
     return artists
 
 
-def run() -> list[dict]:
-    """Scrape kworb.net and return list of ArtistSeed dicts."""
-    logger.info("Step 1: Scraping kworb.net top artists...")
-    session = get_session()
-    html = fetch_kworb_page(session)
+def _parse_kworb_table(html: str, scraped_at: str) -> list[dict]:
+    """Parse one kworb listeners page and return ArtistSeed dicts (no rank yet)."""
     soup = BeautifulSoup(html, "html.parser")
-
     table = soup.find("table")
     if not table:
         raise RuntimeError("Could not find artist table on kworb.net")
 
-    artists = []
-    rows = table.find_all("tr")
-    scraped_at = datetime.utcnow().isoformat()
-
-    for rank, row in enumerate(rows, start=0):
+    artists: list[dict] = []
+    for row in table.find_all("tr"):
         cells = row.find_all("td")
         if not cells or len(cells) < 3:
-            continue  # skip header or malformed rows
+            continue
 
-        # Columns: #, Artist, Listeners, Daily +/-, Peak, PkListeners
         link = cells[1].find("a")
         if not link:
             continue
 
-        href = link.get("href", "")
-        spotify_id = extract_spotify_id(href)
+        spotify_id = extract_spotify_id(link.get("href", ""))
         if not spotify_id:
             continue
 
-        name = link.get_text(strip=True)
-        monthly_listeners = parse_listeners(cells[2].get_text())
-        daily_change = parse_change(cells[3].get_text()) if len(cells) > 3 else None
-        peak_listeners = parse_listeners(cells[5].get_text()) if len(cells) > 5 else None
-
-        artist = ArtistSeed(
-            rank=len(artists) + 1,
-            name=name,
+        artists.append(ArtistSeed(
+            rank=0,  # re-ranked after merging all pages
+            name=link.get_text(strip=True),
             spotify_id=spotify_id,
-            monthly_listeners=monthly_listeners,
-            daily_change=daily_change,
-            peak_listeners=peak_listeners,
+            monthly_listeners=parse_listeners(cells[2].get_text()),
+            daily_change=parse_change(cells[3].get_text()) if len(cells) > 3 else None,
+            peak_listeners=parse_listeners(cells[5].get_text()) if len(cells) > 5 else None,
             scraped_at=scraped_at,
-        )
-        artists.append(artist.to_dict())
+        ).to_dict())
+    return artists
 
-    logger.info(f"Scraped {len(artists)} artists from kworb.net")
+
+def run() -> list[dict]:
+    """Scrape kworb.net (configurable page depth) and return ArtistSeed dicts."""
+    logger.info(f"Step 1: Scraping kworb.net top artists ({KWORB_PAGE_COUNT} page{'s' if KWORB_PAGE_COUNT != 1 else ''})...")
+    session = get_session()
+    scraped_at = datetime.utcnow().isoformat()
+
+    artists: list[dict] = []
+    seen_ids: set[str] = set()
+    for page in range(1, KWORB_PAGE_COUNT + 1):
+        html = fetch_kworb_page(session, page)
+        page_artists = _parse_kworb_table(html, scraped_at)
+        new_count = 0
+        for a in page_artists:
+            if a["spotify_id"] in seen_ids:
+                continue
+            seen_ids.add(a["spotify_id"])
+            artists.append(a)
+            new_count += 1
+        logger.info(f"  page {page}: {len(page_artists)} rows, {new_count} new (total: {len(artists)})")
+
+    # Re-rank by monthly listeners descending
+    artists.sort(key=lambda a: a.get("monthly_listeners", 0), reverse=True)
+    for i, a in enumerate(artists, start=1):
+        a["rank"] = i
+
+    logger.info(f"Scraped {len(artists)} unique artists from kworb.net")
 
     # Append user-added custom artists
     artists = _append_custom_artists(artists, scraped_at)
