@@ -1471,23 +1471,56 @@ function countryToRegion(country) {
 
 // Pollstar-style monthly-listeners → artist guarantee tier (USD low/high).
 // Returns null when listeners aren't known, so callers can skip the badge.
+// Tier midpoints are spaced so each falls cleanly inside one BUDGET_BUCKETS
+// bucket — keep these aligned if you change the bucket boundaries below.
 function guaranteeEstimate(a) {
   const ml = Number(a && a.monthly_listeners) || 0;
-  if (ml <= 0)             return null;
-  if (ml < 100000)         return { low: 1000,    high: 10000   };
-  if (ml < 500000)         return { low: 5000,    high: 25000   };
-  if (ml < 1000000)        return { low: 15000,   high: 50000   };
-  if (ml < 2000000)        return { low: 25000,   high: 75000   };
-  if (ml < 5000000)        return { low: 50000,   high: 150000  };
-  if (ml < 10000000)       return { low: 100000,  high: 300000  };
-  if (ml < 25000000)       return { low: 250000,  high: 750000  };
-  if (ml < 50000000)       return { low: 500000,  high: 1500000 };
-  return                          { low: 1000000, high: 3000000 };
+  if (ml <= 0)              return null;
+  if (ml < 250000)          return { low: 1000,    high: 10000   };  // mid $5.5k
+  if (ml < 800000)          return { low: 5000,    high: 30000   };  // mid $17.5k
+  if (ml < 1500000)         return { low: 15000,   high: 50000   };  // mid $32.5k
+  if (ml < 2500000)         return { low: 30000,   high: 75000   };  // mid $52.5k
+  if (ml < 4000000)         return { low: 50000,   high: 100000  };  // mid $75k
+  if (ml < 6000000)         return { low: 75000,   high: 150000  };  // mid $112.5k
+  if (ml < 9000000)         return { low: 125000,  high: 250000  };  // mid $187.5k
+  if (ml < 15000000)        return { low: 200000,  high: 400000  };  // mid $300k
+  if (ml < 25000000)        return { low: 280000,  high: 680000  };  // mid $480k
+  if (ml < 50000000)        return { low: 550000,  high: 1400000 };  // mid $975k
+  if (ml < 90000000)        return { low: 1000000, high: 2800000 };  // mid $1.9M
+  return                          { low: 3100000, high: 6900000 };  // mid $5M
 }
 function fmtGuaranteeBadge(est) {
   if (!est) return '';
   const k = (n) => n >= 1000000 ? (n/1000000).toFixed(1).replace(/\.0$/, '') + 'M' : Math.round(n/1000) + 'k';
   return '$' + k(est.low) + '–$' + k(est.high);
+}
+
+// Budget bucket pills shown on Artist Profiles. Boundaries are inclusive on the
+// low end and exclusive on the high end so adjacent buckets don't double-count.
+// Boundaries match guaranteeEstimate() midpoints — each tier midpoint lands in
+// exactly one bucket.
+const BUDGET_BUCKETS = [
+  { id: 'all',  label: 'All',        loK: 0,     hiK: Infinity },
+  { id: 'b1',   label: '≤ $50k',     loK: 0,     hiK: 50 },
+  { id: 'b2',   label: '$51–100k',   loK: 50,    hiK: 100 },
+  { id: 'b3',   label: '$101–150k',  loK: 100,   hiK: 150 },
+  { id: 'b4',   label: '$151–250k',  loK: 150,   hiK: 250 },
+  { id: 'b5',   label: '$251–500k',  loK: 250,   hiK: 500 },
+  { id: 'b6',   label: '$501k–1M',   loK: 500,   hiK: 1000 },
+  { id: 'b7',   label: '$1–3M',      loK: 1000,  hiK: 3000 },
+  { id: 'b8',   label: '$3–10M',     loK: 3000,  hiK: 10000 },
+];
+let budgetBucket = 'all';
+function setBudgetBucket(id) {
+  budgetBucket = id;
+  // Re-style pills
+  BUDGET_BUCKETS.forEach(b => {
+    const el = document.getElementById('bbk-' + b.id);
+    if (!el) return;
+    if (b.id === id) el.className = 'text-[11px] px-3 py-1 rounded-full border font-medium transition-all bg-amber-500/15 border-amber-500/40 text-amber-200';
+    else             el.className = 'text-[11px] px-3 py-1 rounded-full border font-medium transition-all bg-transparent border-white/10 text-slate-500 hover:text-slate-300';
+  });
+  renderArtistGrid(document.getElementById('artist-list-search')?.value || '');
 }
 function priorityBadge(sid) {
   const p = artistMeta[sid]?.priority;
@@ -3706,16 +3739,20 @@ function showArtistList() {
       '</div>' +
       '<div id="custom-artist-status" class="text-xs mt-2 hidden"></div>' +
     '</div>' +
+    '<div class="flex items-center gap-1.5 mb-2 flex-wrap">' +
+      '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Budget:</span>' +
+      BUDGET_BUCKETS.map(b => {
+        const isActive = b.id === budgetBucket;
+        const cls = isActive
+          ? 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+          : 'bg-transparent border-white/10 text-slate-500 hover:text-slate-300';
+        return '<button id="bbk-' + b.id + '" onclick="setBudgetBucket(\'' + b.id + '\')" ' +
+          'class="text-[11px] px-3 py-1 rounded-full border font-medium transition-all ' + cls + '">' +
+          escHtml(b.label) + '</button>';
+      }).join('') +
+    '</div>' +
     '<div class="flex items-center gap-2 mb-3 text-xs flex-wrap">' +
-      '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Budget ($k):</span>' +
-      '<input type="number" id="artist-budget-min" placeholder="Min" min="0" step="5" ' +
-        'class="w-20 bg-black border border-amber-900/30 rounded px-2 py-1 text-xs text-amber-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" ' +
-        'oninput="renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')">' +
-      '<span class="text-slate-600">–</span>' +
-      '<input type="number" id="artist-budget-max" placeholder="Max" min="0" step="5" ' +
-        'class="w-20 bg-black border border-amber-900/30 rounded px-2 py-1 text-xs text-amber-200 placeholder-slate-600 focus:outline-none focus:border-amber-500/50" ' +
-        'oninput="renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')">' +
-      '<span class="text-[10px] text-slate-600 uppercase tracking-wider ml-3 mr-1">Region:</span>' +
+      '<span class="text-[10px] text-slate-600 uppercase tracking-wider mr-1">Region:</span>' +
       '<select id="artist-region-filter" ' +
         'class="bg-black border border-cyan-900/30 rounded px-2 py-1 text-xs text-cyan-200 focus:outline-none focus:border-cyan-500/50" ' +
         'onchange="renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')">' +
@@ -3735,8 +3772,7 @@ function showArtistList() {
         '<span class="text-[11px] text-emerald-300">Touring only</span>' +
       '</label>' +
       '<button onclick="' +
-          'document.getElementById(\'artist-budget-min\').value=\'\';' +
-          'document.getElementById(\'artist-budget-max\').value=\'\';' +
+          'setBudgetBucket(\'all\');' +
           'document.getElementById(\'artist-region-filter\').value=\'\';' +
           'document.getElementById(\'artist-touring-only\').checked=false;' +
           'renderArtistGrid(document.getElementById(\'artist-list-search\')?.value||\'\')" ' +
@@ -3973,35 +4009,52 @@ function renderArtistGrid(query) {
   const q = (query || '').toLowerCase().trim();
   let filtered = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : artists;
   if (wlFilter) filtered = filtered.filter(a => watchlist[a.spotify_id] === wlFilter);
-  // Budget filter: keep artists whose tier midpoint falls inside the user's range.
-  // Midpoint avoids the "$100k–$300k tier still shows for max=125" surprise that
-  // simple overlap caused.
-  const budMinK = Number(document.getElementById('artist-budget-min')?.value) || 0;
-  const budMaxK = Number(document.getElementById('artist-budget-max')?.value) || 0;
-  if (budMinK > 0 || budMaxK > 0) {
-    const lo = budMinK * 1000;
-    const hi = budMaxK > 0 ? budMaxK * 1000 : Infinity;
-    filtered = filtered.filter(a => {
-      const e = guaranteeEstimate(a);
-      if (!e) return false;
-      const mid = (e.low + e.high) / 2;
-      return mid >= lo && mid <= hi;
-    });
-  }
-  // Region filter
+  // Region + touring filters (applied before budget so bucket counts reflect
+  // the cross-filtered set: "how many touring Asian artists in each budget tier?")
   const regionFilter = document.getElementById('artist-region-filter')?.value || '';
   if (regionFilter) {
     filtered = filtered.filter(a => countryToRegion(mbMap[a.spotify_id]?.country) === regionFilter);
   }
-  // Touring-only filter
   const touringOnly = !!document.getElementById('artist-touring-only')?.checked;
   if (touringOnly) {
     filtered = filtered.filter(a => touringMap[a.spotify_id]?.is_touring === true);
   }
+  // Update each bucket pill's count using the pre-budget filtered set.
+  const preBudget = filtered;
+  BUDGET_BUCKETS.forEach(b => {
+    const pill = document.getElementById('bbk-' + b.id);
+    if (!pill) return;
+    let count;
+    if (b.id === 'all') count = preBudget.length;
+    else {
+      const lo = b.loK * 1000;
+      const hi = b.hiK === Infinity ? Infinity : b.hiK * 1000;
+      count = preBudget.reduce((n, a) => {
+        const e = guaranteeEstimate(a);
+        if (!e) return n;
+        const m = (e.low + e.high) / 2;
+        return (m >= lo && m < hi) ? n + 1 : n;
+      }, 0);
+    }
+    pill.textContent = b.label + ' (' + count.toLocaleString() + ')';
+  });
+  // Budget bucket: include artists whose tier midpoint falls inside the active
+  // bucket. 'all' is a no-op pass-through.
+  const bucket = BUDGET_BUCKETS.find(b => b.id === budgetBucket) || BUDGET_BUCKETS[0];
+  if (bucket.id !== 'all') {
+    const lo = bucket.loK * 1000;
+    const hi = bucket.hiK === Infinity ? Infinity : bucket.hiK * 1000;
+    filtered = filtered.filter(a => {
+      const e = guaranteeEstimate(a);
+      if (!e) return false;
+      const mid = (e.low + e.high) / 2;
+      return mid >= lo && mid < hi;
+    });
+  }
   if (countEl) countEl.textContent = filtered.length.toLocaleString() + ' artists';
-  const anyFilterActive = budMinK > 0 || budMaxK > 0 || regionFilter || touringOnly;
+  const anyFilterActive = (bucket.id !== 'all') || regionFilter || touringOnly;
   if (filtered.length === 0 && anyFilterActive) {
-    grid.innerHTML = '<div class="col-span-5 text-center py-16 text-slate-500 text-sm">No artists match these filters. Try widening the budget, switching regions, or clearing filters.</div>';
+    grid.innerHTML = '<div class="col-span-5 text-center py-16 text-slate-500 text-sm">No artists match these filters. Try a different budget bucket, switching regions, or clearing filters.</div>';
     return;
   }
   if (filtered.length === 0 && wlFilter) {
